@@ -43,7 +43,7 @@ if not exist "%DATADIR%\config.json" (
     echo   "SupportPhone": "16047601662",
     echo   "SupportEmail": "pcpluscomputing@gmail.com",
     echo   "SupportChatUrl": "",
-    echo   "ChatServerUrl": "184.68.146.18:3456",
+    echo   "ChatServerUrl": "rmmchat.pcpluscomputing.com",
     echo   "TicketPortalUrl": ""
     echo }
     ) > "%DATADIR%\config.json"

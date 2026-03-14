@@ -203,15 +203,19 @@ namespace SupportTray
 
         private async Task ConnectAsync()
         {
-            var chatServerUrl = _config.RmmUrl.Replace("https://", "").Replace("http://", "");
-            // The chat server runs on port 3456 on the same host
-            var wsUrl = $"ws://{chatServerUrl}:3456/ws";
+            string wsUrl;
 
-            // If a dedicated ChatServerUrl is configured, use that
-            if (!string.IsNullOrEmpty(_config.TicketPortalUrl))
+            // Use ChatServerUrl if configured, otherwise default to rmmchat subdomain
+            if (!string.IsNullOrEmpty(_config.ChatServerUrl))
             {
-                var host = _config.TicketPortalUrl.Replace("https://", "").Replace("http://", "").TrimEnd('/');
-                wsUrl = $"ws://{host}/ws";
+                var host = _config.ChatServerUrl.Replace("https://", "").Replace("http://", "").TrimEnd('/');
+                // Use WSS if it looks like a domain, WS if it's an IP:port
+                var proto = host.Contains(":") && !host.Contains(".com") ? "ws" : "wss";
+                wsUrl = $"{proto}://{host}/ws";
+            }
+            else
+            {
+                wsUrl = "wss://rmmchat.pcpluscomputing.com/ws";
             }
 
             _cts = new CancellationTokenSource();
@@ -412,8 +416,17 @@ namespace SupportTray
 
             try
             {
-                var chatServerUrl = _config.RmmUrl.Replace("https://", "").Replace("http://", "");
-                var uploadUrl = $"http://{chatServerUrl}:3456/api/upload";
+                string uploadUrl;
+                if (!string.IsNullOrEmpty(_config.ChatServerUrl))
+                {
+                    var host = _config.ChatServerUrl.Replace("https://", "").Replace("http://", "").TrimEnd('/');
+                    var proto = host.Contains(":") && !host.Contains(".com") ? "http" : "https";
+                    uploadUrl = $"{proto}://{host}/api/upload";
+                }
+                else
+                {
+                    uploadUrl = "https://rmmchat.pcpluscomputing.com/api/upload";
+                }
 
                 using var http = new HttpClient();
                 using var content = new MultipartFormDataContent();
