@@ -11,10 +11,16 @@ namespace SupportTray
         private readonly NotifyIcon _trayIcon;
         private readonly AppConfig _config;
         private ChatForm? _chatForm;
+        private string _liveChatUrl;
 
         public TrayApplicationContext()
         {
             _config = AppConfig.Load();
+
+            // Build live chat URL from Zammad URL
+            _liveChatUrl = !string.IsNullOrEmpty(_config.ZammadUrl)
+                ? _config.ZammadUrl.TrimEnd('/') + "/livechat.html"
+                : "";
 
             _trayIcon = new NotifyIcon
             {
@@ -24,7 +30,7 @@ namespace SupportTray
                 ContextMenuStrip = CreateContextMenu()
             };
 
-            _trayIcon.DoubleClick += (s, e) => ShowChatForm();
+            _trayIcon.DoubleClick += (s, e) => OpenLiveChat();
 
             // Show welcome balloon on first run
             var firstRunFile = Path.Combine(
@@ -94,11 +100,16 @@ namespace SupportTray
             menu.Items.Add(headerItem);
             menu.Items.Add(new ToolStripSeparator());
 
-            // Chat with Support (primary action)
-            var chatItem = new ToolStripMenuItem("Chat with Support");
-            chatItem.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-            chatItem.Click += (s, e) => ShowChatForm();
-            menu.Items.Add(chatItem);
+            // Live Chat (primary action - real-time chat)
+            var liveChatItem = new ToolStripMenuItem("Live Chat");
+            liveChatItem.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            liveChatItem.Click += (s, e) => OpenLiveChat();
+            menu.Items.Add(liveChatItem);
+
+            // Support Tickets (ticket-based conversations)
+            var ticketChatItem = new ToolStripMenuItem("Support Tickets");
+            ticketChatItem.Click += (s, e) => ShowChatForm();
+            menu.Items.Add(ticketChatItem);
 
             // WhatsApp
             var whatsappItem = new ToolStripMenuItem("WhatsApp Support");
@@ -186,6 +197,23 @@ namespace SupportTray
             menu.Items.Add(exitItem);
 
             return menu;
+        }
+
+        private void OpenLiveChat()
+        {
+            if (!string.IsNullOrEmpty(_liveChatUrl))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = _liveChatUrl,
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                // Fallback to ticket-based chat if Zammad not configured
+                ShowChatForm();
+            }
         }
 
         private void ShowChatForm()
@@ -288,9 +316,10 @@ namespace SupportTray
         {
             MessageBox.Show(
                 $"{_config.CompanyName}\n" +
-                $"Support Utility v3.0\n\n" +
+                $"Support Utility v3.1\n\n" +
                 $"Quick access to:\n" +
                 $"  - Live chat with support team\n" +
+                $"  - Support ticket conversations\n" +
                 $"  - WhatsApp & SMS support\n" +
                 $"  - Create support tickets\n" +
                 $"  - Capture & upload screenshots\n" +

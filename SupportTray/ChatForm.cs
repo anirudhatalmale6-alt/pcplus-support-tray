@@ -47,7 +47,7 @@ namespace SupportTray
 
         private void InitializeUI()
         {
-            Text = $"{_config.CompanyName} - Support Chat";
+            Text = $"{_config.CompanyName} - Support Tickets";
             Size = new Size(520, 650);
             StartPosition = FormStartPosition.CenterScreen;
             MinimumSize = new Size(400, 500);
