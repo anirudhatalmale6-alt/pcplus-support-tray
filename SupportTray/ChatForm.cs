@@ -61,15 +61,24 @@ namespace SupportTray
                 Height = 56,
                 BackColor = Color.FromArgb(0, 120, 212)
             };
-            var headerLabel = new Label
+            var headerLabel = new LinkLabel
             {
                 Text = $"  {_config.CompanyName} Support",
                 ForeColor = Color.White,
+                LinkColor = Color.White,
+                ActiveLinkColor = Color.FromArgb(180, 220, 255),
+                VisitedLinkColor = Color.White,
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(8, 0, 0, 0)
+            };
+            headerLabel.LinkClicked += (s, e) =>
+            {
+                var url = _config.WebsiteUrl;
+                if (!string.IsNullOrEmpty(url))
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = url, UseShellExecute = true });
             };
             _statusLabel = new Label
             {

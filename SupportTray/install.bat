@@ -46,7 +46,9 @@ if not exist "%DATADIR%\config.json" (
     echo   "ChatServerUrl": "",
     echo   "TicketPortalUrl": "",
     echo   "ZammadUrl": "https://support.pcpluscomputing.com",
-    echo   "ZammadApiToken": "pcplus2026trayapp"
+    echo   "ZammadApiToken": "pcplus2026trayapp",
+    echo   "WebsiteUrl": "https://pcpluscomputing.com",
+    echo   "LiveChatUrl": "https://pcpluscomputing51.my.3cx.us/LiveChat/477559"
     echo }
     ) > "%DATADIR%\config.json"
 )

@@ -9,6 +9,7 @@ namespace SupportTray
     public class TicketForm : Form
     {
         private readonly AppConfig _config;
+        private ComboBox _categoryBox = null!;
         private TextBox _subjectBox = null!;
         private RichTextBox _descriptionBox = null!;
         private CheckBox _includeSystemInfo = null!;
@@ -19,6 +20,17 @@ namespace SupportTray
         private PictureBox _screenshotPreview = null!;
         private string? _screenshotPath;
 
+        private static readonly string[] Categories = new[]
+        {
+            "-- Select Category --",
+            "Computer Hardware Repair",
+            "Computer Software Repair",
+            "Website Issues",
+            "Data Recovery Services",
+            "Business IT Services",
+            "Others"
+        };
+
         public TicketForm(AppConfig config)
         {
             _config = config;
@@ -28,7 +40,7 @@ namespace SupportTray
         private void InitializeUI()
         {
             Text = $"{_config.CompanyName} - Create Support Ticket";
-            Size = new Size(550, 580);
+            Size = new Size(550, 620);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -43,20 +55,44 @@ namespace SupportTray
                 Height = 60,
                 BackColor = Color.FromArgb(0, 120, 212)
             };
-            var headerLabel = new Label
+            var headerLabel = new LinkLabel
             {
-                Text = "  Create Support Ticket",
+                Text = $"  {_config.CompanyName}",
                 ForeColor = Color.White,
+                LinkColor = Color.White,
+                ActiveLinkColor = Color.FromArgb(180, 220, 255),
+                VisitedLinkColor = Color.White,
                 Font = new Font("Segoe UI", 16, FontStyle.Bold),
                 AutoSize = false,
                 Size = new Size(500, 40),
                 Location = new Point(10, 12),
                 TextAlign = ContentAlignment.MiddleLeft
             };
+            headerLabel.LinkClicked += (s, e) =>
+            {
+                var url = _config.WebsiteUrl;
+                if (!string.IsNullOrEmpty(url))
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = url, UseShellExecute = true });
+            };
             header.Controls.Add(headerLabel);
             Controls.Add(header);
 
             int y = 75;
+
+            // Category
+            Controls.Add(new Label { Text = "Category:", Location = new Point(20, y), AutoSize = true, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) });
+            y += 22;
+            _categoryBox = new ComboBox
+            {
+                Location = new Point(20, y),
+                Size = new Size(495, 28),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 9.5f)
+            };
+            _categoryBox.Items.AddRange(Categories);
+            _categoryBox.SelectedIndex = 0;
+            Controls.Add(_categoryBox);
+            y += 36;
 
             // Subject
             Controls.Add(new Label { Text = "Subject:", Location = new Point(20, y), AutoSize = true, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) });
@@ -178,6 +214,12 @@ namespace SupportTray
 
         private async Task SubmitTicket()
         {
+            if (_categoryBox.SelectedIndex <= 0)
+            {
+                MessageBox.Show("Please select a category.", "Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _categoryBox.Focus();
+                return;
+            }
             if (string.IsNullOrWhiteSpace(_subjectBox.Text))
             {
                 MessageBox.Show("Please enter a subject.", "Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -204,7 +246,8 @@ namespace SupportTray
                 if (string.IsNullOrEmpty(email)) email = "customer@pcpluscomputing.com";
 
                 var hostname = SystemInfo.GetHostname();
-                var subject = $"[{hostname}] {_subjectBox.Text}";
+                var category = _categoryBox.SelectedItem?.ToString() ?? "Others";
+                var subject = $"[{hostname}] [{category}] {_subjectBox.Text}";
 
                 var result = await api.CreateTicketAsync(subject, description, email,
                     _includeScreenshot.Checked ? _screenshotPath : null);

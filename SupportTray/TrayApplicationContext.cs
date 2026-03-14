@@ -45,6 +45,9 @@ namespace SupportTray
                 _trayIcon.BalloonTipIcon = ToolTipIcon.Info;
                 _trayIcon.ShowBalloonTip(5000);
             }
+
+            // Always show desktop overlay on startup
+            ShowDesktopOverlay();
         }
 
         private Icon CreateDefaultIcon()
@@ -58,27 +61,42 @@ namespace SupportTray
                 catch { }
             }
 
-            // Create a programmatic icon: blue circle with "PC" text
+            // Create modern programmatic icon
             using var bitmap = new Bitmap(32, 32);
             using var g = Graphics.FromImage(bitmap);
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // Blue circle background
-            using var bgBrush = new SolidBrush(Color.FromArgb(0, 120, 212));
-            g.FillEllipse(bgBrush, 1, 1, 30, 30);
+            // Rounded square background with gradient
+            using var bgPath = new GraphicsPath();
+            bgPath.AddArc(1, 1, 8, 8, 180, 90);
+            bgPath.AddArc(23, 1, 8, 8, 270, 90);
+            bgPath.AddArc(23, 23, 8, 8, 0, 90);
+            bgPath.AddArc(1, 23, 8, 8, 90, 90);
+            bgPath.CloseFigure();
 
-            // White border
-            using var borderPen = new Pen(Color.White, 1.5f);
-            g.DrawEllipse(borderPen, 1, 1, 30, 30);
+            using var bgBrush = new LinearGradientBrush(
+                new Rectangle(0, 0, 32, 32),
+                Color.FromArgb(0, 100, 200),
+                Color.FromArgb(0, 140, 230),
+                LinearGradientMode.ForwardDiagonal);
+            g.FillPath(bgBrush, bgPath);
 
-            // "PC" text
-            using var font = new Font("Segoe UI", 11, FontStyle.Bold);
+            // Subtle highlight on top
+            using var highlightBrush = new LinearGradientBrush(
+                new Rectangle(2, 2, 28, 14),
+                Color.FromArgb(60, 255, 255, 255),
+                Color.FromArgb(0, 255, 255, 255),
+                LinearGradientMode.Vertical);
+            g.FillPath(highlightBrush, bgPath);
+
+            // "PC" text - crisp white
+            using var font = new Font("Segoe UI", 12, FontStyle.Bold);
             using var textBrush = new SolidBrush(Color.White);
             var textSize = g.MeasureString("PC", font);
             g.DrawString("PC", font, textBrush,
                 (32 - textSize.Width) / 2,
-                (32 - textSize.Height) / 2);
+                (32 - textSize.Height) / 2 - 1);
 
             var handle = bitmap.GetHicon();
             return Icon.FromHandle(handle);
@@ -116,8 +134,8 @@ namespace SupportTray
             whatsappItem.Click += (s, e) => OpenWhatsApp();
             menu.Items.Add(whatsappItem);
 
-            // Text/SMS
-            var smsItem = new ToolStripMenuItem("Text/SMS Support");
+            // Text/3CX LiveChat
+            var smsItem = new ToolStripMenuItem("Text/LiveChat Support");
             smsItem.Click += (s, e) => OpenSMS();
             menu.Items.Add(smsItem);
 
@@ -197,6 +215,12 @@ namespace SupportTray
             menu.Items.Add(exitItem);
 
             return menu;
+        }
+
+        private void ShowDesktopOverlay()
+        {
+            var overlay = new DesktopOverlay();
+            overlay.Show();
         }
 
         private void OpenLiveChat()
@@ -283,13 +307,16 @@ namespace SupportTray
 
         private void OpenSMS()
         {
-            var phone = _config.SupportPhone;
-            if (string.IsNullOrEmpty(phone))
-                phone = "6047601662";
-
+            var url = _config.LiveChatUrl;
+            if (string.IsNullOrEmpty(url))
+            {
+                var phone = _config.SupportPhone;
+                if (string.IsNullOrEmpty(phone)) phone = "6047601662";
+                url = $"sms:{phone}";
+            }
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                FileName = $"sms:{phone}",
+                FileName = url,
                 UseShellExecute = true
             });
         }
@@ -316,7 +343,7 @@ namespace SupportTray
         {
             MessageBox.Show(
                 $"{_config.CompanyName}\n" +
-                $"Support Utility v3.1\n\n" +
+                $"Support Utility v3.1.1\n\n" +
                 $"Quick access to:\n" +
                 $"  - Live chat with support team\n" +
                 $"  - Support ticket conversations\n" +
