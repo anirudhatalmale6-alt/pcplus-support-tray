@@ -14,6 +14,8 @@ namespace SupportTray
         public string SupportChatUrl { get; set; } = "";
         public string ChatServerUrl { get; set; } = "";
         public string TicketPortalUrl { get; set; } = "";
+        public string ZammadUrl { get; set; } = "https://support.pcpluscomputing.com";
+        public string ZammadApiToken { get; set; } = "";
 
         private static readonly string ConfigDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),

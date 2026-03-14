@@ -122,6 +122,21 @@ namespace SupportTray
             ticketItem.Click += (s, e) => ShowTicketForm();
             menu.Items.Add(ticketItem);
 
+            // Support Portal
+            if (!string.IsNullOrEmpty(_config.ZammadUrl))
+            {
+                var portalItem = new ToolStripMenuItem("Open Support Portal");
+                portalItem.Click += (s, e) =>
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = _config.ZammadUrl,
+                        UseShellExecute = true
+                    });
+                };
+                menu.Items.Add(portalItem);
+            }
+
             // Screenshot submenu
             var screenshotMenu = new ToolStripMenuItem("Take Screenshot");
 
@@ -273,7 +288,7 @@ namespace SupportTray
         {
             MessageBox.Show(
                 $"{_config.CompanyName}\n" +
-                $"Support Utility v2.0\n\n" +
+                $"Support Utility v3.0\n\n" +
                 $"Quick access to:\n" +
                 $"  - Live chat with support team\n" +
                 $"  - WhatsApp & SMS support\n" +

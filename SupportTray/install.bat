@@ -43,8 +43,10 @@ if not exist "%DATADIR%\config.json" (
     echo   "SupportPhone": "16047601662",
     echo   "SupportEmail": "pcpluscomputing@gmail.com",
     echo   "SupportChatUrl": "",
-    echo   "ChatServerUrl": "rmmchat.pcpluscomputing.com",
-    echo   "TicketPortalUrl": ""
+    echo   "ChatServerUrl": "",
+    echo   "TicketPortalUrl": "",
+    echo   "ZammadUrl": "https://support.pcpluscomputing.com",
+    echo   "ZammadApiToken": "3_5HCL_MSnlbB9_swMam4qMk-fuoJhyfeIMZQOM5Nr9CJafrWXcvM1B28yJOmrqY"
     echo }
     ) > "%DATADIR%\config.json"
 )

@@ -196,13 +196,45 @@ namespace SupportTray
                 description += "\n\n--- System Information ---\n" + SystemInfo.GetFullReport();
             }
 
-            if (_includeScreenshot.Checked && !string.IsNullOrEmpty(_screenshotPath))
+            // Try Zammad first, then Tactical RMM, then local fallback
+            if (!string.IsNullOrEmpty(_config.ZammadUrl) && !string.IsNullOrEmpty(_config.ZammadApiToken))
             {
-                description += $"\n\n[Screenshot attached: {Path.GetFileName(_screenshotPath)}]";
-            }
+                var api = new ZammadApi(_config.ZammadUrl, _config.ZammadApiToken);
+                var email = _config.SupportEmail;
+                if (string.IsNullOrEmpty(email)) email = "customer@pcpluscomputing.com";
 
-            if (!string.IsNullOrEmpty(_config.RmmApiKey))
+                var hostname = SystemInfo.GetHostname();
+                var subject = $"[{hostname}] {_subjectBox.Text}";
+
+                var result = await api.CreateTicketAsync(subject, description, email,
+                    _includeScreenshot.Checked ? _screenshotPath : null);
+
+                if (result.Success)
+                {
+                    _statusLabel.Text = "Ticket submitted!";
+                    _statusLabel.ForeColor = Color.Green;
+                    MessageBox.Show(
+                        $"Your support ticket has been submitted successfully!\n\n" +
+                        $"Subject: {_subjectBox.Text}\n" +
+                        $"{result.Message}" +
+                        "\n\nOur team will respond shortly.",
+                        "Ticket Submitted",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                    Close();
+                    return;
+                }
+                else
+                {
+                    _statusLabel.Text = $"Error: {result.Message}";
+                    _statusLabel.ForeColor = Color.Red;
+                }
+            }
+            else if (!string.IsNullOrEmpty(_config.RmmApiKey))
             {
+                if (_includeScreenshot.Checked && !string.IsNullOrEmpty(_screenshotPath))
+                    description += $"\n\n[Screenshot attached: {Path.GetFileName(_screenshotPath)}]";
+
                 var api = new TacticalRmmApi(_config.RmmUrl, _config.RmmApiKey);
                 var agentId = SystemInfo.GetTacticalAgentId();
                 var result = await api.CreateTicketAsync(_subjectBox.Text, description, agentId);
@@ -230,7 +262,10 @@ namespace SupportTray
             }
             else
             {
-                // Fallback: save ticket locally and open email
+                // Fallback: save ticket locally
+                if (_includeScreenshot.Checked && !string.IsNullOrEmpty(_screenshotPath))
+                    description += $"\n\n[Screenshot attached: {Path.GetFileName(_screenshotPath)}]";
+
                 var ticketDir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "PCPlusSupport", "Tickets");
@@ -241,7 +276,6 @@ namespace SupportTray
                 var content = $"Subject: {_subjectBox.Text}\nDate: {DateTime.Now}\n\n{description}";
                 File.WriteAllText(ticketFile, content);
 
-                // Copy screenshot to ticket folder if exists
                 if (!string.IsNullOrEmpty(_screenshotPath) && File.Exists(_screenshotPath))
                 {
                     var destFile = Path.Combine(ticketDir,
