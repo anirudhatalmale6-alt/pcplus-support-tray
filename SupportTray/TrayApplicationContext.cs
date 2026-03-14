@@ -71,16 +71,16 @@ namespace SupportTray
 
         private Icon CreateDefaultIcon()
         {
-            // Check for custom icon file
+            // Check for custom override icon (custom-icon.ico, not the bundled icon.ico)
             var exeDir = AppDomain.CurrentDomain.BaseDirectory;
-            var customIconPath = Path.Combine(exeDir, "icon.ico");
+            var customIconPath = Path.Combine(exeDir, "custom-icon.ico");
             if (File.Exists(customIconPath))
             {
                 try { return new Icon(customIconPath); }
                 catch { }
             }
 
-            // Create bright, visible icon
+            // Create bright, visible icon programmatically
             using var bitmap = new Bitmap(32, 32);
             using var g = Graphics.FromImage(bitmap);
             g.SmoothingMode = SmoothingMode.AntiAlias;

@@ -7,7 +7,7 @@
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <AssemblyName>PCPlusSupportTray</AssemblyName>
     <RootNamespace>SupportTray</RootNamespace>
-    <Version>3.2.2</Version>
+    <Version>3.2.3</Version>
     <Company>PC Plus Computing</Company>
     <Product>PC Plus Support</Product>
     <Description>PC Plus Computing - Client Support Utility</Description>
