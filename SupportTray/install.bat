@@ -46,7 +46,7 @@ if not exist "%DATADIR%\config.json" (
     echo   "ChatServerUrl": "",
     echo   "TicketPortalUrl": "",
     echo   "ZammadUrl": "https://support.pcpluscomputing.com",
-    echo   "ZammadApiToken": "3_5HCL_MSnlbB9_swMam4qMk-fuoJhyfeIMZQOM5Nr9CJafrWXcvM1B28yJOmrqY"
+    echo   "ZammadApiToken": "vT_jjiw03tA-YpoJHOoAX4eKK9OyEeHV14KE3j2lpmcbgAQLmcz1IT5iulOaro1_"
     echo }
     ) > "%DATADIR%\config.json"
 )
