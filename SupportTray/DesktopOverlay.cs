@@ -9,11 +9,11 @@ namespace SupportTray
 {
     public class DesktopOverlay : Form
     {
-        private Timer? _fadeTimer;
+        private System.Windows.Forms.Timer? _fadeTimer;
         private float _opacity = 0f;
         private bool _fadingIn = true;
         private const int SHOW_DURATION_MS = 30000; // Show for 30 seconds then fade
-        private Timer? _dismissTimer;
+        private System.Windows.Forms.Timer? _dismissTimer;
 
         // Win32 for click-through and taskbar hiding
         private const int WS_EX_TOOLWINDOW = 0x00000080;
@@ -49,12 +49,12 @@ namespace SupportTray
             Click += (s, e) => FadeOut();
 
             // Fade in
-            _fadeTimer = new Timer { Interval = 30 };
+            _fadeTimer = new System.Windows.Forms.Timer { Interval = 30 };
             _fadeTimer.Tick += FadeStep;
             _fadeTimer.Start();
 
             // Auto-dismiss after duration
-            _dismissTimer = new Timer { Interval = SHOW_DURATION_MS };
+            _dismissTimer = new System.Windows.Forms.Timer { Interval = SHOW_DURATION_MS };
             _dismissTimer.Tick += (s, e) =>
             {
                 _dismissTimer?.Stop();
