@@ -9,9 +9,10 @@ namespace SupportTray
         public string CompanyName { get; set; } = "PC Plus Computing";
         public string RmmUrl { get; set; } = "https://rmm.pcpluscomputing.com";
         public string RmmApiKey { get; set; } = "";
-        public string SupportPhone { get; set; } = "";
+        public string SupportPhone { get; set; } = "16047601662";
         public string SupportEmail { get; set; } = "";
         public string SupportChatUrl { get; set; } = "";
+        public string ChatServerUrl { get; set; } = "";
         public string TicketPortalUrl { get; set; } = "";
 
         private static readonly string ConfigDir = Path.Combine(

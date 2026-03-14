@@ -1,0 +1,17 @@
+[Unit]
+Description=PC Plus Support Chat Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/pcplus-chat
+ExecStart=/usr/bin/node /opt/pcplus-chat/server.js
+Restart=always
+RestartSec=5
+Environment=PORT=3456
+Environment=ADMIN_TOKEN=pcplus2026
+Environment=DATA_DIR=/opt/pcplus-chat/data
+
+[Install]
+WantedBy=multi-user.target

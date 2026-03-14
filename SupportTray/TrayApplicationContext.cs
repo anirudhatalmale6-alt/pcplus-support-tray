@@ -10,6 +10,7 @@ namespace SupportTray
     {
         private readonly NotifyIcon _trayIcon;
         private readonly AppConfig _config;
+        private ChatForm? _chatForm;
 
         public TrayApplicationContext()
         {
@@ -23,7 +24,7 @@ namespace SupportTray
                 ContextMenuStrip = CreateContextMenu()
             };
 
-            _trayIcon.DoubleClick += (s, e) => ShowTicketForm();
+            _trayIcon.DoubleClick += (s, e) => ShowChatForm();
 
             // Show welcome balloon on first run
             var firstRunFile = Path.Combine(
@@ -82,6 +83,7 @@ namespace SupportTray
             var menu = new ContextMenuStrip();
             menu.Font = new Font("Segoe UI", 9.5f);
             menu.ShowImageMargin = true;
+            menu.BackColor = Color.White;
 
             // Header item (disabled, just for branding)
             var headerItem = new ToolStripMenuItem($"  {_config.CompanyName}")
@@ -90,6 +92,29 @@ namespace SupportTray
                 Font = new Font("Segoe UI", 10, FontStyle.Bold)
             };
             menu.Items.Add(headerItem);
+            menu.Items.Add(new ToolStripSeparator());
+
+            // Chat with Support (primary action)
+            var chatItem = new ToolStripMenuItem("Chat with Support");
+            chatItem.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            chatItem.Click += (s, e) => ShowChatForm();
+            menu.Items.Add(chatItem);
+
+            // WhatsApp
+            var whatsappItem = new ToolStripMenuItem("WhatsApp Support");
+            whatsappItem.Click += (s, e) => OpenWhatsApp();
+            menu.Items.Add(whatsappItem);
+
+            // Text/SMS
+            var smsItem = new ToolStripMenuItem("Text/SMS Support");
+            smsItem.Click += (s, e) => OpenSMS();
+            menu.Items.Add(smsItem);
+
+            // Email
+            var emailItem = new ToolStripMenuItem("Email Support");
+            emailItem.Click += (s, e) => OpenEmail();
+            menu.Items.Add(emailItem);
+
             menu.Items.Add(new ToolStripSeparator());
 
             // Create Ticket
@@ -116,25 +141,10 @@ namespace SupportTray
 
             menu.Items.Add(screenshotMenu);
 
-            menu.Items.Add(new ToolStripSeparator());
-
-            // Chat with Support
-            var chatItem = new ToolStripMenuItem("Chat with Support");
-            chatItem.Click += (s, e) => OpenChat();
-            menu.Items.Add(chatItem);
-
             // System Info
             var sysInfoItem = new ToolStripMenuItem("System Information");
             sysInfoItem.Click += (s, e) => ShowSystemInfo();
             menu.Items.Add(sysInfoItem);
-
-            menu.Items.Add(new ToolStripSeparator());
-
-            // Quick Ticket (screenshot + auto-submit)
-            var quickTicket = new ToolStripMenuItem("Quick Ticket (Screenshot + Submit)");
-            quickTicket.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-            quickTicket.Click += (s, e) => QuickTicket();
-            menu.Items.Add(quickTicket);
 
             menu.Items.Add(new ToolStripSeparator());
 
@@ -148,7 +158,7 @@ namespace SupportTray
             exitItem.Click += (s, e) =>
             {
                 var result = MessageBox.Show(
-                    "Are you sure you want to close the support utility?\n\nYou won't be able to create tickets until it's restarted.",
+                    "Are you sure you want to close the support utility?\n\nYou won't be able to chat or create tickets until it's restarted.",
                     "Close Support Utility",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);
@@ -161,6 +171,21 @@ namespace SupportTray
             menu.Items.Add(exitItem);
 
             return menu;
+        }
+
+        private void ShowChatForm()
+        {
+            if (_chatForm == null || _chatForm.IsDisposed)
+            {
+                _chatForm = new ChatForm(_config);
+                _chatForm.Show();
+            }
+            else
+            {
+                _chatForm.WindowState = FormWindowState.Normal;
+                _chatForm.BringToFront();
+                _chatForm.Activate();
+            }
         }
 
         private void ShowTicketForm()
@@ -200,64 +225,60 @@ namespace SupportTray
             }
         }
 
-        private void OpenChat()
+        private void OpenWhatsApp()
         {
-            if (!string.IsNullOrEmpty(_config.SupportChatUrl))
+            var phone = _config.SupportPhone;
+            if (string.IsNullOrEmpty(phone))
+                phone = "16047601662";
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = _config.SupportChatUrl,
-                    UseShellExecute = true
-                });
-            }
-            else if (!string.IsNullOrEmpty(_config.SupportPhone))
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = $"https://wa.me/{_config.SupportPhone}",
-                    UseShellExecute = true
-                });
-            }
-            else
-            {
-                MessageBox.Show(
-                    "Chat support is not configured yet.\n\n" +
-                    "Please create a ticket instead, or contact us directly.",
-                    "Chat Not Configured",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
+                FileName = $"https://wa.me/{phone}",
+                UseShellExecute = true
+            });
         }
 
-        private void QuickTicket()
+        private void OpenSMS()
         {
-            try
+            var phone = _config.SupportPhone;
+            if (string.IsNullOrEmpty(phone))
+                phone = "6047601662";
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                var screenshotPath = ScreenCapture.CaptureFullScreen();
-                var form = new TicketForm(_config);
-                // Pre-fill with screenshot
-                form.Load += (s, e) =>
-                {
-                    // The form will handle screenshot attachment internally
-                };
-                form.ShowDialog();
-            }
-            catch (Exception ex)
+                FileName = $"sms:{phone}",
+                UseShellExecute = true
+            });
+        }
+
+        private void OpenEmail()
+        {
+            var email = _config.SupportEmail;
+            if (string.IsNullOrEmpty(email))
             {
-                MessageBox.Show($"Error: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Email support is not configured yet.\nPlease use Chat or WhatsApp.",
+                    "Email Not Configured", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
             }
+
+            var hostname = SystemInfo.GetHostname();
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = $"mailto:{email}?subject=Support Request from {hostname}",
+                UseShellExecute = true
+            });
         }
 
         private void ShowAbout()
         {
             MessageBox.Show(
                 $"{_config.CompanyName}\n" +
-                $"Support Utility v1.0\n\n" +
-                $"This utility provides quick access to:\n" +
+                $"Support Utility v2.0\n\n" +
+                $"Quick access to:\n" +
+                $"  - Live chat with support team\n" +
+                $"  - WhatsApp & SMS support\n" +
                 $"  - Create support tickets\n" +
-                $"  - Capture screenshots\n" +
-                $"  - Chat with support team\n" +
+                $"  - Capture & upload screenshots\n" +
                 $"  - View system information\n\n" +
                 $"RMM Server: {_config.RmmUrl}\n" +
                 $"Agent ID: {SystemInfo.GetTacticalAgentId() ?? "Not detected"}",
