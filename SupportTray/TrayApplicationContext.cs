@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace SupportTray
@@ -54,6 +55,22 @@ namespace SupportTray
             {
                 ShowDesktopOverlay(persistent: true);
             }
+
+            // Check for updates silently on startup
+            _ = CheckForUpdatesAsync(silent: true);
+        }
+
+        private static string GetCurrentVersion()
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            var ver = asm.GetName().Version;
+            return ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "0.0.0";
+        }
+
+        private async System.Threading.Tasks.Task CheckForUpdatesAsync(bool silent)
+        {
+            var updater = new AutoUpdater(GetCurrentVersion(), _trayIcon);
+            await updater.CheckAndUpdateAsync(silent);
         }
 
         private Icon CreateDefaultIcon()
@@ -225,6 +242,11 @@ namespace SupportTray
             menu.Items.Add(sysInfoItem);
 
             menu.Items.Add(new ToolStripSeparator());
+
+            // Check for Updates
+            var updateItem = new ToolStripMenuItem("Check for Updates");
+            updateItem.Click += (s, e) => _ = CheckForUpdatesAsync(silent: false);
+            menu.Items.Add(updateItem);
 
             // About
             var aboutItem = new ToolStripMenuItem("About");
@@ -409,7 +431,7 @@ namespace SupportTray
         {
             MessageBox.Show(
                 $"{_config.CompanyName}\n" +
-                $"Support Utility v3.1.2\n\n" +
+                $"Support Utility v{GetCurrentVersion()}\n\n" +
                 $"Quick access to:\n" +
                 $"  - Live chat with support team\n" +
                 $"  - Support ticket conversations\n" +
