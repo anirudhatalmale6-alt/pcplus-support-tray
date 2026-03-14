@@ -87,7 +87,7 @@ namespace SupportTray
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(Color.Transparent);
 
-            // Rounded square - bright sky blue, fully opaque
+            // Rounded square - white background for maximum visibility
             using var bgPath = new GraphicsPath();
             bgPath.AddArc(1, 1, 8, 8, 180, 90);
             bgPath.AddArc(23, 1, 8, 8, 270, 90);
@@ -95,25 +95,21 @@ namespace SupportTray
             bgPath.AddArc(1, 23, 8, 8, 90, 90);
             bgPath.CloseFigure();
 
-            // Bright sky blue background - full opacity, light and visible
-            using var bgBrush = new LinearGradientBrush(
-                new Rectangle(0, 0, 32, 32),
-                Color.FromArgb(255, 100, 180, 255),  // Light sky blue
-                Color.FromArgb(255, 60, 145, 255),    // Bright blue
-                LinearGradientMode.ForwardDiagonal);
+            // White fill - stands out on dark taskbar
+            using var bgBrush = new SolidBrush(Color.White);
             g.FillPath(bgBrush, bgPath);
 
-            // White border for crisp edges
-            using var borderPen = new Pen(Color.White, 1.5f);
+            // Blue border matching brand color
+            using var borderPen = new Pen(Color.FromArgb(255, 40, 120, 220), 2f);
             g.DrawPath(borderPen, bgPath);
 
-            // "PC" text - bold white
+            // "PC" text - bold blue on white background
             using var font = new Font("Segoe UI", 12, FontStyle.Bold);
             var textSize = g.MeasureString("PC", font);
             float tx = (32 - textSize.Width) / 2;
             float ty = (32 - textSize.Height) / 2 - 1;
 
-            using var textBrush = new SolidBrush(Color.White);
+            using var textBrush = new SolidBrush(Color.FromArgb(255, 30, 100, 200));
             g.DrawString("PC", font, textBrush, tx, ty);
 
             var handle = bitmap.GetHicon();
