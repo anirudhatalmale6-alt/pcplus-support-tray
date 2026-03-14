@@ -265,6 +265,7 @@ body{font-family:var(--font-body);background:var(--bg-deep);color:var(--text-pri
 }
 .auth-box h2{font:600 16px/1 var(--font-body);color:var(--text-primary);margin-bottom:6px}
 .auth-box p{font:400 12px/1.4 var(--font-body);color:var(--text-secondary);margin-bottom:24px}
+.auth-conn-status{font:400 11px/1.4 'JetBrains Mono',monospace;color:var(--text-muted);margin-bottom:16px}
 .auth-box input{
   width:100%;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);
   border-radius:var(--radius);color:var(--text-primary);font:400 13px/1 var(--font-mono);
@@ -319,6 +320,7 @@ body{font-family:var(--font-body);background:var(--bg-deep);color:var(--text-pri
     <div class="auth-box-logo">PC</div>
     <h2>Support Command</h2>
     <p>Enter your admin token to access the dashboard</p>
+    <div class="auth-conn-status" id="authConnStatus"></div>
     <input type="password" id="authToken" placeholder="Admin token" autofocus>
     <button id="authBtn">Authenticate</button>
     <div class="auth-error" id="authError">Invalid token. Try again.</div>
@@ -427,7 +429,8 @@ body{font-family:var(--font-body);background:var(--bg-deep);color:var(--text-pri
 </audio>
 
 <script>
-const WS_URL = `ws://${location.host}/ws`;
+const WS_PROTO = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${WS_PROTO}//${location.host}/ws`;
 let ws = null;
 let authenticated = false;
 let selectedClientId = null;
@@ -447,12 +450,22 @@ authToken.addEventListener('keydown', e => { if (e.key === 'Enter') attemptAuth(
 function attemptAuth() {
   const token = authToken.value.trim();
   if (!token) return;
+  authBtn.textContent = 'Connecting...';
+  authBtn.disabled = true;
   connectWebSocket(token);
 }
 
 // ── WEBSOCKET ──
 function connectWebSocket(token) {
-  ws = new WebSocket(WS_URL);
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (e) {
+    authError.textContent = 'Failed to connect to server.';
+    authError.style.display = 'block';
+    authBtn.textContent = 'Authenticate';
+    authBtn.disabled = false;
+    return;
+  }
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'auth_admin', token }));
@@ -467,10 +480,20 @@ function connectWebSocket(token) {
     if (authenticated) {
       document.querySelector('.topbar-status span:last-child').textContent = 'RECONNECTING...';
       setTimeout(() => connectWebSocket(token), 3000);
+    } else {
+      authBtn.textContent = 'Authenticate';
+      authBtn.disabled = false;
     }
   };
 
-  ws.onerror = () => {};
+  ws.onerror = () => {
+    if (!authenticated) {
+      authError.textContent = 'Connection failed. Check if the server is running.';
+      authError.style.display = 'block';
+      authBtn.textContent = 'Authenticate';
+      authBtn.disabled = false;
+    }
+  };
 }
 
 function handleMessage(msg) {

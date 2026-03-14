@@ -40,9 +40,10 @@ if not exist "%DATADIR%\config.json" (
     echo   "CompanyName": "PC Plus Computing",
     echo   "RmmUrl": "https://rmm.pcpluscomputing.com",
     echo   "RmmApiKey": "",
-    echo   "SupportPhone": "",
-    echo   "SupportEmail": "",
+    echo   "SupportPhone": "16047601662",
+    echo   "SupportEmail": "pcpluscomputing@gmail.com",
     echo   "SupportChatUrl": "",
+    echo   "ChatServerUrl": "184.68.146.18:3456",
     echo   "TicketPortalUrl": ""
     echo }
     ) > "%DATADIR%\config.json"

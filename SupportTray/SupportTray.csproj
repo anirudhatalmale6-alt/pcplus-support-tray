@@ -4,9 +4,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
     <AssemblyName>PCPlusSupportTray</AssemblyName>
     <RootNamespace>SupportTray</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>2.1.0</Version>
     <Company>PC Plus Computing</Company>
     <Product>PC Plus Support</Product>
     <Description>PC Plus Computing - Client Support Utility</Description>
@@ -16,6 +17,10 @@
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="icon.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

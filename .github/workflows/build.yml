@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -23,10 +26,11 @@ jobs:
     - name: Build
       run: dotnet publish SupportTray/SupportTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
 
-    - name: Copy installer scripts
+    - name: Copy installer scripts and icon
       run: |
         copy SupportTray\install.bat publish\
         copy SupportTray\uninstall.bat publish\
+        copy SupportTray\icon.ico publish\
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
@@ -34,18 +38,3 @@ jobs:
         name: PCPlusSupportTray-win-x64
         path: publish/
         retention-days: 90
-
-    - name: Create Release
-      if: github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v1.0.${{ github.run_number }}
-        name: PC Plus Support Tray v1.0.${{ github.run_number }}
-        files: |
-          publish/PCPlusSupportTray.exe
-          publish/install.bat
-          publish/uninstall.bat
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
