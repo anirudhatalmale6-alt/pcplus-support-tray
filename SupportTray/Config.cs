@@ -17,7 +17,12 @@ namespace SupportTray
         public string ZammadUrl { get; set; } = "https://support.pcpluscomputing.com";
         public string ZammadApiToken { get; set; } = "";
         public string WebsiteUrl { get; set; } = "https://pcpluscomputing.com";
-        public string LiveChatUrl { get; set; } = "https://pcpluscomputing51.my.3cx.us/LiveChat/477559";
+        public string LiveChatUrl { get; set; } = "https://pcpluscomputing51.my3cx.ca/callus/#LiveChat477559";
+        public string ForumUrl { get; set; } = "https://forum.pcpluscomputing.com/";
+        public string ContactUrl { get; set; } = "https://pcpluscomputing.com/contact-us/";
+        public string AppointmentUrl { get; set; } = "https://pcpluscomputing.com/appointments/";
+        public string ServiceRequestUrl { get; set; } = "https://pos.pcpluscomputing.com/servicerequests/";
+        public bool PersistentOverlay { get; set; } = false;
 
         private static readonly string ConfigDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),

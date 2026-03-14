@@ -48,7 +48,12 @@ if not exist "%DATADIR%\config.json" (
     echo   "ZammadUrl": "https://support.pcpluscomputing.com",
     echo   "ZammadApiToken": "pcplus2026trayapp",
     echo   "WebsiteUrl": "https://pcpluscomputing.com",
-    echo   "LiveChatUrl": "https://pcpluscomputing51.my.3cx.us/LiveChat/477559"
+    echo   "LiveChatUrl": "https://pcpluscomputing51.my3cx.ca/callus/#LiveChat477559",
+    echo   "ForumUrl": "https://forum.pcpluscomputing.com/",
+    echo   "ContactUrl": "https://pcpluscomputing.com/contact-us/",
+    echo   "AppointmentUrl": "https://pcpluscomputing.com/appointments/",
+    echo   "ServiceRequestUrl": "https://pos.pcpluscomputing.com/servicerequests/",
+    echo   "PersistentOverlay": false
     echo }
     ) > "%DATADIR%\config.json"
 )

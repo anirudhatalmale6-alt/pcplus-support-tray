@@ -44,10 +44,16 @@ namespace SupportTray
                 _trayIcon.BalloonTipText = "Support is just a click away! Right-click this icon for options.";
                 _trayIcon.BalloonTipIcon = ToolTipIcon.Info;
                 _trayIcon.ShowBalloonTip(5000);
+
+                // Show full-size overlay on first install (auto-dismiss)
+                ShowDesktopOverlay(persistent: false);
             }
 
-            // Always show desktop overlay on startup
-            ShowDesktopOverlay();
+            // For shared workstations: show a persistent compact overlay that stays visible
+            if (_config.PersistentOverlay)
+            {
+                ShowDesktopOverlay(persistent: true);
+            }
         }
 
         private Icon CreateDefaultIcon()
@@ -61,13 +67,14 @@ namespace SupportTray
                 catch { }
             }
 
-            // Create modern programmatic icon
+            // Create modern programmatic icon - light/transparent style
             using var bitmap = new Bitmap(32, 32);
             using var g = Graphics.FromImage(bitmap);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            g.Clear(Color.Transparent);
 
-            // Rounded square background with gradient
+            // Rounded square with semi-transparent light blue background
             using var bgPath = new GraphicsPath();
             bgPath.AddArc(1, 1, 8, 8, 180, 90);
             bgPath.AddArc(23, 1, 8, 8, 270, 90);
@@ -75,28 +82,27 @@ namespace SupportTray
             bgPath.AddArc(1, 23, 8, 8, 90, 90);
             bgPath.CloseFigure();
 
-            using var bgBrush = new LinearGradientBrush(
-                new Rectangle(0, 0, 32, 32),
-                Color.FromArgb(0, 100, 200),
-                Color.FromArgb(0, 140, 230),
-                LinearGradientMode.ForwardDiagonal);
+            // Light blue fill - visible on both light and dark taskbars
+            using var bgBrush = new SolidBrush(Color.FromArgb(60, 140, 210));
             g.FillPath(bgBrush, bgPath);
 
-            // Subtle highlight on top
-            using var highlightBrush = new LinearGradientBrush(
-                new Rectangle(2, 2, 28, 14),
-                Color.FromArgb(60, 255, 255, 255),
-                Color.FromArgb(0, 255, 255, 255),
-                LinearGradientMode.Vertical);
-            g.FillPath(highlightBrush, bgPath);
+            // White border for contrast
+            using var borderPen = new Pen(Color.FromArgb(220, 255, 255, 255), 1.5f);
+            g.DrawPath(borderPen, bgPath);
 
-            // "PC" text - crisp white
+            // "PC" text - bright white with slight shadow for readability
             using var font = new Font("Segoe UI", 12, FontStyle.Bold);
-            using var textBrush = new SolidBrush(Color.White);
             var textSize = g.MeasureString("PC", font);
-            g.DrawString("PC", font, textBrush,
-                (32 - textSize.Width) / 2,
-                (32 - textSize.Height) / 2 - 1);
+            float tx = (32 - textSize.Width) / 2;
+            float ty = (32 - textSize.Height) / 2 - 1;
+
+            // Shadow for contrast on light backgrounds
+            using var shadowBrush = new SolidBrush(Color.FromArgb(80, 0, 0, 0));
+            g.DrawString("PC", font, shadowBrush, tx + 1, ty + 1);
+
+            // White text
+            using var textBrush = new SolidBrush(Color.White);
+            g.DrawString("PC", font, textBrush, tx, ty);
 
             var handle = bitmap.GetHicon();
             return Icon.FromHandle(handle);
@@ -129,6 +135,13 @@ namespace SupportTray
             ticketChatItem.Click += (s, e) => ShowChatForm();
             menu.Items.Add(ticketChatItem);
 
+            // Remote Support (Quick Assist)
+            var remoteItem = new ToolStripMenuItem("Remote Support");
+            remoteItem.Click += (s, e) => OpenRemoteSupport();
+            menu.Items.Add(remoteItem);
+
+            menu.Items.Add(new ToolStripSeparator());
+
             // WhatsApp
             var whatsappItem = new ToolStripMenuItem("WhatsApp Support");
             whatsappItem.Click += (s, e) => OpenWhatsApp();
@@ -151,18 +164,39 @@ namespace SupportTray
             ticketItem.Click += (s, e) => ShowTicketForm();
             menu.Items.Add(ticketItem);
 
+            // Visit Website (submenu)
+            var websiteMenu = new ToolStripMenuItem("Visit Website");
+
+            var homepageItem = new ToolStripMenuItem("PC Plus Computing");
+            homepageItem.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            homepageItem.Click += (s, e) => OpenUrl(_config.WebsiteUrl);
+            websiteMenu.DropDownItems.Add(homepageItem);
+
+            websiteMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            var forumItem = new ToolStripMenuItem("Support Forum");
+            forumItem.Click += (s, e) => OpenUrl(_config.ForumUrl);
+            websiteMenu.DropDownItems.Add(forumItem);
+
+            var contactItem = new ToolStripMenuItem("Contact Us");
+            contactItem.Click += (s, e) => OpenUrl(_config.ContactUrl);
+            websiteMenu.DropDownItems.Add(contactItem);
+
+            var appointmentItem = new ToolStripMenuItem("Book Appointment");
+            appointmentItem.Click += (s, e) => OpenUrl(_config.AppointmentUrl);
+            websiteMenu.DropDownItems.Add(appointmentItem);
+
+            var serviceReqItem = new ToolStripMenuItem("Submit Service Request");
+            serviceReqItem.Click += (s, e) => OpenUrl(_config.ServiceRequestUrl);
+            websiteMenu.DropDownItems.Add(serviceReqItem);
+
+            menu.Items.Add(websiteMenu);
+
             // Support Portal
             if (!string.IsNullOrEmpty(_config.ZammadUrl))
             {
                 var portalItem = new ToolStripMenuItem("Open Support Portal");
-                portalItem.Click += (s, e) =>
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = _config.ZammadUrl,
-                        UseShellExecute = true
-                    });
-                };
+                portalItem.Click += (s, e) => OpenUrl(_config.ZammadUrl);
                 menu.Items.Add(portalItem);
             }
 
@@ -217,10 +251,42 @@ namespace SupportTray
             return menu;
         }
 
-        private void ShowDesktopOverlay()
+        private void ShowDesktopOverlay(bool persistent)
         {
-            var overlay = new DesktopOverlay();
+            var overlay = new DesktopOverlay(persistent);
             overlay.Show();
+        }
+
+        private void OpenUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return;
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+
+        private void OpenRemoteSupport()
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "ms-quick-assist:",
+                    UseShellExecute = true
+                });
+            }
+            catch
+            {
+                MessageBox.Show(
+                    "Microsoft Quick Assist could not be opened.\n\n" +
+                    "It may not be installed on this computer.\n" +
+                    "You can install it from the Microsoft Store.",
+                    "Remote Support",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
         }
 
         private void OpenLiveChat()
@@ -343,7 +409,7 @@ namespace SupportTray
         {
             MessageBox.Show(
                 $"{_config.CompanyName}\n" +
-                $"Support Utility v3.1.1\n\n" +
+                $"Support Utility v3.1.2\n\n" +
                 $"Quick access to:\n" +
                 $"  - Live chat with support team\n" +
                 $"  - Support ticket conversations\n" +
