@@ -45,16 +45,12 @@ namespace SupportTray
                 _trayIcon.BalloonTipText = "Support is just a click away! Right-click this icon for options.";
                 _trayIcon.BalloonTipIcon = ToolTipIcon.Info;
                 _trayIcon.ShowBalloonTip(5000);
-
-                // Show full-size overlay on first install (auto-dismiss)
-                ShowDesktopOverlay(persistent: false);
             }
 
-            // For shared workstations: show a persistent compact overlay that stays visible
-            if (_config.PersistentOverlay)
-            {
-                ShowDesktopOverlay(persistent: true);
-            }
+            // Always show desktop overlay on startup
+            // PersistentOverlay = true: compact widget stays on screen permanently (shared workstations)
+            // PersistentOverlay = false: full-size notification that auto-dismisses after 30 seconds
+            ShowDesktopOverlay(persistent: _config.PersistentOverlay);
 
             // Check for updates silently on startup
             _ = CheckForUpdatesAsync(silent: true);
@@ -84,14 +80,14 @@ namespace SupportTray
                 catch { }
             }
 
-            // Create modern programmatic icon - light/transparent style
+            // Create bright, visible icon
             using var bitmap = new Bitmap(32, 32);
             using var g = Graphics.FromImage(bitmap);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(Color.Transparent);
 
-            // Rounded square with semi-transparent light blue background
+            // Rounded square - bright sky blue, fully opaque
             using var bgPath = new GraphicsPath();
             bgPath.AddArc(1, 1, 8, 8, 180, 90);
             bgPath.AddArc(23, 1, 8, 8, 270, 90);
@@ -99,25 +95,24 @@ namespace SupportTray
             bgPath.AddArc(1, 23, 8, 8, 90, 90);
             bgPath.CloseFigure();
 
-            // Light blue fill - visible on both light and dark taskbars
-            using var bgBrush = new SolidBrush(Color.FromArgb(60, 140, 210));
+            // Bright sky blue background - full opacity, light and visible
+            using var bgBrush = new LinearGradientBrush(
+                new Rectangle(0, 0, 32, 32),
+                Color.FromArgb(255, 100, 180, 255),  // Light sky blue
+                Color.FromArgb(255, 60, 145, 255),    // Bright blue
+                LinearGradientMode.ForwardDiagonal);
             g.FillPath(bgBrush, bgPath);
 
-            // White border for contrast
-            using var borderPen = new Pen(Color.FromArgb(220, 255, 255, 255), 1.5f);
+            // White border for crisp edges
+            using var borderPen = new Pen(Color.White, 1.5f);
             g.DrawPath(borderPen, bgPath);
 
-            // "PC" text - bright white with slight shadow for readability
+            // "PC" text - bold white
             using var font = new Font("Segoe UI", 12, FontStyle.Bold);
             var textSize = g.MeasureString("PC", font);
             float tx = (32 - textSize.Width) / 2;
             float ty = (32 - textSize.Height) / 2 - 1;
 
-            // Shadow for contrast on light backgrounds
-            using var shadowBrush = new SolidBrush(Color.FromArgb(80, 0, 0, 0));
-            g.DrawString("PC", font, shadowBrush, tx + 1, ty + 1);
-
-            // White text
             using var textBrush = new SolidBrush(Color.White);
             g.DrawString("PC", font, textBrush, tx, ty);
 
