@@ -115,11 +115,15 @@ function clover_get_cart_items() {
  * Create a Clover order with line items and tax
  */
 function clover_create_order($currenttotal, $items) {
-    // Create the order
+    require("deps.php");
+
+    // Create the order assigned to the Flex device and owner employee
     $order_data = array(
         'state' => 'open',
-        'manualTransaction' => true,
-        'total' => round($currenttotal * 100) // cents
+        'total' => round($currenttotal * 100), // cents
+        'title' => 'POS Order',
+        'device' => array('id' => $CloverDeviceId),
+        'employee' => array('id' => $CloverEmployeeId)
     );
 
     $order = clover_api('POST', '/orders', $order_data);
@@ -130,20 +134,23 @@ function clover_create_order($currenttotal, $items) {
 
     $order_id = $order['id'];
 
-    // Add line items
-    foreach ($items as $item) {
-        $line_item_data = array(
-            'name' => $item['name'],
-            'price' => $item['unit_price'],
-            'unitQty' => $item['quantity'] * 1000 // Clover uses 1/1000 units
-        );
-
-        $li = clover_api('POST', '/orders/' . $order_id . '/line_items', $line_item_data);
-
-        // If item has tax, add tax rate to the line item
-        if ($item['tax'] > 0 && isset($li['id'])) {
-            // Apply default order-level tax (handled by Clover's tax settings)
+    // Add line items - if cart items provided, use them; otherwise add single total line
+    if (!empty($items)) {
+        foreach ($items as $item) {
+            $line_item_data = array(
+                'name' => $item['name'],
+                'price' => $item['unit_price'],
+                'unitQty' => $item['quantity'] * 1000 // Clover uses 1/1000 units
+            );
+            clover_api('POST', '/orders/' . $order_id . '/line_items', $line_item_data);
         }
+    } else {
+        // Add a single line item for the total so the order shows on the Flex
+        $line_item_data = array(
+            'name' => 'POS Payment',
+            'price' => round($currenttotal * 100)
+        );
+        clover_api('POST', '/orders/' . $order_id . '/line_items', $line_item_data);
     }
 
     return array('order_id' => $order_id, 'order' => $order);
