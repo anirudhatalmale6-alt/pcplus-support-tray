@@ -528,7 +528,7 @@ header("Location: deposits.php?func=deposit_receipt&depositid=$depositid&woid=$w
 $rs_insert_gcc = "INSERT INTO currentpayments (pfirstname,pcompany,byuser,amount,paymentplugin,paymentstatus,paymenttype,paddress,paddress2,pcity,pstate,pzip,pphone,cc_number,cc_expmonth,cc_expyear,cc_transid,cc_cardtype) VALUES ('$custname','$ccompany','$ipofpc','$amounttopay','Clover','ready','credit','$custaddy1','$custaddy2','$custcity','$custstate','$custzip','$custphone','$ccnumber2','0','0','$cc_transid','$cccardtype')";
 @mysqli_query($rs_connect, $rs_insert_gcc);
 
-header("Location: $domain/cart.php");
+header("Location: cart.php");
 }
 
 }
