@@ -1,0 +1,280 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using PCPlus.Core.Interfaces;
+using PCPlus.Core.Models;
+
+namespace PCPlus.Service.Engine
+{
+    /// <summary>
+    /// Phone-home client that reports endpoint status to the central dashboard.
+    /// Sends heartbeats every 30 seconds, reports alerts in real-time,
+    /// and picks up config changes pushed from the dashboard.
+    /// </summary>
+    public class DashboardClient : IDisposable
+    {
+        private readonly ServiceConfig _config;
+        private readonly ModuleEngine _engine;
+        private HttpClient? _http;
+        private Timer? _heartbeatTimer;
+        private bool _disposed;
+
+        public bool IsConnected { get; private set; }
+        public DateTime LastHeartbeat { get; private set; }
+
+        public DashboardClient(ServiceConfig config, ModuleEngine engine)
+        {
+            _config = config;
+            _engine = engine;
+        }
+
+        public void Start()
+        {
+            var dashboardUrl = _config.DashboardApiUrl;
+            if (string.IsNullOrEmpty(dashboardUrl))
+            {
+                _engine.Log(LogLevel.Info, "dashboard-client", "Dashboard URL not configured - phone-home disabled");
+                return;
+            }
+
+            _http = new HttpClient
+            {
+                BaseAddress = new Uri(dashboardUrl.TrimEnd('/')),
+                Timeout = TimeSpan.FromSeconds(10)
+            };
+
+            var token = _config.DashboardApiToken;
+            if (!string.IsNullOrEmpty(token))
+                _http.DefaultRequestHeaders.Add("X-Api-Token", token);
+
+            // Subscribe to alerts to forward them to dashboard
+            _engine.OnAlert += ForwardAlert;
+
+            // Start heartbeat timer (every 30 seconds)
+            _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+
+            _engine.Log(LogLevel.Info, "dashboard-client", $"Phone-home started -> {dashboardUrl}");
+        }
+
+        public void Stop()
+        {
+            _heartbeatTimer?.Dispose();
+            _engine.OnAlert -= ForwardAlert;
+        }
+
+        private async void SendHeartbeat(object? state)
+        {
+            if (_http == null) return;
+
+            try
+            {
+                // Get current health from health module
+                var healthModule = _engine.GetModule("health");
+                float cpu = 0, ram = 0, disk = 0, temp = 0;
+                if (healthModule?.IsRunning == true)
+                {
+                    var result = await healthModule.HandleCommandAsync(new ModuleCommand
+                    {
+                        ModuleId = "health",
+                        Action = "GetHealthSnapshot"
+                    });
+                    if (result.Success && result.Data.TryGetValue("snapshot", out var snapObj))
+                    {
+                        // Parse snapshot from module response
+                        var json = JsonSerializer.Serialize(snapObj);
+                        var snap = JsonSerializer.Deserialize<HealthSnapshot>(json);
+                        if (snap != null)
+                        {
+                            cpu = snap.CpuPercent;
+                            ram = snap.RamPercent;
+                            disk = snap.DiskUsedPercent;
+                            temp = snap.CpuTempC;
+                        }
+                    }
+                }
+
+                // Get security score
+                var secModule = _engine.GetModule("security");
+                int secScore = 0;
+                string secGrade = "?";
+                if (secModule?.IsRunning == true)
+                {
+                    var result = await secModule.HandleCommandAsync(new ModuleCommand
+                    {
+                        ModuleId = "security",
+                        Action = "GetSecurityScore"
+                    });
+                    if (result.Success)
+                    {
+                        if (result.Data.TryGetValue("score", out var scoreObj))
+                            secScore = Convert.ToInt32(scoreObj);
+                        if (result.Data.TryGetValue("grade", out var gradeObj))
+                            secGrade = gradeObj?.ToString() ?? "?";
+                    }
+                }
+
+                var heartbeat = new
+                {
+                    deviceId = _config.DeviceId,
+                    hostname = Environment.MachineName,
+                    osVersion = Environment.OSVersion.VersionString,
+                    agentVersion = "4.1.0",
+                    licenseTier = _engine.License.Tier.ToString(),
+                    cpuPercent = cpu,
+                    ramPercent = ram,
+                    diskPercent = disk,
+                    cpuTempC = temp,
+                    securityScore = secScore,
+                    securityGrade = secGrade,
+                    lockdownActive = false, // Updated by ransomware module
+                    activeAlerts = 0,
+                    runningModules = 0,
+                    modules = new List<object>()
+                };
+
+                var response = await _http.PostAsJsonAsync("/api/endpoint/heartbeat", heartbeat);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    IsConnected = true;
+                    LastHeartbeat = DateTime.UtcNow;
+
+                    // Process any pending config changes from dashboard
+                    var result = await response.Content.ReadFromJsonAsync<HeartbeatResponse>();
+                    if (result?.PendingConfig?.Count > 0)
+                    {
+                        await ApplyConfigChanges(result.PendingConfig);
+                    }
+                    if (!string.IsNullOrEmpty(result?.Command))
+                    {
+                        await ExecuteCommand(result.Command);
+                    }
+                }
+                else
+                {
+                    IsConnected = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                IsConnected = false;
+                _engine.Log(LogLevel.Debug, "dashboard-client", $"Heartbeat failed: {ex.Message}");
+            }
+        }
+
+        private async void ForwardAlert(Alert alert)
+        {
+            if (_http == null) return;
+
+            try
+            {
+                var report = new
+                {
+                    deviceId = _config.DeviceId,
+                    hostname = Environment.MachineName,
+                    moduleId = alert.ModuleId,
+                    title = alert.Title,
+                    message = alert.Message,
+                    severity = alert.Severity.ToString(),
+                    category = alert.Category,
+                    metadata = alert.Metadata
+                };
+
+                await _http.PostAsJsonAsync("/api/endpoint/alert", report);
+            }
+            catch { }
+        }
+
+        private async Task ApplyConfigChanges(List<ConfigChange> changes)
+        {
+            var appliedIds = new List<int>();
+
+            foreach (var change in changes)
+            {
+                if (change.Key == "_command")
+                {
+                    await ExecuteCommand(change.Value);
+                }
+                else
+                {
+                    _config.SetValue(change.Key, change.Value);
+                    _engine.Log(LogLevel.Info, "dashboard-client",
+                        $"Config updated from dashboard: {change.Key} = {change.Value}");
+                }
+                appliedIds.Add(change.Id);
+            }
+
+            if (appliedIds.Count > 0)
+            {
+                _config.Save();
+
+                // Notify modules of config change
+                await _engine.BroadcastEventAsync(new ModuleEvent
+                {
+                    SourceModule = "dashboard-client",
+                    EventType = ModuleEvent.CONFIG_CHANGED
+                });
+
+                // Acknowledge applied configs
+                try
+                {
+                    await _http!.PostAsJsonAsync("/api/endpoint/heartbeat/ack", appliedIds);
+                }
+                catch { }
+            }
+        }
+
+        private async Task ExecuteCommand(string command)
+        {
+            _engine.Log(LogLevel.Info, "dashboard-client", $"Executing dashboard command: {command}");
+
+            switch (command.ToLower())
+            {
+                case "rescan":
+                    var secModule = _engine.GetModule("security");
+                    if (secModule?.IsRunning == true)
+                        await secModule.HandleCommandAsync(new ModuleCommand { ModuleId = "security", Action = "RunSecurityScan" });
+                    break;
+
+                case "maintenance":
+                    var mntModule = _engine.GetModule("maintenance");
+                    if (mntModule?.IsRunning == true)
+                        await mntModule.HandleCommandAsync(new ModuleCommand
+                        {
+                            ModuleId = "maintenance",
+                            Action = "RunMaintenance",
+                            Parameters = new() { ["action"] = "fixmypc" }
+                        });
+                    break;
+
+                case "lockdown":
+                    var rwModule = _engine.GetModule("ransomware");
+                    if (rwModule?.IsRunning == true)
+                        await rwModule.HandleCommandAsync(new ModuleCommand { ModuleId = "ransomware", Action = "ActivateLockdown" });
+                    break;
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            Stop();
+            _http?.Dispose();
+        }
+
+        // Response model for heartbeat
+        private class HeartbeatResponse
+        {
+            public bool Ok { get; set; }
+            public List<ConfigChange>? PendingConfig { get; set; }
+            public string? Command { get; set; }
+        }
+
+        private class ConfigChange
+        {
+            public int Id { get; set; }
+            public string Key { get; set; } = "";
+            public string Value { get; set; } = "";
+        }
+    }
+}

@@ -1,55 +1,57 @@
 using System.Collections.Concurrent;
+using PCPlus.Core.Interfaces;
 
 namespace PCPlus.Service.Modules.Ransomware
 {
     /// <summary>
-    /// Behavior-based threat scoring engine.
-    /// Instead of single-trigger lockdown, accumulates weighted behavioral signals
-    /// per process and per system-wide activity. When score exceeds threshold,
-    /// containment or lockdown is triggered.
+    /// Behavior-based threat scoring engine with configurable weights.
+    /// All signal weights and thresholds are read from IServiceConfig,
+    /// allowing per-deployment tuning via config.json or central dashboard push.
     ///
-    /// Scoring categories:
-    /// - Honeypot trigger: +50 (immediate containment)
-    /// - File rename rate: +5 per rename, +20 if >10/min from same process
-    /// - File entropy change: +15 per high-entropy write
-    /// - Multi-folder touch: +25 if process touches 5+ folders in 30 seconds
-    /// - Mass extension change: +20 per batch
-    /// - Launch from risky path: +10 (temp, appdata, downloads)
-    /// - Suspicious parent-child: +15 (e.g., Word spawning PowerShell)
-    /// - Shadow copy deletion: +40 (near-instant containment)
-    /// - Known ransomware name: +50 (instant containment)
-    /// - Suspicious PowerShell: +20 (encoded/obfuscated)
-    /// - Ransom note creation: +35
-    /// - Unsigned process: +5 (additive, not standalone trigger)
-    ///
-    /// Thresholds:
-    /// - 30: Warning alert
-    /// - 60: Auto-containment (kill process)
-    /// - 80: Full lockdown
-    ///
-    /// Scores decay over time: -5 per minute of no new activity per process.
+    /// Scores decay over time: configurable per minute of no new activity per process.
     /// </summary>
     public class BehaviorScoringEngine
     {
-        // Per-process scores
         private readonly ConcurrentDictionary<int, ProcessThreatScore> _processScores = new();
-
-        // System-wide activity tracking
         private readonly ConcurrentDictionary<int, ProcessFileActivity> _fileActivity = new();
-
-        // Decay timer
         private Timer? _decayTimer;
+        private IServiceConfig? _config;
 
-        // Thresholds (configurable)
-        public int WarningThreshold { get; set; } = 30;
-        public int ContainmentThreshold { get; set; } = 60;
-        public int LockdownThreshold { get; set; } = 80;
-        public int DecayPerMinute { get; set; } = 5;
+        // Fallback defaults (used if config not set)
+        private static readonly Dictionary<BehaviorSignal, int> DefaultWeights = new()
+        {
+            [BehaviorSignal.HoneypotTriggered] = 50,
+            [BehaviorSignal.KnownRansomwareName] = 50,
+            [BehaviorSignal.ShadowCopyDeletion] = 40,
+            [BehaviorSignal.RansomNoteCreation] = 35,
+            [BehaviorSignal.MultiFolderTouch] = 25,
+            [BehaviorSignal.MassExtensionChange] = 20,
+            [BehaviorSignal.SuspiciousPowerShell] = 20,
+            [BehaviorSignal.HighFileRenameRate] = 20,
+            [BehaviorSignal.HighEntropyWrite] = 15,
+            [BehaviorSignal.SuspiciousParentChild] = 15,
+            [BehaviorSignal.RiskyLaunchPath] = 10,
+            [BehaviorSignal.RansomwareExtension] = 10,
+            [BehaviorSignal.FileRename] = 5,
+            [BehaviorSignal.UnsignedProcess] = 5,
+        };
+
+        // Thresholds - read from config
+        public int WarningThreshold => _config?.ScoringWarningThreshold ?? 30;
+        public int ContainmentThreshold => _config?.ScoringContainmentThreshold ?? 60;
+        public int LockdownThreshold => _config?.ScoringLockdownThreshold ?? 80;
+        public int DecayPerMinute => _config?.ScoringDecayPerMinute ?? 5;
 
         // Events
-        public event Action<int, string, int, string>? OnWarning;      // pid, processName, score, reason
-        public event Action<int, string, int, string>? OnContainment;   // pid, processName, score, reason
-        public event Action<int, string, int, string>? OnLockdown;      // pid, processName, score, reason
+        public event Action<int, string, int, string>? OnWarning;
+        public event Action<int, string, int, string>? OnContainment;
+        public event Action<int, string, int, string>? OnLockdown;
+
+        /// <summary>Initialize with config for configurable weights.</summary>
+        public void Initialize(IServiceConfig config)
+        {
+            _config = config;
+        }
 
         public void Start()
         {
@@ -87,20 +89,17 @@ namespace PCPlus.Service.Modules.Ransomware
             if (score.TotalScore >= LockdownThreshold && !score.LockdownFired)
             {
                 score.LockdownFired = true;
-                var reason = BuildReason(score);
-                OnLockdown?.Invoke(pid, processName, score.TotalScore, reason);
+                OnLockdown?.Invoke(pid, processName, score.TotalScore, BuildReason(score));
             }
             else if (score.TotalScore >= ContainmentThreshold && !score.ContainmentFired)
             {
                 score.ContainmentFired = true;
-                var reason = BuildReason(score);
-                OnContainment?.Invoke(pid, processName, score.TotalScore, reason);
+                OnContainment?.Invoke(pid, processName, score.TotalScore, BuildReason(score));
             }
             else if (score.TotalScore >= WarningThreshold && !score.WarningFired)
             {
                 score.WarningFired = true;
-                var reason = BuildReason(score);
-                OnWarning?.Invoke(pid, processName, score.TotalScore, reason);
+                OnWarning?.Invoke(pid, processName, score.TotalScore, BuildReason(score));
             }
 
             return score.TotalScore;
@@ -124,21 +123,17 @@ namespace PCPlus.Service.Modules.Ransomware
                 FolderPath = Path.GetDirectoryName(filePath) ?? ""
             });
 
-            // Trim old operations (keep last 2 minutes)
             var cutoff = now.AddMinutes(-2);
             activity.Operations.RemoveAll(o => o.Timestamp < cutoff);
 
-            // Check rate-based signals
             CheckRateSignals(pid, processName, activity);
         }
 
-        /// <summary>Get the current threat score for a process.</summary>
         public int GetProcessScore(int pid)
         {
             return _processScores.TryGetValue(pid, out var score) ? score.TotalScore : 0;
         }
 
-        /// <summary>Get all processes with active threat scores.</summary>
         public List<ProcessThreatScore> GetActiveThreats()
         {
             return _processScores.Values
@@ -147,7 +142,21 @@ namespace PCPlus.Service.Modules.Ransomware
                 .ToList();
         }
 
-        /// <summary>Reset score for a specific process (after containment).</summary>
+        /// <summary>Get current scoring configuration (weights + thresholds) for dashboard display.</summary>
+        public Dictionary<string, int> GetScoringConfig()
+        {
+            var config = new Dictionary<string, int>();
+            foreach (BehaviorSignal signal in Enum.GetValues<BehaviorSignal>())
+            {
+                config[$"weight.{signal}"] = GetSignalPoints(signal);
+            }
+            config["threshold.warning"] = WarningThreshold;
+            config["threshold.containment"] = ContainmentThreshold;
+            config["threshold.lockdown"] = LockdownThreshold;
+            config["decay.perMinute"] = DecayPerMinute;
+            return config;
+        }
+
         public void ResetProcess(int pid)
         {
             _processScores.TryRemove(pid, out _);
@@ -160,7 +169,6 @@ namespace PCPlus.Service.Modules.Ransomware
                 .Where(o => o.Timestamp > DateTime.UtcNow.AddMinutes(-1))
                 .ToList();
 
-            // High rename rate: >10 renames per minute from same process
             var renameCount = lastMinute.Count(o => o.Type == FileOpType.Rename);
             if (renameCount > 10 && !activity.HighRenameRateFired)
             {
@@ -169,7 +177,6 @@ namespace PCPlus.Service.Modules.Ransomware
                     $"{renameCount} renames in last minute");
             }
 
-            // Multi-folder touch: process touches 5+ distinct folders in 30 seconds
             var last30s = lastMinute.Where(o => o.Timestamp > DateTime.UtcNow.AddSeconds(-30)).ToList();
             var distinctFolders = last30s.Select(o => o.FolderPath).Distinct().Count();
             if (distinctFolders >= 5 && !activity.MultiFolderFired)
@@ -179,7 +186,6 @@ namespace PCPlus.Service.Modules.Ransomware
                     $"Touched {distinctFolders} folders in 30 seconds");
             }
 
-            // Mass extension change: >5 files getting new extension in 1 minute
             var extChanges = lastMinute.Count(o => o.Type == FileOpType.ExtensionChange);
             if (extChanges > 5 && !activity.MassExtChangeFired)
             {
@@ -201,14 +207,11 @@ namespace PCPlus.Service.Modules.Ransomware
                 if (inactiveMinutes >= 1)
                 {
                     score.TotalScore = Math.Max(0, score.TotalScore - DecayPerMinute);
-
-                    // Reset threshold flags if score drops below
                     if (score.TotalScore < WarningThreshold) score.WarningFired = false;
                     if (score.TotalScore < ContainmentThreshold) score.ContainmentFired = false;
                     if (score.TotalScore < LockdownThreshold) score.LockdownFired = false;
                 }
 
-                // Remove if score is 0 and inactive for 10+ minutes
                 if (score.TotalScore <= 0 && inactiveMinutes >= 10)
                     toRemove.Add(kvp.Key);
             }
@@ -220,24 +223,31 @@ namespace PCPlus.Service.Modules.Ransomware
             }
         }
 
-        private static int GetSignalPoints(BehaviorSignal signal) => signal switch
+        /// <summary>Get signal points from config or defaults.</summary>
+        private int GetSignalPoints(BehaviorSignal signal)
         {
-            BehaviorSignal.HoneypotTriggered => 50,
-            BehaviorSignal.KnownRansomwareName => 50,
-            BehaviorSignal.ShadowCopyDeletion => 40,
-            BehaviorSignal.RansomNoteCreation => 35,
-            BehaviorSignal.MultiFolderTouch => 25,
-            BehaviorSignal.MassExtensionChange => 20,
-            BehaviorSignal.SuspiciousPowerShell => 20,
-            BehaviorSignal.HighFileRenameRate => 20,
-            BehaviorSignal.HighEntropyWrite => 15,
-            BehaviorSignal.SuspiciousParentChild => 15,
-            BehaviorSignal.RiskyLaunchPath => 10,
-            BehaviorSignal.FileRename => 5,
-            BehaviorSignal.UnsignedProcess => 5,
-            BehaviorSignal.RansomwareExtension => 10,
-            _ => 5
-        };
+            if (_config == null)
+                return DefaultWeights.TryGetValue(signal, out var d) ? d : 5;
+
+            return signal switch
+            {
+                BehaviorSignal.HoneypotTriggered => _config.ScoreHoneypotTriggered,
+                BehaviorSignal.KnownRansomwareName => _config.ScoreKnownRansomware,
+                BehaviorSignal.ShadowCopyDeletion => _config.ScoreShadowCopyDeletion,
+                BehaviorSignal.RansomNoteCreation => _config.ScoreRansomNoteCreation,
+                BehaviorSignal.MultiFolderTouch => _config.ScoreMultiFolderTouch,
+                BehaviorSignal.MassExtensionChange => _config.ScoreMassExtensionChange,
+                BehaviorSignal.SuspiciousPowerShell => _config.ScoreSuspiciousPowerShell,
+                BehaviorSignal.HighFileRenameRate => _config.ScoreHighFileRenameRate,
+                BehaviorSignal.HighEntropyWrite => _config.ScoreHighEntropyWrite,
+                BehaviorSignal.SuspiciousParentChild => _config.ScoreSuspiciousParentChild,
+                BehaviorSignal.RiskyLaunchPath => _config.ScoreRiskyLaunchPath,
+                BehaviorSignal.RansomwareExtension => _config.ScoreRansomwareExtension,
+                BehaviorSignal.FileRename => _config.ScoreFileRename,
+                BehaviorSignal.UnsignedProcess => _config.ScoreUnsignedProcess,
+                _ => 5
+            };
+        }
 
         private static string BuildReason(ProcessThreatScore score)
         {

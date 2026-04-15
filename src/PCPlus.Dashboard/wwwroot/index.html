@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Plus Endpoint Protection - Dashboard</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="app">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <h1>PC Plus</h1>
+            <span>Endpoint Protection</span>
+        </div>
+
+        <div class="nav-section">Main</div>
+        <div class="nav-item active" onclick="showPage('overview')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <span>Overview</span>
+        </div>
+        <div class="nav-item" onclick="showPage('devices')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <span>Devices</span>
+        </div>
+        <div class="nav-item" onclick="showPage('alerts')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span>Alerts</span>
+        </div>
+
+        <div class="nav-section">Security</div>
+        <div class="nav-item" onclick="showPage('incidents')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Incidents</span>
+        </div>
+        <div class="nav-item" onclick="showPage('policies')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Policies</span>
+        </div>
+
+        <div class="nav-section">Settings</div>
+        <div class="nav-item" onclick="showPage('config')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Config Push</span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Overview Page -->
+        <div id="page-overview" class="page">
+            <div class="page-header">
+                <h2>Dashboard Overview</h2>
+                <div class="header-actions">
+                    <span class="refresh-dot"></span>
+                    <span style="font-size:12px;color:var(--text-muted);margin-left:4px">Live</span>
+                </div>
+            </div>
+            <div class="stat-grid" id="overview-stats"></div>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Recent Alerts</h3>
+                    <button class="btn btn-sm btn-secondary" onclick="showPage('alerts')">View All</button>
+                </div>
+                <div id="overview-alerts"></div>
+            </div>
+        </div>
+
+        <!-- Devices Page -->
+        <div id="page-devices" class="page" style="display:none">
+            <div class="page-header">
+                <h2>Devices</h2>
+                <div class="header-actions">
+                    <input type="text" id="device-search" placeholder="Search devices..." style="padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px" oninput="filterDevices()">
+                </div>
+            </div>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Hostname</th>
+                            <th>Customer</th>
+                            <th>Security</th>
+                            <th>CPU</th>
+                            <th>RAM</th>
+                            <th>Disk</th>
+                            <th>Tier</th>
+                            <th>Modules</th>
+                            <th>Last Seen</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="devices-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Alerts Page -->
+        <div id="page-alerts" class="page" style="display:none">
+            <div class="page-header">
+                <h2>Alert Feed</h2>
+                <div class="header-actions">
+                    <select id="alert-filter" onchange="loadAlerts()" style="padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px">
+                        <option value="">All Severities</option>
+                        <option value="Emergency">Emergency</option>
+                        <option value="Critical">Critical</option>
+                        <option value="Warning">Warning</option>
+                        <option value="Info">Info</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card" id="alerts-feed"></div>
+        </div>
+
+        <!-- Incidents Page -->
+        <div id="page-incidents" class="page" style="display:none">
+            <div class="page-header">
+                <h2>Incidents</h2>
+            </div>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Device</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Severity</th>
+                            <th>When</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="incidents-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Policies Page -->
+        <div id="page-policies" class="page" style="display:none">
+            <div class="page-header">
+                <h2>Policy Profiles</h2>
+                <button class="btn btn-primary btn-sm" onclick="showNewPolicyModal()">+ New Profile</button>
+            </div>
+            <div id="policies-grid" class="stat-grid"></div>
+        </div>
+
+        <!-- Config Push Page -->
+        <div id="page-config" class="page" style="display:none">
+            <div class="page-header">
+                <h2>Push Configuration</h2>
+            </div>
+            <div class="card" style="padding:24px">
+                <h3 style="margin-bottom:16px">Push Scoring Weights to Endpoints</h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="form-group">
+                        <label>Target Device (empty = all)</label>
+                        <select id="config-device">
+                            <option value="">All Devices</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Or Target Policy Profile</label>
+                        <select id="config-profile">
+                            <option value="">No profile (device-specific)</option>
+                        </select>
+                    </div>
+                </div>
+                <h4 style="margin:16px 0 12px;font-size:14px;color:var(--text-secondary)">Behavior Scoring Weights</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px" id="scoring-weights">
+                    <div class="form-group"><label>Honeypot Triggered</label><input type="number" data-key="scoreHoneypotTriggered" value="50"></div>
+                    <div class="form-group"><label>Known Ransomware</label><input type="number" data-key="scoreKnownRansomware" value="50"></div>
+                    <div class="form-group"><label>Shadow Copy Deletion</label><input type="number" data-key="scoreShadowCopyDeletion" value="40"></div>
+                    <div class="form-group"><label>Ransom Note Creation</label><input type="number" data-key="scoreRansomNoteCreation" value="35"></div>
+                    <div class="form-group"><label>Multi-Folder Touch</label><input type="number" data-key="scoreMultiFolderTouch" value="25"></div>
+                    <div class="form-group"><label>Mass Extension Change</label><input type="number" data-key="scoreMassExtensionChange" value="20"></div>
+                    <div class="form-group"><label>Suspicious PowerShell</label><input type="number" data-key="scoreSuspiciousPowerShell" value="20"></div>
+                    <div class="form-group"><label>High File Rename Rate</label><input type="number" data-key="scoreHighFileRenameRate" value="20"></div>
+                    <div class="form-group"><label>High Entropy Write</label><input type="number" data-key="scoreHighEntropyWrite" value="15"></div>
+                    <div class="form-group"><label>Suspicious Parent-Child</label><input type="number" data-key="scoreSuspiciousParentChild" value="15"></div>
+                    <div class="form-group"><label>Risky Launch Path</label><input type="number" data-key="scoreRiskyLaunchPath" value="10"></div>
+                    <div class="form-group"><label>Ransomware Extension</label><input type="number" data-key="scoreRansomwareExtension" value="10"></div>
+                    <div class="form-group"><label>File Rename</label><input type="number" data-key="scoreFileRename" value="5"></div>
+                    <div class="form-group"><label>Unsigned Process</label><input type="number" data-key="scoreUnsignedProcess" value="5"></div>
+                </div>
+                <h4 style="margin:16px 0 12px;font-size:14px;color:var(--text-secondary)">Thresholds</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+                    <div class="form-group"><label>Warning Threshold</label><input type="number" id="cfg-warning" value="30"></div>
+                    <div class="form-group"><label>Containment Threshold</label><input type="number" id="cfg-containment" value="60"></div>
+                    <div class="form-group"><label>Lockdown Threshold</label><input type="number" id="cfg-lockdown" value="80"></div>
+                    <div class="form-group"><label>Decay Per Minute</label><input type="number" id="cfg-decay" value="5"></div>
+                </div>
+                <div style="margin-top:16px;display:flex;gap:8px">
+                    <button class="btn btn-primary" onclick="pushConfig()">Push to Endpoints</button>
+                    <button class="btn btn-secondary" onclick="resetConfigDefaults()">Reset Defaults</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Config Push Modal -->
+<div class="modal-overlay" id="device-modal">
+    <div class="modal" id="device-modal-content"></div>
+</div>
+
+<script src="/js/dashboard.js"></script>
+</body>
+</html>

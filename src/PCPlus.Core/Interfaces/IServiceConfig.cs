@@ -24,6 +24,28 @@ namespace PCPlus.Core.Interfaces
         bool AutoContainmentEnabled { get; }
         bool LockdownOnDetection { get; }
 
+        // Behavior scoring weights (configurable per deployment)
+        int ScoreHoneypotTriggered { get; }
+        int ScoreKnownRansomware { get; }
+        int ScoreShadowCopyDeletion { get; }
+        int ScoreRansomNoteCreation { get; }
+        int ScoreMultiFolderTouch { get; }
+        int ScoreMassExtensionChange { get; }
+        int ScoreSuspiciousPowerShell { get; }
+        int ScoreHighFileRenameRate { get; }
+        int ScoreHighEntropyWrite { get; }
+        int ScoreSuspiciousParentChild { get; }
+        int ScoreRiskyLaunchPath { get; }
+        int ScoreRansomwareExtension { get; }
+        int ScoreFileRename { get; }
+        int ScoreUnsignedProcess { get; }
+
+        // Behavior scoring thresholds
+        int ScoringWarningThreshold { get; }
+        int ScoringContainmentThreshold { get; }
+        int ScoringLockdownThreshold { get; }
+        int ScoringDecayPerMinute { get; }
+
         // Policy
         bool BlockUSB { get; }
         bool BlockPowerShell { get; }

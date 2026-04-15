@@ -33,6 +33,28 @@ namespace PCPlus.Service.Engine
         public bool AutoContainmentEnabled => GetBool("autoContainmentEnabled", true);
         public bool LockdownOnDetection => GetBool("lockdownOnDetection", true);
 
+        // Behavior scoring weights
+        public int ScoreHoneypotTriggered => GetInt("scoreHoneypotTriggered", 50);
+        public int ScoreKnownRansomware => GetInt("scoreKnownRansomware", 50);
+        public int ScoreShadowCopyDeletion => GetInt("scoreShadowCopyDeletion", 40);
+        public int ScoreRansomNoteCreation => GetInt("scoreRansomNoteCreation", 35);
+        public int ScoreMultiFolderTouch => GetInt("scoreMultiFolderTouch", 25);
+        public int ScoreMassExtensionChange => GetInt("scoreMassExtensionChange", 20);
+        public int ScoreSuspiciousPowerShell => GetInt("scoreSuspiciousPowerShell", 20);
+        public int ScoreHighFileRenameRate => GetInt("scoreHighFileRenameRate", 20);
+        public int ScoreHighEntropyWrite => GetInt("scoreHighEntropyWrite", 15);
+        public int ScoreSuspiciousParentChild => GetInt("scoreSuspiciousParentChild", 15);
+        public int ScoreRiskyLaunchPath => GetInt("scoreRiskyLaunchPath", 10);
+        public int ScoreRansomwareExtension => GetInt("scoreRansomwareExtension", 10);
+        public int ScoreFileRename => GetInt("scoreFileRename", 5);
+        public int ScoreUnsignedProcess => GetInt("scoreUnsignedProcess", 5);
+
+        // Behavior scoring thresholds
+        public int ScoringWarningThreshold => GetInt("scoringWarningThreshold", 30);
+        public int ScoringContainmentThreshold => GetInt("scoringContainmentThreshold", 60);
+        public int ScoringLockdownThreshold => GetInt("scoringLockdownThreshold", 80);
+        public int ScoringDecayPerMinute => GetInt("scoringDecayPerMinute", 5);
+
         // Policy
         public bool BlockUSB => GetBool("blockUSB", false);
         public bool BlockPowerShell => GetBool("blockPowerShell", false);

@@ -12,13 +12,15 @@ namespace PCPlus.Service
 {
     /// <summary>
     /// The hosted service that runs as a Windows Service.
-    /// Initializes the module engine, loads license, starts all modules.
+    /// Initializes the module engine, loads license, starts all modules,
+    /// and connects to the central dashboard for phone-home reporting.
     /// </summary>
     public class EndpointProtectionService : BackgroundService
     {
         private readonly ModuleEngine _engine;
         private readonly ServiceConfig _config;
         private readonly ILogger<EndpointProtectionService> _logger;
+        private DashboardClient? _dashboardClient;
 
         public EndpointProtectionService(
             ModuleEngine engine,
@@ -57,6 +59,10 @@ namespace PCPlus.Service
             // Start the engine (will start eligible modules based on license)
             await _engine.StartAsync(stoppingToken);
 
+            // Start dashboard phone-home client
+            _dashboardClient = new DashboardClient(_config, _engine);
+            _dashboardClient.Start();
+
             _logger.LogInformation("PC Plus Endpoint Protection Service is running.");
 
             // Periodic license validation (every 6 hours)
@@ -76,6 +82,7 @@ namespace PCPlus.Service
             catch (OperationCanceledException) { }
 
             // Stopping
+            _dashboardClient?.Dispose();
             await _engine.StopAsync();
             _logger.LogInformation("PC Plus Endpoint Protection Service stopped.");
         }

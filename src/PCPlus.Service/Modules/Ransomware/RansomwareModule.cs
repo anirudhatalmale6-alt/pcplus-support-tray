@@ -101,6 +101,9 @@ namespace PCPlus.Service.Modules.Ransomware
         {
             _context = context;
 
+            // Initialize scoring engine with config (weights + thresholds from config.json)
+            _scoring.Initialize(context.Config);
+
             // Wire up scoring engine events
             _scoring.OnWarning += (pid, name, score, reason) =>
             {
