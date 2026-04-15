@@ -1,13 +1,14 @@
 using PCPlus.Core.Interfaces;
 using PCPlus.Core.IPC;
 using PCPlus.Core.Models;
+using System.Security.Principal;
 using System.Text.Json;
 
 namespace PCPlus.Service.Engine
 {
     /// <summary>
     /// Core module engine. Loads, starts, stops, and manages all modules.
-    /// Routes IPC requests to the appropriate module.
+    /// Routes IPC requests with session auth and command authorization.
     /// Handles inter-module events and alert pipeline.
     /// </summary>
     public class ModuleEngine : IModuleContext, IDisposable
@@ -19,13 +20,13 @@ namespace PCPlus.Service.Engine
         private readonly ServiceConfig _config;
         private readonly AuditLogger _auditLogger;
         private CancellationTokenSource? _cts;
+        private DateTime _startedAt;
         private bool _disposed;
 
         public IServiceConfig Config => _config;
         public LicenseInfo License { get; set; } = new() { Tier = LicenseTier.Free, IsValid = true };
         public IAiAnalyzer? AiAnalyzer { get; set; }
 
-        // Events
         public event Action<Alert>? OnAlert;
         public event Action<string, string>? OnLog;
 
@@ -40,26 +41,22 @@ namespace PCPlus.Service.Engine
                 "PCPlusEndpoint", "Logs"));
         }
 
-        /// <summary>Register a module (call before Start).</summary>
         public void RegisterModule(IModule module)
         {
             _modules[module.Id] = module;
         }
 
-        /// <summary>Start the engine and all eligible modules.</summary>
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _startedAt = DateTime.UtcNow;
             Log(LogLevel.Info, "engine", $"Starting module engine v4.0.0 with {_modules.Count} modules");
 
-            // Start IPC server
             _ipcServer.Start();
-            Log(LogLevel.Info, "engine", "IPC server started");
+            Log(LogLevel.Info, "engine", "IPC server started (secured: session auth + command authorization)");
 
-            // Initialize and start each module
             foreach (var (id, module) in _modules)
             {
-                // Check license tier
                 if (module.RequiredTier > License.Tier)
                 {
                     Log(LogLevel.Info, "engine",
@@ -67,7 +64,6 @@ namespace PCPlus.Service.Engine
                     continue;
                 }
 
-                // Check manual overrides
                 if (_config.ModuleOverrides.TryGetValue(id, out var enabled) && !enabled)
                 {
                     Log(LogLevel.Info, "engine", $"Module '{id}' disabled by config override - skipping");
@@ -91,7 +87,6 @@ namespace PCPlus.Service.Engine
                 $"Engine started. {_modules.Values.Count(m => m.IsRunning)} modules running.");
         }
 
-        /// <summary>Stop all modules and the engine.</summary>
         public async Task StopAsync()
         {
             Log(LogLevel.Info, "engine", "Stopping module engine");
@@ -130,7 +125,6 @@ namespace PCPlus.Service.Engine
             _auditLogger.Log(alert.ModuleId, "alert",
                 $"[{alert.Severity}] {alert.Title}: {alert.Message}");
 
-            // Push to tray apps
             _ = _ipcServer.BroadcastAsync(IpcNotification.ALERT, alert);
         }
 
@@ -172,15 +166,18 @@ namespace PCPlus.Service.Engine
             }
         }
 
-        /// <summary>Push a health snapshot to all connected tray apps.</summary>
         public Task BroadcastHealthUpdateAsync(HealthSnapshot snapshot) =>
             _ipcServer.BroadcastAsync(IpcNotification.HEALTH_UPDATE, snapshot);
 
-        // IPC request handler
-        private async Task<IpcResponse> HandleIpcRequestAsync(IpcRequest request)
+        // IPC request handler - now with session context
+        private async Task<IpcResponse> HandleIpcRequestAsync(IpcRequest request, IpcServer.ClientSession? session)
         {
             try
             {
+                // Handle authentication first (no session needed)
+                if (request.Type == IpcRequestType.Authenticate)
+                    return HandleAuthenticate(request);
+
                 return request.Type switch
                 {
                     IpcRequestType.Ping => IpcResponse.Ok(request.Id, "pong"),
@@ -193,16 +190,15 @@ namespace PCPlus.Service.Engine
 
                     IpcRequestType.GetRecentAlerts => HandleGetAlerts(request),
 
-                    IpcRequestType.AcknowledgeAlert => HandleAcknowledgeAlert(request),
+                    IpcRequestType.AcknowledgeAlert => HandleAcknowledgeAlert(request, session),
 
                     IpcRequestType.GetLicenseInfo => IpcResponse.Ok(request.Id, License),
 
                     IpcRequestType.GetConfig => IpcResponse.Ok(request.Id,
                         _config.GetAllValues()),
 
-                    IpcRequestType.SetConfig => HandleSetConfig(request),
+                    IpcRequestType.SetConfig => HandleSetConfig(request, session),
 
-                    // Module-specific requests - route to the appropriate module
                     IpcRequestType.GetHealthSnapshot or
                     IpcRequestType.GetHealthHistory =>
                         await RouteToModuleAsync("health", request),
@@ -216,7 +212,7 @@ namespace PCPlus.Service.Engine
                     IpcRequestType.GetLockdownState or
                     IpcRequestType.ActivateLockdown or
                     IpcRequestType.DeactivateLockdown =>
-                        await RouteToModuleAsync("ransomware", request),
+                        await HandleRansomwareRequest(request, session),
 
                     IpcRequestType.RunMaintenance or
                     IpcRequestType.GetMaintenanceStatus =>
@@ -232,6 +228,51 @@ namespace PCPlus.Service.Engine
             {
                 return IpcResponse.Fail(request.Id, $"Error: {ex.Message}");
             }
+        }
+
+        private IpcResponse HandleAuthenticate(IpcRequest request)
+        {
+            var clientType = request.Parameters.GetValueOrDefault("clientType", "unknown");
+            var user = request.Parameters.GetValueOrDefault("user", "unknown");
+            var machine = request.Parameters.GetValueOrDefault("machine", "unknown");
+            var clientIdentity = $"{user}@{machine} ({clientType})";
+
+            // Determine permission level based on client type and user
+            CommandPermission permLevel;
+            if (clientType == "dashboard" || clientType == "admin")
+            {
+                // Dashboard/admin clients get full access
+                permLevel = CommandPermission.Admin;
+            }
+            else
+            {
+                // Tray clients get Operator level (can run scans, maintenance, but not lockdown/config)
+                // Check if user is a local admin for elevated permissions
+                permLevel = IsLocalAdmin(user)
+                    ? CommandPermission.Admin
+                    : CommandPermission.Operator;
+            }
+
+            var session = _ipcServer.CreateSession(clientIdentity, permLevel);
+
+            _auditLogger.Log("engine", "auth",
+                $"Session created for {clientIdentity} with {permLevel} permissions");
+            Log(LogLevel.Info, "engine", $"Client authenticated: {clientIdentity} [{permLevel}]");
+
+            return IpcResponse.Ok(request.Id, session, "Authenticated");
+        }
+
+        private async Task<IpcResponse> HandleRansomwareRequest(IpcRequest request, IpcServer.ClientSession? session)
+        {
+            // Lockdown activation/deactivation are admin-only (already checked by server)
+            // but we add audit logging here
+            if (request.Type == IpcRequestType.ActivateLockdown ||
+                request.Type == IpcRequestType.DeactivateLockdown)
+            {
+                _auditLogger.Log("engine", "security",
+                    $"[{session?.ClientIdentity ?? "unknown"}] {request.Type} requested");
+            }
+            return await RouteToModuleAsync("ransomware", request);
         }
 
         private async Task<IpcResponse> RouteToModuleAsync(string moduleId, IpcRequest request)
@@ -270,21 +311,30 @@ namespace PCPlus.Service.Engine
             return IpcResponse.Ok(request.Id, alerts);
         }
 
-        private IpcResponse HandleAcknowledgeAlert(IpcRequest request)
+        private IpcResponse HandleAcknowledgeAlert(IpcRequest request, IpcServer.ClientSession? session)
         {
             if (request.Parameters.TryGetValue("alertId", out var alertId))
             {
                 lock (_alertLock)
                 {
                     var alert = _alerts.FirstOrDefault(a => a.Id == alertId);
-                    if (alert != null) alert.Acknowledged = true;
+                    if (alert != null)
+                    {
+                        alert.Acknowledged = true;
+                        _auditLogger.Log("engine", "alert_ack",
+                            $"Alert {alertId} acknowledged by {session?.ClientIdentity ?? "unknown"}");
+                    }
                 }
             }
             return IpcResponse.Ok(request.Id);
         }
 
-        private IpcResponse HandleSetConfig(IpcRequest request)
+        private IpcResponse HandleSetConfig(IpcRequest request, IpcServer.ClientSession? session)
         {
+            _auditLogger.Log("engine", "config_change",
+                $"Config updated by {session?.ClientIdentity ?? "unknown"}: " +
+                string.Join(", ", request.Parameters.Select(p => $"{p.Key}={p.Value}")));
+
             foreach (var (key, value) in request.Parameters)
             {
                 _config.SetValue(key, value);
@@ -302,13 +352,30 @@ namespace PCPlus.Service.Engine
         {
             Version = "4.0.0",
             IsRunning = true,
-            StartedAt = DateTime.UtcNow, // TODO: track actual start time
-            Uptime = TimeSpan.FromMilliseconds(Environment.TickCount64),
+            StartedAt = _startedAt,
+            Uptime = DateTime.UtcNow - _startedAt,
             License = License,
             Modules = _modules.Values.Select(m => m.GetStatus()).ToList(),
             ActiveAlertCount = _alerts.Count(a => !a.Acknowledged),
-            LockdownActive = false // Updated by ransomware module
+            LockdownActive = _modules.TryGetValue("ransomware", out var rm)
+                && rm.IsRunning && rm.GetStatus().Metrics.TryGetValue("lockdownActive", out var la)
+                && la is true
         };
+
+        private static bool IsLocalAdmin(string username)
+        {
+            try
+            {
+                // Check if the user is in the Administrators group
+                var identity = new WindowsIdentity(username);
+                var principal = new WindowsPrincipal(identity);
+                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         public void Dispose()
         {

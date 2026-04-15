@@ -5,8 +5,11 @@ using System.Text.Json;
 namespace PCPlus.Core.IPC
 {
     /// <summary>
-    /// Named pipe client used by the Tray App to communicate with the Windows Service.
-    /// Thread-safe, auto-reconnects, supports request/response and notification subscription.
+    /// Secured named pipe client used by the Tray App.
+    /// - Authenticates with the service on connect
+    /// - Includes session token in all requests
+    /// - Auto-reconnects and re-authenticates
+    /// - Thread-safe request/response with timeout
     /// </summary>
     public class IpcClient : IDisposable
     {
@@ -18,6 +21,10 @@ namespace PCPlus.Core.IPC
         private Task? _listenerTask;
         private bool _disposed;
 
+        // Session state
+        private string _sessionToken = "";
+        private SessionInfo? _session;
+
         // Pending request tracking
         private readonly Dictionary<string, TaskCompletionSource<IpcResponse>> _pendingRequests = new();
         private readonly object _pendingLock = new();
@@ -25,6 +32,8 @@ namespace PCPlus.Core.IPC
         public event Action<IpcNotification>? OnNotification;
         public event Action<bool>? OnConnectionChanged;
         public bool IsConnected => _pipe?.IsConnected ?? false;
+        public bool IsAuthenticated => _session != null && _session.ExpiresAt > DateTime.UtcNow;
+        public CommandPermission PermissionLevel => _session?.PermissionLevel ?? CommandPermission.ReadOnly;
 
         public async Task ConnectAsync(int timeoutMs = 5000)
         {
@@ -42,6 +51,38 @@ namespace PCPlus.Core.IPC
             _listenerTask = ListenAsync(_listenerCts.Token);
 
             OnConnectionChanged?.Invoke(true);
+
+            // Authenticate immediately after connecting
+            await AuthenticateAsync();
+        }
+
+        /// <summary>Authenticate with the service to get a session token.</summary>
+        public async Task<bool> AuthenticateAsync()
+        {
+            var request = new IpcRequest
+            {
+                Type = IpcRequestType.Authenticate,
+                Parameters = new()
+                {
+                    ["clientType"] = "tray",
+                    ["version"] = "4.0.0",
+                    ["user"] = Environment.UserName,
+                    ["machine"] = Environment.MachineName
+                }
+            };
+
+            // Send without session token (auth is exempt)
+            var response = await SendRawRequestAsync(request);
+            if (response.Success)
+            {
+                _session = response.GetData<SessionInfo>();
+                if (_session != null)
+                {
+                    _sessionToken = _session.Token;
+                    return true;
+                }
+            }
+            return false;
         }
 
         public async Task<IpcResponse> SendRequestAsync(IpcRequest request, int timeoutMs = 10000)
@@ -51,6 +92,16 @@ namespace PCPlus.Core.IPC
                 try { await ConnectAsync(); }
                 catch { return IpcResponse.Fail(request.Id, "Service not available"); }
             }
+
+            // Attach session token
+            request.SessionToken = _sessionToken;
+            return await SendRawRequestAsync(request, timeoutMs);
+        }
+
+        private async Task<IpcResponse> SendRawRequestAsync(IpcRequest request, int timeoutMs = 10000)
+        {
+            if (!IsConnected)
+                return IpcResponse.Fail(request.Id, "Not connected");
 
             var tcs = new TaskCompletionSource<IpcResponse>();
 
@@ -77,7 +128,20 @@ namespace PCPlus.Core.IPC
                 cts.Token.Register(() => tcs.TrySetResult(
                     IpcResponse.Fail(request.Id, "Request timed out")));
 
-                return await tcs.Task;
+                var response = await tcs.Task;
+
+                // If we get an unauthorized response, try re-authenticating once
+                if (!response.Success && response.Message.Contains("Session expired"))
+                {
+                    if (await AuthenticateAsync())
+                    {
+                        // Retry the original request with new token
+                        request.SessionToken = _sessionToken;
+                        return await SendRawRequestAsync(request, timeoutMs);
+                    }
+                }
+
+                return response;
             }
             catch (Exception ex)
             {
@@ -135,7 +199,7 @@ namespace PCPlus.Core.IPC
                 while (!ct.IsCancellationRequested && IsConnected)
                 {
                     var line = await _reader!.ReadLineAsync(ct);
-                    if (line == null) break; // Pipe closed
+                    if (line == null) break;
 
                     ProcessMessage(line);
                 }
@@ -144,6 +208,8 @@ namespace PCPlus.Core.IPC
             catch { }
             finally
             {
+                _session = null;
+                _sessionToken = "";
                 OnConnectionChanged?.Invoke(false);
             }
         }
@@ -174,6 +240,14 @@ namespace PCPlus.Core.IPC
                     var notification = JsonSerializer.Deserialize<IpcNotification>(json, IpcProtocol.JsonOptions);
                     if (notification != null)
                     {
+                        // Handle session expiry notification
+                        if (notification.Type == IpcNotification.SESSION_EXPIRED)
+                        {
+                            _session = null;
+                            _sessionToken = "";
+                            _ = AuthenticateAsync();
+                        }
+
                         OnNotification?.Invoke(notification);
                     }
                 }
@@ -188,6 +262,8 @@ namespace PCPlus.Core.IPC
             _reader?.Dispose();
             _pipe?.Dispose();
             _pipe = null;
+            _session = null;
+            _sessionToken = "";
         }
 
         public void Dispose()
