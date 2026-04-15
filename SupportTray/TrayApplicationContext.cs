@@ -14,6 +14,11 @@ namespace SupportTray
         private ChatForm? _chatForm;
         private string _liveChatUrl;
 
+        // Health monitoring
+        private HealthMonitor? _healthMonitor;
+        private AlertManager? _alertManager;
+        private HealthDashboardForm? _dashboardForm;
+
         public TrayApplicationContext()
         {
             _config = AppConfig.Load();
@@ -31,7 +36,13 @@ namespace SupportTray
                 ContextMenuStrip = CreateContextMenu()
             };
 
-            _trayIcon.DoubleClick += (s, e) => OpenLiveChat();
+            _trayIcon.DoubleClick += (s, e) => ShowHealthDashboard();
+
+            // Start health monitoring
+            if (_config.HealthMonitorEnabled)
+            {
+                StartHealthMonitoring();
+            }
 
             // Show welcome balloon on first run
             var firstRunFile = Path.Combine(
@@ -45,6 +56,9 @@ namespace SupportTray
                 _trayIcon.BalloonTipText = "Support is just a click away! Right-click this icon for options.";
                 _trayIcon.BalloonTipIcon = ToolTipIcon.Info;
                 _trayIcon.ShowBalloonTip(5000);
+
+                // Run first-install security audit
+                RunFirstInstallAudit();
             }
 
             // Always show desktop overlay on startup
@@ -54,6 +68,81 @@ namespace SupportTray
 
             // Check for updates silently on startup
             _ = CheckForUpdatesAsync(silent: true);
+        }
+
+        private void StartHealthMonitoring()
+        {
+            _healthMonitor = new HealthMonitor
+            {
+                PollIntervalMs = _config.HealthPollIntervalMs,
+                CpuAlertThreshold = _config.CpuAlertThreshold,
+                RamAlertThreshold = _config.RamAlertThreshold,
+                DiskAlertThreshold = _config.DiskAlertThreshold,
+                TempAlertThreshold = _config.TempAlertThreshold
+            };
+
+            _alertManager = new AlertManager(_trayIcon)
+            {
+                ShowBalloons = _config.ShowHealthAlerts,
+                LogToFile = _config.LogHealthAlerts
+            };
+
+            _healthMonitor.OnAlert += _alertManager.HandleHealthAlert;
+
+            if (_config.ShowHealthInTooltip)
+                _healthMonitor.OnUpdate += _alertManager.HandleHealthUpdate;
+
+            _healthMonitor.Start();
+        }
+
+        private void ShowHealthDashboard()
+        {
+            if (_healthMonitor == null)
+            {
+                StartHealthMonitoring();
+            }
+
+            if (_dashboardForm == null || _dashboardForm.IsDisposed)
+            {
+                _dashboardForm = new HealthDashboardForm(_config, _healthMonitor!);
+                _dashboardForm.Show();
+            }
+            else
+            {
+                _dashboardForm.WindowState = FormWindowState.Normal;
+                _dashboardForm.BringToFront();
+                _dashboardForm.Activate();
+            }
+        }
+
+        private void RunFirstInstallAudit()
+        {
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                var scanner = new SecurityScanner();
+                scanner.RunFullScan();
+
+                // Save audit report
+                var auditDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "PCPlusSupport", "Audits");
+                Directory.CreateDirectory(auditDir);
+                var auditFile = Path.Combine(auditDir,
+                    $"first_install_audit_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+                File.WriteAllText(auditFile, scanner.GetReportText());
+
+                // Show summary balloon
+                var grade = scanner.Grade;
+                var score = scanner.TotalScore;
+                var failCount = scanner.Checks.Count(c => !c.Passed);
+
+                _trayIcon.BalloonTipTitle = $"Security Audit: {grade} ({score}/100)";
+                _trayIcon.BalloonTipText = failCount > 0
+                    ? $"{failCount} issue(s) found. Double-click for details."
+                    : "All security checks passed!";
+                _trayIcon.BalloonTipIcon = score >= 80 ? ToolTipIcon.Info : ToolTipIcon.Warning;
+                _trayIcon.ShowBalloonTip(8000);
+            });
         }
 
         private static string GetCurrentVersion()
@@ -132,9 +221,14 @@ namespace SupportTray
             menu.Items.Add(headerItem);
             menu.Items.Add(new ToolStripSeparator());
 
-            // Live Chat (primary action - real-time chat)
+            // Health Dashboard (primary action - double-click also opens this)
+            var healthItem = new ToolStripMenuItem("Health Dashboard");
+            healthItem.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            healthItem.Click += (s, e) => ShowHealthDashboard();
+            menu.Items.Add(healthItem);
+
+            // Live Chat
             var liveChatItem = new ToolStripMenuItem("Live Chat");
-            liveChatItem.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             liveChatItem.Click += (s, e) => OpenLiveChat();
             menu.Items.Add(liveChatItem);
 
@@ -441,6 +535,8 @@ namespace SupportTray
         {
             if (disposing)
             {
+                _healthMonitor?.Dispose();
+                _alertManager?.Dispose();
                 _trayIcon.Visible = false;
                 _trayIcon.Dispose();
             }

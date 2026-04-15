@@ -24,6 +24,17 @@ namespace SupportTray
         public string ServiceRequestUrl { get; set; } = "https://pos.pcpluscomputing.com/servicerequests/";
         public bool PersistentOverlay { get; set; } = false;
 
+        // Health Monitoring Settings
+        public bool HealthMonitorEnabled { get; set; } = true;
+        public int HealthPollIntervalMs { get; set; } = 2000;
+        public float CpuAlertThreshold { get; set; } = 90f;
+        public float RamAlertThreshold { get; set; } = 90f;
+        public float DiskAlertThreshold { get; set; } = 90f;
+        public float TempAlertThreshold { get; set; } = 85f;
+        public bool ShowHealthAlerts { get; set; } = true;
+        public bool LogHealthAlerts { get; set; } = true;
+        public bool ShowHealthInTooltip { get; set; } = true;
+
         private static readonly string ConfigDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
             "PCPlusSupport");
