@@ -86,7 +86,7 @@ namespace PCPlus.Service.Engine
                         {
                             cpu = snap.CpuPercent;
                             ram = snap.RamPercent;
-                            disk = snap.DiskUsedPercent;
+                            disk = snap.Disks.FirstOrDefault()?.UsedPercent ?? 0;
                             temp = snap.CpuTempC;
                         }
                     }

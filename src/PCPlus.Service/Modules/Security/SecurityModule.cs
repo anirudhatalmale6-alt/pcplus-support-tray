@@ -153,7 +153,7 @@ namespace PCPlus.Service.Modules.Security
             try
             {
                 using var sc = new ServiceController("wuauserv");
-                var ok = sc.Status == ServiceControllerStatus.Running || sc.StartType != ServiceControllerStartMode.Disabled;
+                var ok = sc.Status == ServiceControllerStatus.Running || sc.StartType != ServiceStartMode.Disabled;
                 return (ok, ok ? "Windows Update service is available" : "Windows Update DISABLED", ok ? "" : "Enable Windows Update");
             }
             catch { return (true, "Unable to check", ""); }
