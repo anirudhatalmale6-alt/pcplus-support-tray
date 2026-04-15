@@ -1,40 +1,157 @@
-name: Build Windows Tray App
+name: Build PC Plus Endpoint Protection
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: write
 
+env:
+  DOTNET_VERSION: '8.0.x'
+
 jobs:
-  build:
+  build-service:
+    name: Build Windows Service
     runs-on: windows-latest
-
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Setup .NET 8
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Publish Service
+        run: dotnet publish src/PCPlus.Service/PCPlus.Service.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/Service
 
-    - name: Restore dependencies
-      run: dotnet restore SupportTray/SupportTray.csproj
+      - name: Upload Service artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCPlusService-win-x64
+          path: publish/Service/
+          retention-days: 90
 
-    - name: Build
-      run: dotnet publish SupportTray/SupportTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
+  build-tray:
+    name: Build Tray App
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Copy installer scripts and icon
-      run: |
-        copy SupportTray\install.bat publish\
-        copy SupportTray\uninstall.bat publish\
-        copy SupportTray\icon.ico publish\
+      - name: Publish Tray
+        run: dotnet publish src/PCPlus.Tray/PCPlus.Tray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/Tray
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: PCPlusSupportTray-win-x64
-        path: publish/
-        retention-days: 90
+      - name: Upload Tray artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCPlusTray-win-x64
+          path: publish/Tray/
+          retention-days: 90
+
+  build-dashboard:
+    name: Build Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Dashboard
+        run: dotnet publish src/PCPlus.Dashboard/PCPlus.Dashboard.csproj -c Release -o publish/Dashboard
+
+      - name: Upload Dashboard artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCPlusDashboard
+          path: publish/Dashboard/
+          retention-days: 90
+
+  # Build the old SupportTray too (for backwards compat)
+  build-legacy-tray:
+    name: Build Legacy Tray (v3)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Legacy Tray
+        run: dotnet publish SupportTray/SupportTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/LegacyTray
+
+      - name: Copy install scripts
+        run: |
+          copy SupportTray\install.bat publish\LegacyTray\ 2>nul
+          copy SupportTray\uninstall.bat publish\LegacyTray\ 2>nul
+          copy SupportTray\icon.ico publish\LegacyTray\ 2>nul
+        continue-on-error: true
+
+      - name: Upload Legacy Tray artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCPlusSupportTray-Legacy-win-x64
+          path: publish/LegacyTray/
+          retention-days: 90
+
+  package:
+    name: Create Install Package
+    needs: [build-service, build-tray, build-dashboard]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Service
+        uses: actions/download-artifact@v4
+        with:
+          name: PCPlusService-win-x64
+          path: package/Service
+
+      - name: Download Tray
+        uses: actions/download-artifact@v4
+        with:
+          name: PCPlusTray-win-x64
+          path: package/Tray
+
+      - name: Download Dashboard
+        uses: actions/download-artifact@v4
+        with:
+          name: PCPlusDashboard
+          path: package/Dashboard
+
+      - name: Copy install script
+        run: copy deploy\Install-PCPlusEndpoint.ps1 package\
+
+      - name: Create endpoint package (Service + Tray + Installer)
+        run: Compress-Archive -Path package\Service, package\Tray, package\Install-PCPlusEndpoint.ps1 -DestinationPath package\PCPlusEndpoint-Installer.zip
+
+      - name: Create dashboard package
+        run: Compress-Archive -Path package\Dashboard\* -DestinationPath package\PCPlusDashboard.zip
+
+      - name: Upload Endpoint Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCPlusEndpoint-Installer
+          path: package/PCPlusEndpoint-Installer.zip
+          retention-days: 90
+
+      - name: Upload Dashboard Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCPlusDashboard-Package
+          path: package/PCPlusDashboard.zip
+          retention-days: 90
+
+      # Create GitHub Release when a tag is pushed
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            package/PCPlusEndpoint-Installer.zip
+            package/PCPlusDashboard.zip
+            deploy/Install-PCPlusEndpoint.ps1
+          generate_release_notes: true
