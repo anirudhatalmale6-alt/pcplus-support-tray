@@ -17,7 +17,7 @@ namespace SupportTray
     /// </summary>
     public class HealthMonitor : IDisposable
     {
-        private Timer? _pollTimer;
+        private System.Threading.Timer? _pollTimer;
         private readonly object _lock = new();
         private bool _disposed;
 
@@ -78,7 +78,7 @@ namespace SupportTray
         public void Start()
         {
             if (_pollTimer != null) return;
-            _pollTimer = new Timer(PollCallback, null, 0, PollIntervalMs);
+            _pollTimer = new System.Threading.Timer(PollCallback, null, 0, PollIntervalMs);
         }
 
         public void Stop()

@@ -1,3 +1,5 @@
+using PCPlus.Core.Models;
+
 namespace PCPlus.Core.Interfaces
 {
     /// <summary>
