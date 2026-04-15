@@ -321,7 +321,16 @@ echo "<h2>Waiting for Payment on Clover Terminal...</h2>";
 echo "<div id='clover-status' style='text-align:center; padding:30px;'>";
 echo "<div style='font-size:48px; margin:20px;'>&#128179;</div>"; // credit card emoji
 echo "<p style='font-size:20px;'><strong>&#36;" . number_format($currenttotal, 2) . "</strong></p>";
-echo "<p style='font-size:16px; color:#666;'>Customer: please tap, insert, or swipe card on the Clover terminal</p>";
+echo "<div style='background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px; margin:15px 0; text-align:left;'>";
+echo "<p style='margin:0 0 8px 0; font-weight:bold; color:#856404;'>On the Clover Flex terminal:</p>";
+echo "<ol style='margin:0; padding-left:20px; color:#856404;'>";
+echo "<li>Open the <strong>Orders</strong> app</li>";
+echo "<li>Tap the <strong>&#36;" . number_format($currenttotal, 2) . "</strong> order</li>";
+echo "<li>Tap <strong>Pay</strong></li>";
+echo "<li>Customer taps, inserts, or swipes card</li>";
+echo "</ol>";
+echo "</div>";
+echo "<p style='font-size:14px; color:#666;'>This page will automatically update when payment is complete.</p>";
 echo "<div id='payment-spinner' style='margin:20px;'>";
 echo "<div style='border:4px solid #f3f3f3; border-top:4px solid #4CAF50; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin:0 auto;'></div>";
 echo "</div>";
