@@ -469,7 +469,8 @@ function check_payment() {
 function add3() {
 
 require("deps.php");
-require_once("common.php");
+// NOTE: Do NOT include common.php here - it outputs login redirect HTML
+// which prevents header() redirect from working. Use direct code instead.
 
 $currenttotal = $_REQUEST['currenttotal'];
 $cfirstname = $_REQUEST['cfirstname'];
@@ -491,7 +492,8 @@ $clover_card_last4 = isset($_REQUEST['clover_card_last4']) ? $_REQUEST['clover_c
 $clover_card_brand = isset($_REQUEST['clover_card_brand']) ? $_REQUEST['clover_card_brand'] : '';
 
 $amounttopay = $currenttotal;
-$ipofpc = getipofpc();
+// getipofpc() replacement - get username from session
+$ipofpc = isset($_SESSION['username']) ? $_SESSION['username'] : '';
 
 // Sanitize for DB
 $custname = mysqli_real_escape_string($rs_connect, $cfirstname);
@@ -513,7 +515,9 @@ date_default_timezone_set("$pcrt_timezone");
 $currentdatetime = date('Y-m-d H:i:s');
 
 if ($isdeposit == 1) {
-$registerid = getcurrentregister();
+// getcurrentregister() replacement - get from session
+$registerid = isset($_SESSION['registerid']) ? $_SESSION['registerid'] : '0';
+$defaultuserstore = isset($_SESSION['storeid']) ? $_SESSION['storeid'] : '1';
 $rs_insert_gcc = "INSERT INTO deposits (pfirstname,pcompany,byuser,amount,paymentplugin,paymentstatus,paymenttype,paddress,paddress2,pcity,pstate,pzip,pphone,cc_number,cc_expmonth,cc_expyear,cc_transid,cc_cardtype,woid,invoiceid,dstatus,depdate,storeid,registerid) VALUES ('$custname','$ccompany','$ipofpc','$amounttopay','Clover','ready','credit','$custaddy1','$custaddy2','$custcity','$custstate','$custzip','$custphone','$ccnumber2','0','0','$cc_transid','$cccardtype','$woid','$invoiceid','open','$currentdatetime','$defaultuserstore','$registerid')";
 @mysqli_query($rs_connect, $rs_insert_gcc);
 
