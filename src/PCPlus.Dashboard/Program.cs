@@ -4,10 +4,9 @@ using PCPlus.Dashboard.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // SQLite database (easy deployment, no external DB needed)
-var dbPath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-    "PCPlusDashboard", "dashboard.db");
-Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+var dataDir = Path.Combine(AppContext.BaseDirectory, "data");
+Directory.CreateDirectory(dataDir);
+var dbPath = Path.Combine(dataDir, "dashboard.db");
 
 builder.Services.AddDbContext<DashboardDb>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
