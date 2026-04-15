@@ -75,7 +75,7 @@ namespace SupportTray
                 else
                 {
                     // Check if it's set to manual (still OK - it starts on demand)
-                    check.Passed = sc.StartType != ServiceControllerStartMode.Disabled;
+                    check.Passed = sc.StartType != ServiceStartMode.Disabled;
                     check.Detail = check.Passed
                         ? "Windows Update service is set to start on demand"
                         : "Windows Update service is DISABLED";
