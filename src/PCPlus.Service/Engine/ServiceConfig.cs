@@ -17,7 +17,7 @@ namespace PCPlus.Service.Engine
 
         // Identity
         public string CompanyName => Get("companyName", "PC Plus Computing");
-        public string DeviceId => Get("deviceId", "");
+        public string DeviceId => GetOrGenerateDeviceId();
         public string CustomerId => Get("customerId", "");
 
         // Monitoring
@@ -181,6 +181,18 @@ namespace PCPlus.Service.Engine
         private bool GetBool(string key, bool defaultValue)
         {
             return _values.TryGetValue(key, out var v) && bool.TryParse(v, out var b) ? b : defaultValue;
+        }
+
+        private string GetOrGenerateDeviceId()
+        {
+            var id = Get("deviceId", "");
+            if (!string.IsNullOrEmpty(id)) return id;
+
+            // Auto-generate from machine name + a stable hash
+            id = $"{Environment.MachineName}-{Guid.NewGuid():N}"[..16].ToUpperInvariant();
+            _values["deviceId"] = id;
+            Save(); // Persist so it stays the same across restarts
+            return id;
         }
     }
 }

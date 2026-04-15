@@ -152,12 +152,15 @@ namespace PCPlus.Service.Engine
                 else
                 {
                     IsConnected = false;
+                    var body = await response.Content.ReadAsStringAsync();
+                    _engine.Log(LogLevel.Warning, "dashboard-client",
+                        $"Heartbeat rejected: {response.StatusCode} - {body}");
                 }
             }
             catch (Exception ex)
             {
                 IsConnected = false;
-                _engine.Log(LogLevel.Debug, "dashboard-client", $"Heartbeat failed: {ex.Message}");
+                _engine.Log(LogLevel.Warning, "dashboard-client", $"Heartbeat failed: {ex.Message}");
             }
         }
 
