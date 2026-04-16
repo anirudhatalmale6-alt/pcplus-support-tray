@@ -1,6 +1,13 @@
 @echo off
 :: PC Plus Endpoint Protection - One-Click Installer
-:: Just double-click this file to install (will request admin rights)
+:: To create installer for a new customer:
+::   1. Copy this file and rename (e.g. Install-SmithLaw.bat)
+::   2. Change CUSTOMER_NAME below to the customer's company name
+::   3. Give the .bat file to the customer or run it on their PCs
+
+:: ========== CHANGE THIS FOR EACH CUSTOMER ==========
+set "CUSTOMER_NAME=Customer1"
+:: ====================================================
 
 :: Request admin elevation
 net session >nul 2>&1
@@ -12,6 +19,7 @@ if %errorlevel% neq 0 (
 
 echo ============================================
 echo  PC Plus Endpoint Protection - Installer
+echo  Customer: %CUSTOMER_NAME%
 echo ============================================
 echo.
 
@@ -30,7 +38,7 @@ if not exist "C:\temp\Install-PCPlusEndpoint.ps1" (
 
 :: Run the installer
 echo Running installer...
-powershell -ExecutionPolicy Bypass -File "C:\temp\Install-PCPlusEndpoint.ps1" -CustomerName "PC Plus Computing"
+powershell -ExecutionPolicy Bypass -File "C:\temp\Install-PCPlusEndpoint.ps1" -CustomerName "%CUSTOMER_NAME%"
 
 echo.
 echo Done! Press any key to close.
