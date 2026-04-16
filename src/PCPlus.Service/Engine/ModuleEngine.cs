@@ -295,7 +295,14 @@ namespace PCPlus.Service.Engine
 
             var result = await module.HandleCommandAsync(command);
             if (result.Success)
-                return IpcResponse.Ok(request.Id, result.Data, result.Message);
+            {
+                // If module returned a single-value dict, unwrap it so the client
+                // can deserialize directly (e.g. GetData<HealthSnapshot>() works)
+                object responseData = result.Data;
+                if (result.Data.Count == 1)
+                    responseData = result.Data.Values.First();
+                return IpcResponse.Ok(request.Id, responseData, result.Message);
+            }
             else
                 return IpcResponse.Fail(request.Id, result.Message);
         }
