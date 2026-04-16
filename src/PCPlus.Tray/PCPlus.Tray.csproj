@@ -9,7 +9,7 @@
     <ApplicationIcon>..\..\SupportTray\icon.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>4.0.0</Version>
+    <Version>4.3.0</Version>
     <Company>PC Plus Computing</Company>
     <Product>PC Plus Endpoint Protection</Product>
     <Description>PC Plus Endpoint Protection - System Tray UI</Description>

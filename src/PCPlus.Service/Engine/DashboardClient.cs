@@ -122,7 +122,7 @@ namespace PCPlus.Service.Engine
                     deviceId = _config.DeviceId,
                     hostname = Environment.MachineName,
                     osVersion = GetFriendlyOsVersion(),
-                    agentVersion = "4.1.0",
+                    agentVersion = typeof(DashboardClient).Assembly.GetName().Version?.ToString(3) ?? "4.3.0",
                     licenseTier = _engine.License.Tier.ToString(),
                     customerName = _config.CompanyName,
                     localIp = localIp,

@@ -27,7 +27,7 @@ namespace PCPlus.Tray.Forms
         private static readonly Color CardBorder = Color.FromArgb(220, 225, 230);
         private static readonly Color TextDark = Color.FromArgb(30, 30, 30);
         private static readonly Color TextMuted = Color.FromArgb(100, 110, 120);
-        private static readonly Color AccentTeal = Color.FromArgb(0, 172, 193);
+        private static readonly Color AccentTeal = Color.FromArgb(0, 120, 215);  // Blue to match PC Plus branding
         private static readonly Color AccentGreen = Color.FromArgb(46, 184, 92);
         private static readonly Color AccentOrange = Color.FromArgb(245, 166, 35);
         private static readonly Color AccentRed = Color.FromArgb(220, 53, 69);
@@ -159,7 +159,8 @@ namespace PCPlus.Tray.Forms
                 using var dotBrush = new SolidBrush(color);
                 g.FillEllipse(dotBrush, 18, 18, 8, 8);
                 g.DrawString(status, font, brush, 32, 14);
-                g.DrawString($"v4.2.0", font, brush, 32, 32);
+                var ver = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "4.3.0";
+                g.DrawString($"v{ver}", font, brush, 32, 32);
             };
 
             _sidebar.Controls.Add(navPanel);

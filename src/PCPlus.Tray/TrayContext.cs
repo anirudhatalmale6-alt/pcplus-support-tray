@@ -256,7 +256,7 @@ namespace PCPlus.Tray
                 var status = _serviceConnected ? "Service: Connected" : "Service: Not Connected";
                 var tier = _serviceStatus?.License?.Tier.ToString() ?? "Free";
                 MessageBox.Show(
-                    $"PC Plus Endpoint Protection v4.0.0\n\n" +
+                    $"PC Plus Endpoint Protection v{typeof(TrayContext).Assembly.GetName().Version?.ToString(3) ?? "4.3.0"}\n\n" +
                     $"{status}\n" +
                     $"License: {tier}\n" +
                     $"Modules: {_serviceStatus?.Modules.Count(m => m.IsRunning) ?? 0} running\n\n" +

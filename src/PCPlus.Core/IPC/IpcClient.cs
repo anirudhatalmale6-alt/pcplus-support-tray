@@ -83,7 +83,7 @@ namespace PCPlus.Core.IPC
                 Parameters = new()
                 {
                     ["clientType"] = "tray",
-                    ["version"] = "4.0.0",
+                    ["version"] = typeof(IpcClient).Assembly.GetName().Version?.ToString(3) ?? "4.3.0",
                     ["user"] = Environment.UserName,
                     ["machine"] = Environment.MachineName
                 }

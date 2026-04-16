@@ -50,7 +50,8 @@ namespace PCPlus.Service.Engine
         {
             _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _startedAt = DateTime.UtcNow;
-            Log(LogLevel.Info, "engine", $"Starting module engine v4.0.0 with {_modules.Count} modules");
+            var ver = typeof(ModuleEngine).Assembly.GetName().Version?.ToString(3) ?? "4.3.0";
+            Log(LogLevel.Info, "engine", $"Starting module engine v{ver} with {_modules.Count} modules");
 
             _ipcServer.Start();
             Log(LogLevel.Info, "engine", "IPC server started (secured: session auth + command authorization)");
@@ -352,7 +353,7 @@ namespace PCPlus.Service.Engine
 
         private ServiceStatusReport GetServiceStatus() => new()
         {
-            Version = "4.0.0",
+            Version = typeof(ModuleEngine).Assembly.GetName().Version?.ToString(3) ?? "4.3.0",
             IsRunning = true,
             StartedAt = _startedAt,
             Uptime = DateTime.UtcNow - _startedAt,
