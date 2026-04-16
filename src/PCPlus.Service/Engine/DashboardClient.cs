@@ -100,9 +100,9 @@ namespace PCPlus.Service.Engine
                 if (secModule?.IsRunning == true)
                 {
                     var status = secModule.GetStatus();
-                    if (status.Metadata.TryGetValue("score", out var scoreObj))
+                    if (status.Metrics.TryGetValue("score", out var scoreObj))
                         secScore = Convert.ToInt32(scoreObj);
-                    if (status.Metadata.TryGetValue("grade", out var gradeObj))
+                    if (status.Metrics.TryGetValue("grade", out var gradeObj))
                         secGrade = gradeObj?.ToString() ?? "?";
                 }
 
