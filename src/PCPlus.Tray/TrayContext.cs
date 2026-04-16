@@ -1,8 +1,10 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Windows.Forms;
 using PCPlus.Core.IPC;
 using PCPlus.Core.Models;
+using PCPlus.Tray.Forms;
 
 namespace PCPlus.Tray
 {
@@ -281,39 +283,83 @@ namespace PCPlus.Tray
             return menu;
         }
 
+        private DashboardForm? _dashboardForm;
+        private SecurityReportForm? _securityForm;
+        private SystemInfoForm? _sysInfoForm;
+
         private void ShowDashboard()
         {
-            // TODO: Open the dashboard form (connects to service via IPC)
-            MessageBox.Show("Health Dashboard - coming in next build.\n\nService connected: " + _serviceConnected,
-                "Health Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (_dashboardForm != null && !_dashboardForm.IsDisposed)
+            {
+                _dashboardForm.BringToFront();
+                _dashboardForm.Focus();
+                return;
+            }
+            _dashboardForm = new DashboardForm(_ipc);
+            _dashboardForm.Show();
         }
 
         private void ShowSecurityReport()
         {
-            // TODO: Request security report from service and show form
-            _ = Task.Run(async () =>
+            if (_securityForm != null && !_securityForm.IsDisposed)
             {
-                var response = await _ipc.GetSecurityScoreAsync();
-                if (response.Success)
-                {
-                    // Show the report
-                }
-            });
+                _securityForm.BringToFront();
+                _securityForm.Focus();
+                return;
+            }
+            _securityForm = new SecurityReportForm(_ipc);
+            _securityForm.Show();
         }
 
         private void ShowTicketForm()
         {
-            // TODO: Ticket creation form
+            OpenUrl("https://support.pcpluscomputing.com/ticket");
         }
 
         private void ShowSystemInfo()
         {
-            // TODO: System info form (gets data from service)
+            if (_sysInfoForm != null && !_sysInfoForm.IsDisposed)
+            {
+                _sysInfoForm.BringToFront();
+                _sysInfoForm.Focus();
+                return;
+            }
+            _sysInfoForm = new SystemInfoForm(_ipc);
+            _sysInfoForm.Show();
         }
 
         private void TakeScreenshot()
         {
-            // TODO: Screenshot capture
+            try
+            {
+                var bounds = Screen.PrimaryScreen!.Bounds;
+                using var bitmap = new Bitmap(bounds.Width, bounds.Height);
+                using var g = Graphics.FromImage(bitmap);
+                g.CopyFromScreen(Point.Empty, Point.Empty, bounds.Size);
+
+                var screenshotDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                    "PC Plus Screenshots");
+                Directory.CreateDirectory(screenshotDir);
+
+                var filename = $"Screenshot_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png";
+                var filepath = Path.Combine(screenshotDir, filename);
+                bitmap.Save(filepath, ImageFormat.Png);
+
+                _trayIcon.BalloonTipTitle = "Screenshot Saved";
+                _trayIcon.BalloonTipText = $"Saved to: {filepath}";
+                _trayIcon.BalloonTipIcon = ToolTipIcon.Info;
+                _trayIcon.ShowBalloonTip(3000);
+
+                // Open the file
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = filepath, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Screenshot failed: {ex.Message}", "Screenshot",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void OpenUrl(string url)
