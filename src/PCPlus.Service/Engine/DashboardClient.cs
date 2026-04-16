@@ -121,7 +121,7 @@ namespace PCPlus.Service.Engine
                 {
                     deviceId = _config.DeviceId,
                     hostname = Environment.MachineName,
-                    osVersion = Environment.OSVersion.VersionString,
+                    osVersion = GetFriendlyOsVersion(),
                     agentVersion = "4.1.0",
                     licenseTier = _engine.License.Tier.ToString(),
                     customerName = _config.CompanyName,
@@ -263,6 +263,34 @@ namespace PCPlus.Service.Engine
                     if (rwModule?.IsRunning == true)
                         await rwModule.HandleCommandAsync(new ModuleCommand { ModuleId = "ransomware", Action = "ActivateLockdown" });
                     break;
+            }
+        }
+
+        private static string GetFriendlyOsVersion()
+        {
+            try
+            {
+                var ver = Environment.OSVersion.Version;
+                var build = ver.Build;
+                string name;
+                if (ver.Major == 10 && build >= 22000)
+                    name = "Windows 11";
+                else if (ver.Major == 10)
+                    name = "Windows 10";
+                else if (ver.Major == 6 && ver.Minor == 3)
+                    name = "Windows 8.1";
+                else if (ver.Major == 6 && ver.Minor == 2)
+                    name = "Windows 8";
+                else if (ver.Major == 6 && ver.Minor == 1)
+                    name = "Windows 7";
+                else
+                    name = $"Windows {ver.Major}.{ver.Minor}";
+
+                return $"{name} (Build {build})";
+            }
+            catch
+            {
+                return Environment.OSVersion.VersionString;
             }
         }
 
