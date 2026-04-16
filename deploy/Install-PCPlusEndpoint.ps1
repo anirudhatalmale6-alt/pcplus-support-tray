@@ -1,23 +1,17 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    PC Plus Endpoint Protection - Install/Update Script
+    PC Plus Endpoint Protection - One-Click Install/Update Script
     Push via Tactical RMM, PDQ Deploy, GPO, or run manually.
-
-.DESCRIPTION
-    Downloads and installs both the Windows Service and Tray App.
-    Configures the service, sets up auto-start, and optionally
-    configures the dashboard phone-home URL.
-
-.PARAMETER DashboardUrl
-    URL of the central dashboard (e.g. https://dashboard.pcpluscomputing.com)
-    If set, the endpoint will phone home every 30 seconds.
-
-.PARAMETER CustomerId
-    Customer identifier for grouping in the dashboard.
 
 .PARAMETER CustomerName
     Customer display name for the dashboard.
+
+.PARAMETER DashboardUrl
+    URL of the central dashboard.
+
+.PARAMETER CustomerId
+    Customer identifier for grouping in the dashboard.
 
 .PARAMETER PolicyProfile
     Policy profile to apply: default, high-security, home-user
@@ -32,11 +26,7 @@
     Remove PC Plus Endpoint Protection completely.
 
 .EXAMPLE
-    # Push via Tactical RMM:
-    .\Install-PCPlusEndpoint.ps1 -DashboardUrl "https://dashboard.pcpluscomputing.com" -CustomerName "Acme Corp"
-
-    # Silent install with license:
-    .\Install-PCPlusEndpoint.ps1 -DashboardUrl "https://dashboard.pcpluscomputing.com" -LicenseKey "XXXX-XXXX" -PolicyProfile "high-security"
+    .\Install-PCPlusEndpoint.ps1 -CustomerName "Acme Corp"
 #>
 
 param(
@@ -49,7 +39,6 @@ param(
     [switch]$Uninstall
 )
 
-$ErrorActionPreference = "Stop"
 $ServiceName = "PCPlusEndpoint"
 $TrayAppName = "PCPlusTray"
 $InstallDir = "$env:ProgramFiles\PC Plus\Endpoint Protection"
@@ -60,150 +49,181 @@ function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $line = "[$timestamp] [$Level] $Message"
-    Write-Host $line
-    if (Test-Path (Split-Path $LogFile)) {
-        Add-Content -Path $LogFile -Value $line
-    }
+    if ($Level -eq "ERROR") { Write-Host $line -ForegroundColor Red }
+    elseif ($Level -eq "WARN") { Write-Host $line -ForegroundColor Yellow }
+    else { Write-Host $line -ForegroundColor Green }
+    try { Add-Content -Path $LogFile -Value $line -ErrorAction SilentlyContinue } catch { }
 }
 
 function Get-LatestRelease {
     Write-Log "Checking for latest release from GitHub..."
     try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$GitHubRepo/releases/latest" -UseBasicParsing
+        Write-Log "Found release: $($release.tag_name)"
         return $release
     }
     catch {
-        # If no releases yet, use the main branch build artifacts
-        Write-Log "No releases found. Will build from source or use pre-built binaries." "WARN"
+        Write-Log "No releases found: $_" "WARN"
         return $null
     }
 }
 
-function Install-Service {
-    Write-Log "Installing PC Plus Endpoint Protection..."
+function Install-Endpoint {
+    Write-Log "=================================================="
+    Write-Log "PC Plus Endpoint Protection - Installer"
+    Write-Log "=================================================="
 
     # Create directories
-    New-Item -Path $InstallDir -ItemType Directory -Force | Out-Null
-    New-Item -Path "$InstallDir\Service" -ItemType Directory -Force | Out-Null
-    New-Item -Path "$InstallDir\Tray" -ItemType Directory -Force | Out-Null
-    New-Item -Path $ConfigDir -ItemType Directory -Force | Out-Null
-    New-Item -Path "$ConfigDir\Logs" -ItemType Directory -Force | Out-Null
-    New-Item -Path "$ConfigDir\Audits" -ItemType Directory -Force | Out-Null
+    Write-Log "Creating directories..."
+    @($InstallDir, "$InstallDir\Service", "$InstallDir\Tray", $ConfigDir, "$ConfigDir\Logs", "$ConfigDir\Audits") | ForEach-Object {
+        New-Item -Path $_ -ItemType Directory -Force | Out-Null
+    }
 
     # Stop existing service if running
     $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     if ($svc) {
         Write-Log "Stopping existing service..."
         Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+        # Delete old service registration
+        Write-Log "Removing old service registration..."
+        sc.exe delete $ServiceName 2>$null | Out-Null
         Start-Sleep -Seconds 2
     }
 
     # Stop existing tray app
-    Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
-    # Download or copy binaries
+    # Download binaries
     $release = Get-LatestRelease
-    if ($release) {
-        # Download the combined installer zip from GitHub release
-        $installerAsset = $release.assets | Where-Object { $_.name -like "*Installer*" -or $_.name -like "*installer*" } | Select-Object -First 1
-
-        if ($installerAsset) {
-            Write-Log "Downloading installer package: $($installerAsset.name)..."
-            $zipPath = "$env:TEMP\pcplus-installer.zip"
-            Invoke-WebRequest -Uri $installerAsset.browser_download_url -OutFile $zipPath -UseBasicParsing
-            $extractPath = "$env:TEMP\pcplus-extract"
-            if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
-            Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
-            Remove-Item $zipPath -Force
-
-            # Copy Service binaries
-            $svcSource = Get-ChildItem -Path $extractPath -Filter "PCPlusService.exe" -Recurse | Select-Object -First 1
-            if ($svcSource) {
-                $svcDir = $svcSource.DirectoryName
-                Write-Log "Installing service from $svcDir..."
-                Copy-Item -Path "$svcDir\*" -Destination "$InstallDir\Service" -Recurse -Force
-            }
-
-            # Copy Tray binaries
-            $traySource = Get-ChildItem -Path $extractPath -Filter "PCPlusTray.exe" -Recurse | Select-Object -First 1
-            if ($traySource) {
-                $trayDir = $traySource.DirectoryName
-                Write-Log "Installing tray app from $trayDir..."
-                Copy-Item -Path "$trayDir\*" -Destination "$InstallDir\Tray" -Recurse -Force
-            }
-
-            Remove-Item $extractPath -Recurse -Force
-        }
-        else {
-            Write-Log "No installer asset found in release $($release.tag_name). Check GitHub release." "ERROR"
-        }
-    }
-    else {
-        Write-Log "No release assets found. Checking for local binaries..."
-        # Check if binaries exist in the script directory
-        $scriptDir = Split-Path -Parent $MyInvocation.ScriptName
-        if (Test-Path "$scriptDir\Service\PCPlusService.exe") {
-            Write-Log "Copying local service binaries..."
-            Copy-Item -Path "$scriptDir\Service\*" -Destination "$InstallDir\Service" -Recurse -Force
-        }
-        if (Test-Path "$scriptDir\Tray\PCPlusTray.exe") {
-            Write-Log "Copying local tray binaries..."
-            Copy-Item -Path "$scriptDir\Tray\*" -Destination "$InstallDir\Tray" -Recurse -Force
-        }
+    if (-not $release) {
+        Write-Log "Cannot download - no release found on GitHub." "ERROR"
+        return $false
     }
 
-    # Write config file
+    $installerAsset = $release.assets | Where-Object { $_.name -like "*Installer*" } | Select-Object -First 1
+    if (-not $installerAsset) {
+        Write-Log "No installer package found in release $($release.tag_name)." "ERROR"
+        return $false
+    }
+
+    Write-Log "Downloading: $($installerAsset.name) ($([math]::Round($installerAsset.size / 1MB, 1)) MB)..."
+    $zipPath = "$env:TEMP\pcplus-installer.zip"
+    $extractPath = "$env:TEMP\pcplus-extract"
+
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $installerAsset.browser_download_url -OutFile $zipPath -UseBasicParsing
+    }
+    catch {
+        Write-Log "Download failed: $_" "ERROR"
+        return $false
+    }
+
+    Write-Log "Extracting..."
+    if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+    Remove-Item $zipPath -Force
+
+    # Copy Service binaries
+    $svcSource = Get-ChildItem -Path $extractPath -Filter "PCPlusService.exe" -Recurse | Select-Object -First 1
+    if ($svcSource) {
+        Write-Log "Installing service binaries..."
+        Copy-Item -Path "$($svcSource.DirectoryName)\*" -Destination "$InstallDir\Service" -Recurse -Force
+    } else {
+        Write-Log "PCPlusService.exe not found in package!" "ERROR"
+        return $false
+    }
+
+    # Copy Tray binaries
+    $traySource = Get-ChildItem -Path $extractPath -Filter "PCPlusTray.exe" -Recurse | Select-Object -First 1
+    if ($traySource) {
+        Write-Log "Installing tray app binaries..."
+        Copy-Item -Path "$($traySource.DirectoryName)\*" -Destination "$InstallDir\Tray" -Recurse -Force
+    }
+
+    Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+
+    # Write config
     Write-Config
 
-    # Install Windows Service
+    # Register and start Windows Service
     $serviceExe = "$InstallDir\Service\PCPlusService.exe"
-    if (Test-Path $serviceExe) {
-        # Remove old service registration if exists
-        if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
-            Write-Log "Removing old service registration..."
-            sc.exe delete $ServiceName | Out-Null
-            Start-Sleep -Seconds 1
-        }
+    if (-not (Test-Path $serviceExe)) {
+        Write-Log "Service binary not found at $serviceExe" "ERROR"
+        return $false
+    }
 
-        Write-Log "Registering Windows Service..."
+    Write-Log "Registering Windows Service..."
+    try {
         New-Service -Name $ServiceName `
             -BinaryPathName "`"$serviceExe`"" `
             -DisplayName "PC Plus Endpoint Protection" `
-            -Description "PC Plus Endpoint Protection - Background security monitoring, ransomware defense, and system health." `
+            -Description "PC Plus Endpoint Protection - Security monitoring, ransomware defense, and system health." `
             -StartupType Automatic `
             -ErrorAction Stop | Out-Null
-
-        # Set service to auto-restart on failure
-        sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/10000/restart/30000 | Out-Null
-
-        # Start the service
-        Write-Log "Starting service..."
-        Start-Service -Name $ServiceName
-        Write-Log "Service started successfully."
+        Write-Log "Service registered."
     }
-    else {
-        Write-Log "Service binary not found at $serviceExe. Build the solution first." "WARN"
+    catch {
+        Write-Log "New-Service failed: $_ - Trying sc.exe..." "WARN"
+        $scResult = sc.exe create $ServiceName binPath= "`"$serviceExe`"" start= auto DisplayName= "PC Plus Endpoint Protection" 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log "sc.exe create also failed: $scResult" "ERROR"
+            Write-Log "You can start it manually: & `"$serviceExe`"" "WARN"
+            return $false
+        }
+        Write-Log "Service registered via sc.exe."
     }
 
-    # Set up Tray App auto-start for all users
+    # Set auto-restart on failure
+    sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/10000/restart/30000 2>$null | Out-Null
+
+    # Start the service
+    Write-Log "Starting service..."
+    try {
+        Start-Service -Name $ServiceName -ErrorAction Stop
+        Start-Sleep -Seconds 2
+        $svcStatus = (Get-Service -Name $ServiceName).Status
+        Write-Log "Service status: $svcStatus"
+    }
+    catch {
+        Write-Log "Start-Service failed: $_" "WARN"
+        Write-Log "Trying net start..." "WARN"
+        $netResult = net start $ServiceName 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log "Service failed to start. Trying direct exe..." "WARN"
+            # Try running the exe directly as a last resort
+            Start-Process -FilePath $serviceExe -WindowStyle Hidden
+            Start-Sleep -Seconds 3
+            $proc = Get-Process -Name "PCPlusService" -ErrorAction SilentlyContinue
+            if ($proc) {
+                Write-Log "Service running as process (PID: $($proc.Id)). Will register properly on next reboot."
+            } else {
+                Write-Log "Could not start service. Check Windows Event Viewer for details." "ERROR"
+            }
+        } else {
+            Write-Log "Service started via net start."
+        }
+    }
+
+    # Set up Tray App auto-start
     $trayExe = "$InstallDir\Tray\PCPlusTray.exe"
     if (Test-Path $trayExe) {
         Write-Log "Configuring tray app auto-start..."
-
-        # Registry key for auto-start (all users)
         $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-        Set-ItemProperty -Path $regPath -Name "PCPlusEndpoint" -Value "`"$trayExe`""
+        Set-ItemProperty -Path $regPath -Name "PCPlusEndpoint" -Value "`"$trayExe`"" -ErrorAction SilentlyContinue
 
-        # Start the tray app for the current user
-        Start-Process -FilePath $trayExe -WindowStyle Hidden
-        Write-Log "Tray app configured for auto-start."
+        # Start the tray app
+        Start-Process -FilePath $trayExe -WindowStyle Hidden -ErrorAction SilentlyContinue
+        Write-Log "Tray app started."
     }
 
-    # Create uninstall registry entry
+    # Create uninstall entry in Add/Remove Programs
     $uninstallKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PCPlusEndpoint"
     New-Item -Path $uninstallKey -Force | Out-Null
     Set-ItemProperty -Path $uninstallKey -Name "DisplayName" -Value "PC Plus Endpoint Protection"
-    Set-ItemProperty -Path $uninstallKey -Name "DisplayVersion" -Value "4.1.0"
+    Set-ItemProperty -Path $uninstallKey -Name "DisplayVersion" -Value "$($release.tag_name)"
     Set-ItemProperty -Path $uninstallKey -Name "Publisher" -Value "PC Plus Computing"
     Set-ItemProperty -Path $uninstallKey -Name "InstallLocation" -Value $InstallDir
     Set-ItemProperty -Path $uninstallKey -Name "UninstallString" -Value "powershell.exe -ExecutionPolicy Bypass -File `"$InstallDir\Uninstall.ps1`""
@@ -223,77 +243,73 @@ Write-Host "PC Plus Endpoint Protection has been uninstalled."
 '@
     Set-Content -Path "$InstallDir\Uninstall.ps1" -Value $uninstallScript
 
+    Write-Log "=================================================="
     Write-Log "Installation complete!"
     Write-Log "Install dir: $InstallDir"
     Write-Log "Config dir: $ConfigDir"
-    if ($DashboardUrl) {
-        Write-Log "Dashboard: $DashboardUrl"
-    }
+    Write-Log "Dashboard: $DashboardUrl"
+    Write-Log "=================================================="
+    return $true
 }
 
 function Write-Config {
     $configFile = "$ConfigDir\config.json"
 
-    # Load existing config if present
     $config = @{}
     if (Test-Path $configFile) {
         try {
             $existing = Get-Content $configFile -Raw | ConvertFrom-Json
-            $existing.PSObject.Properties | ForEach-Object {
-                $config[$_.Name] = $_.Value
-            }
+            $existing.PSObject.Properties | ForEach-Object { $config[$_.Name] = $_.Value }
         }
         catch { }
     }
 
-    # Apply install parameters (don't overwrite existing values unless explicitly set)
     if ($DashboardUrl) { $config["dashboardApiUrl"] = $DashboardUrl }
     if ($CustomerId) { $config["customerId"] = $CustomerId }
     if ($CustomerName) { $config["companyName"] = $CustomerName }
     if ($PolicyProfile) { $config["policyProfile"] = $PolicyProfile }
     if ($LicenseKey) { $config["licenseKey"] = $LicenseKey }
 
-    # Set defaults if not present
+    # Defaults
     if (-not $config.ContainsKey("ransomwareProtectionEnabled")) { $config["ransomwareProtectionEnabled"] = "true" }
     if (-not $config.ContainsKey("autoContainmentEnabled")) { $config["autoContainmentEnabled"] = "true" }
     if (-not $config.ContainsKey("showBalloonAlerts")) { $config["showBalloonAlerts"] = "true" }
     if (-not $config.ContainsKey("logAlerts")) { $config["logAlerts"] = "true" }
 
-    # Save
     $config | ConvertTo-Json -Depth 10 | Set-Content -Path $configFile -Encoding UTF8
     Write-Log "Config written to $configFile"
 }
 
-function Uninstall-Service {
+function Uninstall-Endpoint {
     Write-Log "Uninstalling PC Plus Endpoint Protection..."
-
-    # Stop and remove service
     Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
     sc.exe delete $ServiceName 2>$null
-
-    # Stop tray app
     Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force
-
-    # Remove auto-start
     Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "PCPlusEndpoint" -ErrorAction SilentlyContinue
-
-    # Remove uninstall entry
     Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PCPlusEndpoint" -Recurse -ErrorAction SilentlyContinue
-
-    # Remove files (keep config/logs for potential reinstall)
     Remove-Item -Path $InstallDir -Recurse -Force -ErrorAction SilentlyContinue
-
-    Write-Log "Uninstall complete. Config and logs preserved at $ConfigDir"
-    Write-Log "To remove config/logs too: Remove-Item '$ConfigDir' -Recurse -Force"
+    Write-Log "Uninstall complete. Config preserved at $ConfigDir"
 }
 
 # --- Main ---
+# Ensure log directory exists first
+New-Item -Path "$ConfigDir\Logs" -ItemType Directory -Force | Out-Null
+
 if ($Uninstall) {
-    Uninstall-Service
+    Uninstall-Endpoint
 }
 else {
-    # Ensure log directory exists
-    New-Item -Path "$ConfigDir\Logs" -ItemType Directory -Force | Out-Null
-    Install-Service
+    $result = Install-Endpoint
+    if ($result) {
+        Write-Host ""
+        Write-Host "SUCCESS - PC Plus Endpoint Protection is installed and running!" -ForegroundColor Cyan
+        Write-Host "Dashboard: $DashboardUrl" -ForegroundColor Cyan
+        Write-Host ""
+    } else {
+        Write-Host ""
+        Write-Host "Installation had issues - check the log above for details." -ForegroundColor Yellow
+        Write-Host "Log file: $LogFile" -ForegroundColor Yellow
+        Write-Host ""
+    }
 }

@@ -154,4 +154,5 @@ jobs:
             package/PCPlusEndpoint-Installer.zip
             package/PCPlusDashboard.zip
             deploy/Install-PCPlusEndpoint.ps1
+            deploy/Install-PCPlus.bat
           generate_release_notes: true
