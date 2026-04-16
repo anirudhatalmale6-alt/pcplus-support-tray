@@ -13,7 +13,7 @@ set "CUSTOMER_NAME=Customer1"
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo Requesting administrator privileges...
-    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    powershell -Command "Start-Process cmd -ArgumentList '/c \"\"%~f0\"\"' -Verb RunAs"
     exit /b
 )
 
@@ -28,18 +28,45 @@ if not exist "C:\temp" mkdir "C:\temp"
 
 :: Download the installer script
 echo Downloading installer...
-powershell -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/anirudhatalmale6-alt/pcplus-support-tray/releases/latest/download/Install-PCPlusEndpoint.ps1' -OutFile 'C:\temp\Install-PCPlusEndpoint.ps1' -UseBasicParsing"
+echo Please wait, this may take a minute...
+echo.
+powershell -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri 'https://github.com/anirudhatalmale6-alt/pcplus-support-tray/releases/latest/download/Install-PCPlusEndpoint.ps1' -OutFile 'C:\temp\Install-PCPlusEndpoint.ps1' -UseBasicParsing } catch { Write-Host 'Download failed:' $_.Exception.Message; exit 1 }"
+
+if %errorlevel% neq 0 (
+    echo.
+    echo ERROR: Download failed. Check internet connection.
+    echo.
+    pause
+    exit /b 1
+)
 
 if not exist "C:\temp\Install-PCPlusEndpoint.ps1" (
+    echo.
     echo ERROR: Failed to download installer script.
+    echo Check internet connection and try again.
+    echo.
     pause
     exit /b 1
 )
 
 :: Run the installer
 echo Running installer...
+echo.
 powershell -ExecutionPolicy Bypass -File "C:\temp\Install-PCPlusEndpoint.ps1" -CustomerName "%CUSTOMER_NAME%"
 
+if %errorlevel% neq 0 (
+    echo.
+    echo ERROR: Installation encountered an issue.
+    echo.
+    pause
+    exit /b 1
+)
+
 echo.
-echo Done! Press any key to close.
+echo ============================================
+echo  Installation complete!
+echo  Customer: %CUSTOMER_NAME%
+echo ============================================
+echo.
+echo Press any key to close.
 pause >nul
