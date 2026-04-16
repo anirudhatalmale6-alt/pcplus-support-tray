@@ -77,17 +77,17 @@
             <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:16px">
                 <div class="card" style="padding:20px">
                     <div class="card-header" style="margin-bottom:12px">
-                        <h3>Security Threats by Device</h3>
-                        <button class="btn btn-sm btn-secondary" onclick="showPage('devices')">View All</button>
+                        <h3>Customers</h3>
+                        <button class="btn btn-sm btn-secondary" onclick="showPage('devices')">All Devices</button>
                     </div>
                     <table style="width:100%">
                         <thead>
                             <tr>
-                                <th>Device</th>
-                                <th>Score</th>
+                                <th>Customer</th>
+                                <th>Endpoints</th>
+                                <th>Avg Score</th>
                                 <th>Alerts</th>
-                                <th>Status</th>
-                                <th>Protection</th>
+                                <th>Online</th>
                             </tr>
                         </thead>
                         <tbody id="security-threats-table"></tbody>
@@ -120,6 +120,72 @@
                     <button class="btn btn-sm btn-secondary" onclick="showPage('alerts')">View All</button>
                 </div>
                 <div id="overview-alerts"></div>
+            </div>
+        </div>
+
+        <!-- Customer Dashboard Page -->
+        <div id="page-customer" class="page" style="display:none">
+            <div class="page-header">
+                <h2 id="customer-title">Customer Dashboard</h2>
+                <div class="header-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="showPage('overview')">Back to Overview</button>
+                </div>
+            </div>
+
+            <!-- Customer Stats -->
+            <div class="stat-grid" id="customer-stats"></div>
+
+            <!-- Customer Donuts + Alerts Chart -->
+            <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:16px;margin-bottom:16px">
+                <div class="card" style="padding:20px;text-align:center">
+                    <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Device Status</h4>
+                    <div id="cust-donut-status"></div>
+                </div>
+                <div class="card" style="padding:20px;text-align:center">
+                    <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Security Score</h4>
+                    <div id="cust-donut-security"></div>
+                </div>
+                <div class="card" style="padding:20px;text-align:center">
+                    <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Protection</h4>
+                    <div id="cust-donut-protection"></div>
+                </div>
+                <div class="card" style="padding:20px;text-align:center">
+                    <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Alerts</h4>
+                    <div id="cust-donut-alerts"></div>
+                </div>
+            </div>
+
+            <!-- Customer Devices Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Endpoints</h3>
+                </div>
+                <table style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Hostname</th>
+                            <th>Security</th>
+                            <th>CPU</th>
+                            <th>RAM</th>
+                            <th>Disk</th>
+                            <th>CPU Temp</th>
+                            <th>GPU Temp</th>
+                            <th>Modules</th>
+                            <th>Last Seen</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customer-devices-table"></tbody>
+                </table>
+            </div>
+
+            <!-- Customer Alerts -->
+            <div class="card" style="margin-top:16px">
+                <div class="card-header">
+                    <h3>Recent Alerts</h3>
+                </div>
+                <div id="customer-alerts"></div>
             </div>
         </div>
 

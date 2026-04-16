@@ -21,9 +21,12 @@ function showPage(page) {
     refreshCurrentPage();
 }
 
+let currentCustomer = '';
+
 function refreshCurrentPage() {
     switch (currentPage) {
         case 'overview': loadOverview(); break;
+        case 'customer': loadCustomerDashboard(currentCustomer); break;
         case 'devices': loadDevices(); break;
         case 'alerts': loadAlerts(); break;
         case 'incidents': loadIncidents(); break;
@@ -217,25 +220,34 @@ async function loadOverview() {
         }
         drawAlertTimeline('alerts-timeline', timelineData);
 
-        // Security threats table - store devices globally for detail view
+        // Customers table - group devices by customer
         allDevices = devices;
         const threatsTable = document.getElementById('security-threats-table');
         if (devices.length === 0) {
             threatsTable.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No devices</td></tr>';
         } else {
-            threatsTable.innerHTML = devices.map(d => {
-                const status = d.lockdownActive ? 'lockdown' : (d.isOnline ? 'online' : 'offline');
-                const statusLabel = d.lockdownActive ? 'LOCKDOWN' : (d.isOnline ? 'Online' : 'Offline');
-                const gradeClass = (d.securityGrade || '?').toLowerCase();
-                const deviceAlerts = alerts.filter(a => (a.hostname || a.deviceId) === (d.hostname || d.deviceId)).length;
-                const protectionPct = d.runningModules > 0 ? Math.round((d.runningModules / Math.max(d.totalModules || 5, 1)) * 100) : 0;
-                const protColor = protectionPct >= 80 ? '#22c55e' : protectionPct >= 50 ? '#f59e0b' : '#ef4444';
-                return `<tr style="cursor:pointer" onclick="showDeviceDetail('${d.deviceId}')">
-                    <td style="font-weight:500;color:#3b82f6;text-decoration:underline">${esc(d.hostname || d.deviceId)}</td>
-                    <td><span class="score ${gradeClass}">${esc(d.securityGrade || '?')}</span> <span style="font-size:11px;color:var(--text-muted)">${d.securityScore}/100</span></td>
-                    <td>${deviceAlerts > 0 ? `<span style="color:#ef4444;font-weight:600">${deviceAlerts}</span>` : '<span style="color:var(--text-muted)">0</span>'}</td>
-                    <td><span class="badge ${status}"><span class="badge-dot"></span>${statusLabel}</span></td>
-                    <td><div class="progress" style="width:60px;display:inline-block;vertical-align:middle"><div class="progress-bar ${protColor === '#22c55e' ? 'green' : protColor === '#f59e0b' ? 'orange' : 'red'}" style="width:${protectionPct}%"></div></div> <span style="font-size:11px">${d.runningModules}/${d.totalModules || '?'}</span></td>
+            // Group by customer
+            const customers = {};
+            devices.forEach(d => {
+                const cust = d.customerName || d.customerId || 'Unassigned';
+                if (!customers[cust]) customers[cust] = [];
+                customers[cust].push(d);
+            });
+
+            threatsTable.innerHTML = Object.entries(customers).map(([custName, custDevices]) => {
+                const onlineCount = custDevices.filter(d => d.isOnline).length;
+                const avgScore = Math.round(custDevices.reduce((s, d) => s + (d.securityScore || 0), 0) / custDevices.length);
+                const custAlerts = custDevices.reduce((s, d) => {
+                    return s + alerts.filter(a => (a.hostname || a.deviceId) === (d.hostname || d.deviceId)).length;
+                }, 0);
+                const scoreClass = avgScore >= 80 ? 'b' : avgScore >= 60 ? 'c' : 'd';
+
+                return `<tr style="cursor:pointer" onclick="showCustomerDashboard('${esc(custName)}')">
+                    <td style="font-weight:600;color:#3b82f6;text-decoration:underline">${esc(custName)}</td>
+                    <td>${custDevices.length}</td>
+                    <td><span class="score ${scoreClass}">${avgScore >= 80 ? 'B' : avgScore >= 60 ? 'C' : 'D'}</span> <span style="font-size:11px;color:var(--text-muted)">${avgScore}/100</span></td>
+                    <td>${custAlerts > 0 ? `<span style="color:#ef4444;font-weight:600">${custAlerts}</span>` : '<span style="color:var(--text-muted)">0</span>'}</td>
+                    <td><span style="color:#22c55e;font-weight:500">${onlineCount}</span><span style="color:var(--text-muted)">/${custDevices.length}</span></td>
                 </tr>`;
             }).join('');
         }
@@ -292,6 +304,145 @@ async function loadOverview() {
         }
     } catch (err) {
         console.error('Failed to load overview:', err);
+    }
+}
+
+// --- Customer Dashboard ---
+function showCustomerDashboard(customerName) {
+    currentCustomer = customerName;
+    // Show customer page
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-customer').style.display = 'block';
+    currentPage = 'customer';
+    loadCustomerDashboard(customerName);
+}
+
+async function loadCustomerDashboard(customerName) {
+    if (!customerName) return;
+    try {
+        const [devices, alerts] = await Promise.all([
+            fetch(API + '/devices').then(r => r.json()),
+            fetch(API + '/alerts?limit=100&acknowledged=false').then(r => r.json())
+        ]);
+
+        allDevices = devices;
+        const custDevices = devices.filter(d => (d.customerName || d.customerId || 'Unassigned') === customerName);
+        const custAlerts = alerts.filter(a => custDevices.some(d => (d.hostname || d.deviceId) === (a.hostname || a.deviceId)));
+
+        // Title
+        document.getElementById('customer-title').textContent = customerName;
+
+        // Stats
+        const onlineCount = custDevices.filter(d => d.isOnline).length;
+        const offlineCount = custDevices.filter(d => !d.isOnline).length;
+        const avgScore = custDevices.length > 0 ? Math.round(custDevices.reduce((s, d) => s + (d.securityScore || 0), 0) / custDevices.length) : 0;
+        const critAlerts = custAlerts.filter(a => a.severity === 'Critical' || a.severity === 'Emergency').length;
+        const protectedCount = custDevices.filter(d => d.runningModules > 0 && d.isOnline).length;
+        const avgCpu = custDevices.length > 0 ? Math.round(custDevices.reduce((s, d) => s + (d.cpuPercent || 0), 0) / custDevices.length) : 0;
+
+        document.getElementById('customer-stats').innerHTML = `
+            <div class="stat-card blue">
+                <div class="label">Total Endpoints</div>
+                <div class="value">${custDevices.length}</div>
+                <div class="sub">${onlineCount} online, ${offlineCount} offline</div>
+            </div>
+            <div class="stat-card ${custAlerts.length > 0 ? 'red' : 'green'}">
+                <div class="label">Active Alerts</div>
+                <div class="value">${custAlerts.length}</div>
+                <div class="sub">${critAlerts} critical</div>
+            </div>
+            <div class="stat-card ${avgScore >= 80 ? 'green' : avgScore >= 60 ? 'yellow' : 'red'}">
+                <div class="label">Avg Security Score</div>
+                <div class="value">${avgScore}</div>
+                <div class="sub">Across ${custDevices.length} devices</div>
+            </div>
+            <div class="stat-card ${avgCpu > 80 ? 'red' : avgCpu > 60 ? 'yellow' : 'green'}">
+                <div class="label">Avg CPU Usage</div>
+                <div class="value">${avgCpu}%</div>
+                <div class="sub">${protectedCount} protected endpoints</div>
+            </div>
+        `;
+
+        // Donuts
+        createDonutChart('cust-donut-status', [
+            { label: 'Online', value: onlineCount, color: '#22c55e' },
+            { label: 'Offline', value: offlineCount, color: '#6b7280' }
+        ], custDevices.length.toString(), 120);
+
+        const goodScore = custDevices.filter(d => d.securityScore >= 80).length;
+        const medScore = custDevices.filter(d => d.securityScore >= 50 && d.securityScore < 80).length;
+        const lowScore = custDevices.filter(d => d.securityScore < 50).length;
+        createDonutChart('cust-donut-security', [
+            { label: 'Good (80+)', value: goodScore, color: '#22c55e' },
+            { label: 'Medium', value: medScore, color: '#f59e0b' },
+            { label: 'Low (<50)', value: lowScore, color: '#ef4444' }
+        ], avgScore.toString(), 120);
+
+        const unprotected = custDevices.filter(d => d.runningModules === 0).length;
+        createDonutChart('cust-donut-protection', [
+            { label: 'Protected', value: protectedCount, color: '#22c55e' },
+            { label: 'Unprotected', value: unprotected, color: '#ef4444' }
+        ], protectedCount.toString(), 120);
+
+        const alertCats = {};
+        custAlerts.forEach(a => {
+            const cat = a.category || a.moduleId || 'Other';
+            alertCats[cat] = (alertCats[cat] || 0) + 1;
+        });
+        const catColors = ['#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6'];
+        createDonutChart('cust-donut-alerts',
+            Object.entries(alertCats).map(([label, value], i) => ({
+                label: label.charAt(0).toUpperCase() + label.slice(1), value, color: catColors[i % catColors.length]
+            })),
+            custAlerts.length.toString(), 120);
+
+        // Devices table
+        const tbody = document.getElementById('customer-devices-table');
+        tbody.innerHTML = custDevices.map(d => {
+            const status = d.lockdownActive ? 'lockdown' : (d.isOnline ? 'online' : 'offline');
+            const statusLabel = d.lockdownActive ? 'LOCKDOWN' : (d.isOnline ? 'Online' : 'Offline');
+            const gradeClass = (d.securityGrade || '?').toLowerCase();
+            const cpuColor = d.cpuPercent > 90 ? 'red' : d.cpuPercent > 70 ? 'orange' : 'green';
+            const ramColor = d.ramPercent > 90 ? 'red' : d.ramPercent > 70 ? 'orange' : 'green';
+            const diskColor = d.diskPercent > 90 ? 'red' : d.diskPercent > 80 ? 'orange' : 'green';
+            const cpuTempColor = d.cpuTempC > 85 ? 'red' : d.cpuTempC > 70 ? 'orange' : 'green';
+            const gpuTempColor = d.gpuTempC > 85 ? 'red' : d.gpuTempC > 70 ? 'orange' : 'green';
+
+            return `<tr style="cursor:pointer" onclick="showDeviceDetail('${d.deviceId}')">
+                <td><span class="badge ${status}"><span class="badge-dot"></span>${statusLabel}</span></td>
+                <td style="font-weight:500;color:#3b82f6">${esc(d.hostname || d.deviceId)}</td>
+                <td><span class="score ${gradeClass}">${esc(d.securityGrade || '?')}</span> <span style="font-size:11px;color:var(--text-muted)">${d.securityScore}/100</span></td>
+                <td><div class="progress"><div class="progress-bar ${cpuColor}" style="width:${d.cpuPercent}%"></div></div>${Math.round(d.cpuPercent)}%</td>
+                <td><div class="progress"><div class="progress-bar ${ramColor}" style="width:${d.ramPercent}%"></div></div>${Math.round(d.ramPercent)}%</td>
+                <td><div class="progress"><div class="progress-bar ${diskColor}" style="width:${d.diskPercent}%"></div></div>${Math.round(d.diskPercent)}%</td>
+                <td style="color:${cpuTempColor === 'red' ? '#ef4444' : cpuTempColor === 'orange' ? '#f59e0b' : '#22c55e'};font-weight:500">${d.cpuTempC > 0 ? Math.round(d.cpuTempC) + '°C' : '-'}</td>
+                <td style="color:${gpuTempColor === 'red' ? '#ef4444' : gpuTempColor === 'orange' ? '#f59e0b' : '#22c55e'};font-weight:500">${d.gpuTempC > 0 ? Math.round(d.gpuTempC) + '°C' : '-'}</td>
+                <td>${d.runningModules}</td>
+                <td style="font-size:12px;color:var(--text-muted)">${timeAgo(d.lastSeen)}</td>
+                <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();showDeviceDetail('${d.deviceId}')">Detail</button></td>
+            </tr>`;
+        }).join('');
+
+        // Customer alerts
+        const custAlertsEl = document.getElementById('customer-alerts');
+        if (custAlerts.length === 0) {
+            custAlertsEl.innerHTML = '<div class="empty-state"><p>No active alerts for this customer.</p></div>';
+        } else {
+            custAlertsEl.innerHTML = custAlerts.slice(0, 15).map(a => `
+                <div class="alert-item">
+                    <div class="alert-severity ${a.severity}"></div>
+                    <div class="alert-content">
+                        <div class="alert-title">${esc(a.title)}</div>
+                        <div class="alert-message">${esc(a.message)}</div>
+                        <div class="alert-meta">${esc(a.hostname || a.deviceId)} &middot; ${timeAgo(a.timestamp)} &middot; ${a.severity}</div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="ackAlert(${a.id})">Ack</button>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        console.error('Failed to load customer dashboard:', err);
     }
 }
 
