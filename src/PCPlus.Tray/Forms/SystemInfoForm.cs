@@ -100,9 +100,24 @@ namespace PCPlus.Tray.Forms
             items.Add(("System", "OS", GetFriendlyOsVersion()));
             items.Add(("System", "Architecture", Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit"));
             items.Add(("System", ".NET Runtime", System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription));
+            items.Add(("System", "Local IP", GetLocalIpAddress()));
+            items.Add(("System", "Public IP", "Loading..."));
 
             // Hardware via WMI (run off UI thread)
             var hwInfo = await Task.Run(() => GetHardwareInfo());
+
+            // Fetch public IP
+            string publicIp = "N/A";
+            try
+            {
+                using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                publicIp = (await httpClient.GetStringAsync("https://api.ipify.org")).Trim();
+            }
+            catch { }
+
+            // Update the Public IP entry
+            var sysIdx = items.FindIndex(i => i.key == "Public IP");
+            if (sysIdx >= 0) items[sysIdx] = ("System", "Public IP", publicIp);
             items.AddRange(hwInfo);
 
             // Health data from service
@@ -217,6 +232,21 @@ namespace PCPlus.Tray.Forms
             }
             catch { }
             return items;
+        }
+
+        private static string GetLocalIpAddress()
+        {
+            try
+            {
+                using var socket = new System.Net.Sockets.Socket(
+                    System.Net.Sockets.AddressFamily.InterNetwork,
+                    System.Net.Sockets.SocketType.Dgram, 0);
+                socket.Connect("8.8.8.8", 65530);
+                if (socket.LocalEndPoint is System.Net.IPEndPoint ep)
+                    return ep.Address.ToString();
+            }
+            catch { }
+            return "N/A";
         }
 
         private static string GetFriendlyOsVersion()

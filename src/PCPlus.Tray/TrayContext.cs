@@ -198,7 +198,7 @@ namespace PCPlus.Tray
 
             // Live Chat
             var chatItem = new ToolStripMenuItem("Live Chat");
-            chatItem.Click += (s, e) => OpenUrl("https://support.pcpluscomputing.com/livechat.html");
+            chatItem.Click += (s, e) => OpenUrl("https://pcpluscomputing.com/contact/");
             menu.Items.Add(chatItem);
 
             // Support Ticket
