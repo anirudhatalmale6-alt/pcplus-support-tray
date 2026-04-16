@@ -28,6 +28,8 @@ using (var scope = app.Services.CreateScope())
 
     // Add new columns if missing (EnsureCreated doesn't alter existing tables)
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Devices ADD COLUMN GpuTempC REAL NOT NULL DEFAULT 0"); } catch { }
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Devices ADD COLUMN LocalIp TEXT NOT NULL DEFAULT ''"); } catch { }
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Devices ADD COLUMN PublicIp TEXT NOT NULL DEFAULT ''"); } catch { }
 }
 
 app.UseCors();

@@ -16,6 +16,8 @@ namespace PCPlus.Dashboard.Models
         public string LicenseKey { get; set; } = "";
         public string PolicyProfile { get; set; } = "default";
         public string IpAddress { get; set; } = "";
+        public string LocalIp { get; set; } = "";
+        public string PublicIp { get; set; } = "";
         public bool IsOnline { get; set; }
         public DateTime LastSeen { get; set; }
         public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
@@ -117,6 +119,8 @@ namespace PCPlus.Dashboard.Models
         public string DeviceId { get; set; } = "";
         public string Hostname { get; set; } = "";
         public string CustomerName { get; set; } = "";
+        public string LocalIp { get; set; } = "";
+        public string PublicIp { get; set; } = "";
         public string OsVersion { get; set; } = "";
         public string AgentVersion { get; set; } = "";
         public string LicenseTier { get; set; } = "";

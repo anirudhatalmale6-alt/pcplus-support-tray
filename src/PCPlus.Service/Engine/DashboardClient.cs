@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Json;
+using System.Net.Sockets;
 using System.Text.Json;
 using PCPlus.Core.Interfaces;
 using PCPlus.Core.Models;
@@ -109,6 +111,12 @@ namespace PCPlus.Service.Engine
                 // Count running modules
                 var runningCount = _engine.GetAllModules().Count(m => m.IsRunning);
 
+                // Get local IP
+                var localIp = GetLocalIpAddress();
+
+                // Get public IP (cached, refreshed every 5 minutes)
+                var publicIp = await GetPublicIpAddress();
+
                 var heartbeat = new
                 {
                     deviceId = _config.DeviceId,
@@ -117,6 +125,8 @@ namespace PCPlus.Service.Engine
                     agentVersion = "4.1.0",
                     licenseTier = _engine.License.Tier.ToString(),
                     customerName = _config.CompanyName,
+                    localIp = localIp,
+                    publicIp = publicIp,
                     cpuPercent = cpu,
                     ramPercent = ram,
                     diskPercent = disk,
@@ -254,6 +264,41 @@ namespace PCPlus.Service.Engine
                         await rwModule.HandleCommandAsync(new ModuleCommand { ModuleId = "ransomware", Action = "ActivateLockdown" });
                     break;
             }
+        }
+
+        private static string GetLocalIpAddress()
+        {
+            try
+            {
+                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0);
+                socket.Connect("8.8.8.8", 65530);
+                if (socket.LocalEndPoint is IPEndPoint endPoint)
+                    return endPoint.Address.ToString();
+            }
+            catch { }
+            return "0.0.0.0";
+        }
+
+        private string? _cachedPublicIp;
+        private DateTime _publicIpLastFetched = DateTime.MinValue;
+
+        private async Task<string> GetPublicIpAddress()
+        {
+            // Cache public IP for 5 minutes
+            if (_cachedPublicIp != null && (DateTime.UtcNow - _publicIpLastFetched).TotalMinutes < 5)
+                return _cachedPublicIp;
+
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                _cachedPublicIp = (await client.GetStringAsync("https://api.ipify.org")).Trim();
+                _publicIpLastFetched = DateTime.UtcNow;
+            }
+            catch
+            {
+                _cachedPublicIp ??= "";
+            }
+            return _cachedPublicIp;
         }
 
         public void Dispose()

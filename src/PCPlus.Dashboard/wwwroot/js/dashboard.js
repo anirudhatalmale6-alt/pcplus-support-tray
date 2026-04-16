@@ -163,7 +163,8 @@ function showDeviceDetail(deviceId) {
             <div><span style="color:var(--text-muted);font-size:12px">Customer</span><br>${esc(d.customerName || d.customerId || '-')}</div>
             <div><span style="color:var(--text-muted);font-size:12px">OS</span><br>${esc(d.osVersion || '-')}</div>
             <div><span style="color:var(--text-muted);font-size:12px">Agent Version</span><br>${esc(d.agentVersion || '-')}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">IP Address</span><br>${esc(d.ipAddress || '-')}</div>
+            <div><span style="color:var(--text-muted);font-size:12px">Local IP</span><br>${esc(d.localIp || d.ipAddress || '-')}</div>
+            <div><span style="color:var(--text-muted);font-size:12px">Public IP</span><br>${esc(d.publicIp || '-')}</div>
             <div><span style="color:var(--text-muted);font-size:12px">License</span><br>${esc(d.licenseTier)}</div>
             <div><span style="color:var(--text-muted);font-size:12px">Policy</span><br>${esc(d.policyProfile || 'default')}</div>
             <div><span style="color:var(--text-muted);font-size:12px">Registered</span><br>${new Date(d.registeredAt).toLocaleDateString()}</div>

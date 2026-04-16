@@ -52,6 +52,10 @@ namespace PCPlus.Dashboard.Controllers
             device.Hostname = request.Hostname;
             if (!string.IsNullOrEmpty(request.CustomerName))
                 device.CustomerName = request.CustomerName;
+            if (!string.IsNullOrEmpty(request.LocalIp))
+                device.LocalIp = request.LocalIp;
+            if (!string.IsNullOrEmpty(request.PublicIp))
+                device.PublicIp = request.PublicIp;
             device.OsVersion = request.OsVersion;
             device.AgentVersion = request.AgentVersion;
             device.LicenseTier = request.LicenseTier;
