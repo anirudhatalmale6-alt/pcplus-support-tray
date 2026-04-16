@@ -106,7 +106,7 @@ async function loadDevices() {
 function renderDevices(devices) {
     const tbody = document.getElementById('devices-table');
     if (devices.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text-muted)">No devices registered yet. Endpoints will appear here when they start phoning home.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:32px;color:var(--text-muted)">No devices registered yet. Endpoints will appear here when they start phoning home.</td></tr>';
         return;
     }
 
@@ -117,6 +117,8 @@ function renderDevices(devices) {
         const cpuColor = d.cpuPercent > 90 ? 'red' : d.cpuPercent > 70 ? 'orange' : 'green';
         const ramColor = d.ramPercent > 90 ? 'red' : d.ramPercent > 70 ? 'orange' : 'green';
         const diskColor = d.diskPercent > 90 ? 'red' : d.diskPercent > 80 ? 'orange' : 'green';
+        const cpuTempColor = d.cpuTempC > 85 ? 'red' : d.cpuTempC > 70 ? 'orange' : 'green';
+        const gpuTempColor = d.gpuTempC > 85 ? 'red' : d.gpuTempC > 70 ? 'orange' : 'green';
 
         return `<tr>
             <td><span class="badge ${status}"><span class="badge-dot"></span>${statusLabel}</span></td>
@@ -126,6 +128,8 @@ function renderDevices(devices) {
             <td><div class="progress"><div class="progress-bar ${cpuColor}" style="width:${d.cpuPercent}%"></div></div>${Math.round(d.cpuPercent)}%</td>
             <td><div class="progress"><div class="progress-bar ${ramColor}" style="width:${d.ramPercent}%"></div></div>${Math.round(d.ramPercent)}%</td>
             <td><div class="progress"><div class="progress-bar ${diskColor}" style="width:${d.diskPercent}%"></div></div>${Math.round(d.diskPercent)}%</td>
+            <td style="color:${cpuTempColor === 'red' ? '#ef4444' : cpuTempColor === 'orange' ? '#f59e0b' : '#22c55e'};font-weight:500">${d.cpuTempC > 0 ? Math.round(d.cpuTempC) + '°C' : '-'}</td>
+            <td style="color:${gpuTempColor === 'red' ? '#ef4444' : gpuTempColor === 'orange' ? '#f59e0b' : '#22c55e'};font-weight:500">${d.gpuTempC > 0 ? Math.round(d.gpuTempC) + '°C' : '-'}</td>
             <td><span class="badge info">${esc(d.licenseTier)}</span></td>
             <td>${d.runningModules}</td>
             <td style="font-size:12px;color:var(--text-muted)">${timeAgo(d.lastSeen)}</td>
@@ -164,7 +168,8 @@ function showDeviceDetail(deviceId) {
             <div><span style="color:var(--text-muted);font-size:12px">Policy</span><br>${esc(d.policyProfile || 'default')}</div>
             <div><span style="color:var(--text-muted);font-size:12px">Registered</span><br>${new Date(d.registeredAt).toLocaleDateString()}</div>
             <div><span style="color:var(--text-muted);font-size:12px">Security Score</span><br><span class="score ${(d.securityGrade||'?').toLowerCase()}">${d.securityGrade}</span> ${d.securityScore}/100</div>
-            <div><span style="color:var(--text-muted);font-size:12px">Temp</span><br>${d.cpuTempC > 0 ? d.cpuTempC + ' C' : '-'}</div>
+            <div><span style="color:var(--text-muted);font-size:12px">CPU Temp</span><br>${d.cpuTempC > 0 ? Math.round(d.cpuTempC) + '°C' : '-'}</div>
+            <div><span style="color:var(--text-muted);font-size:12px">GPU Temp</span><br>${d.gpuTempC > 0 ? Math.round(d.gpuTempC) + '°C' : '-'}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm btn-secondary" onclick="sendCommand('${d.deviceId}','rescan')">Run Security Scan</button>

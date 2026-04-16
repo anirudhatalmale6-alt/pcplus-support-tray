@@ -69,7 +69,7 @@ namespace PCPlus.Service.Engine
             {
                 // Get current health from health module
                 var healthModule = _engine.GetModule("health");
-                float cpu = 0, ram = 0, disk = 0, temp = 0;
+                float cpu = 0, ram = 0, disk = 0, cpuTemp = 0, gpuTemp = 0;
                 if (healthModule?.IsRunning == true)
                 {
                     var result = await healthModule.HandleCommandAsync(new ModuleCommand
@@ -87,30 +87,27 @@ namespace PCPlus.Service.Engine
                             cpu = snap.CpuPercent;
                             ram = snap.RamPercent;
                             disk = snap.Disks.FirstOrDefault()?.UsedPercent ?? 0;
-                            temp = snap.CpuTempC;
+                            cpuTemp = snap.CpuTempC;
+                            gpuTemp = snap.GpuTempC;
                         }
                     }
                 }
 
-                // Get security score
+                // Get security score from module status (more reliable than command)
                 var secModule = _engine.GetModule("security");
                 int secScore = 0;
                 string secGrade = "?";
                 if (secModule?.IsRunning == true)
                 {
-                    var result = await secModule.HandleCommandAsync(new ModuleCommand
-                    {
-                        ModuleId = "security",
-                        Action = "GetSecurityScore"
-                    });
-                    if (result.Success)
-                    {
-                        if (result.Data.TryGetValue("score", out var scoreObj))
-                            secScore = Convert.ToInt32(scoreObj);
-                        if (result.Data.TryGetValue("grade", out var gradeObj))
-                            secGrade = gradeObj?.ToString() ?? "?";
-                    }
+                    var status = secModule.GetStatus();
+                    if (status.Metadata.TryGetValue("score", out var scoreObj))
+                        secScore = Convert.ToInt32(scoreObj);
+                    if (status.Metadata.TryGetValue("grade", out var gradeObj))
+                        secGrade = gradeObj?.ToString() ?? "?";
                 }
+
+                // Count running modules
+                var runningCount = _engine.GetAllModules().Count(m => m.IsRunning);
 
                 var heartbeat = new
                 {
@@ -119,15 +116,17 @@ namespace PCPlus.Service.Engine
                     osVersion = Environment.OSVersion.VersionString,
                     agentVersion = "4.1.0",
                     licenseTier = _engine.License.Tier.ToString(),
+                    customerName = _config.CompanyName,
                     cpuPercent = cpu,
                     ramPercent = ram,
                     diskPercent = disk,
-                    cpuTempC = temp,
+                    cpuTempC = cpuTemp,
+                    gpuTempC = gpuTemp,
                     securityScore = secScore,
                     securityGrade = secGrade,
-                    lockdownActive = false, // Updated by ransomware module
+                    lockdownActive = false,
                     activeAlerts = 0,
-                    runningModules = 0,
+                    runningModules = runningCount,
                     modules = new List<object>()
                 };
 

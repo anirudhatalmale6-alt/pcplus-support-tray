@@ -25,6 +25,7 @@ namespace PCPlus.Dashboard.Models
         public float RamPercent { get; set; }
         public float DiskPercent { get; set; }
         public float CpuTempC { get; set; }
+        public float GpuTempC { get; set; }
         public int HealthScore { get; set; }
         public int SecurityScore { get; set; }
         public string SecurityGrade { get; set; } = "?";
@@ -115,6 +116,7 @@ namespace PCPlus.Dashboard.Models
     {
         public string DeviceId { get; set; } = "";
         public string Hostname { get; set; } = "";
+        public string CustomerName { get; set; } = "";
         public string OsVersion { get; set; } = "";
         public string AgentVersion { get; set; } = "";
         public string LicenseTier { get; set; } = "";
@@ -122,6 +124,7 @@ namespace PCPlus.Dashboard.Models
         public float RamPercent { get; set; }
         public float DiskPercent { get; set; }
         public float CpuTempC { get; set; }
+        public float GpuTempC { get; set; }
         public int SecurityScore { get; set; }
         public string SecurityGrade { get; set; } = "";
         public bool LockdownActive { get; set; }

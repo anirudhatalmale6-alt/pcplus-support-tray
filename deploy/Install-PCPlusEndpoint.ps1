@@ -40,7 +40,7 @@
 #>
 
 param(
-    [string]$DashboardUrl = "",
+    [string]$DashboardUrl = "https://dashboard.pcpluscomputing.com",
     [string]$CustomerId = "",
     [string]$CustomerName = "",
     [string]$PolicyProfile = "default",
@@ -104,24 +104,38 @@ function Install-Service {
     # Download or copy binaries
     $release = Get-LatestRelease
     if ($release) {
-        # Download from GitHub release
-        $serviceAsset = $release.assets | Where-Object { $_.name -like "*Service*" -or $_.name -like "*service*" } | Select-Object -First 1
-        $trayAsset = $release.assets | Where-Object { $_.name -like "*Tray*" -or $_.name -like "*tray*" } | Select-Object -First 1
+        # Download the combined installer zip from GitHub release
+        $installerAsset = $release.assets | Where-Object { $_.name -like "*Installer*" -or $_.name -like "*installer*" } | Select-Object -First 1
 
-        if ($serviceAsset) {
-            Write-Log "Downloading service: $($serviceAsset.name)..."
-            $servicePath = "$env:TEMP\pcplus-service.zip"
-            Invoke-WebRequest -Uri $serviceAsset.browser_download_url -OutFile $servicePath -UseBasicParsing
-            Expand-Archive -Path $servicePath -DestinationPath "$InstallDir\Service" -Force
-            Remove-Item $servicePath -Force
+        if ($installerAsset) {
+            Write-Log "Downloading installer package: $($installerAsset.name)..."
+            $zipPath = "$env:TEMP\pcplus-installer.zip"
+            Invoke-WebRequest -Uri $installerAsset.browser_download_url -OutFile $zipPath -UseBasicParsing
+            $extractPath = "$env:TEMP\pcplus-extract"
+            if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+            Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+            Remove-Item $zipPath -Force
+
+            # Copy Service binaries
+            $svcSource = Get-ChildItem -Path $extractPath -Filter "PCPlusService.exe" -Recurse | Select-Object -First 1
+            if ($svcSource) {
+                $svcDir = $svcSource.DirectoryName
+                Write-Log "Installing service from $svcDir..."
+                Copy-Item -Path "$svcDir\*" -Destination "$InstallDir\Service" -Recurse -Force
+            }
+
+            # Copy Tray binaries
+            $traySource = Get-ChildItem -Path $extractPath -Filter "PCPlusTray.exe" -Recurse | Select-Object -First 1
+            if ($traySource) {
+                $trayDir = $traySource.DirectoryName
+                Write-Log "Installing tray app from $trayDir..."
+                Copy-Item -Path "$trayDir\*" -Destination "$InstallDir\Tray" -Recurse -Force
+            }
+
+            Remove-Item $extractPath -Recurse -Force
         }
-
-        if ($trayAsset) {
-            Write-Log "Downloading tray app: $($trayAsset.name)..."
-            $trayPath = "$env:TEMP\pcplus-tray.zip"
-            Invoke-WebRequest -Uri $trayAsset.browser_download_url -OutFile $trayPath -UseBasicParsing
-            Expand-Archive -Path $trayPath -DestinationPath "$InstallDir\Tray" -Force
-            Remove-Item $trayPath -Force
+        else {
+            Write-Log "No installer asset found in release $($release.tag_name). Check GitHub release." "ERROR"
         }
     }
     else {

@@ -50,6 +50,8 @@ namespace PCPlus.Dashboard.Controllers
 
             // Update device state
             device.Hostname = request.Hostname;
+            if (!string.IsNullOrEmpty(request.CustomerName))
+                device.CustomerName = request.CustomerName;
             device.OsVersion = request.OsVersion;
             device.AgentVersion = request.AgentVersion;
             device.LicenseTier = request.LicenseTier;
@@ -60,6 +62,7 @@ namespace PCPlus.Dashboard.Controllers
             device.RamPercent = request.RamPercent;
             device.DiskPercent = request.DiskPercent;
             device.CpuTempC = request.CpuTempC;
+            device.GpuTempC = request.GpuTempC;
             device.SecurityScore = request.SecurityScore;
             device.SecurityGrade = request.SecurityGrade;
             device.LockdownActive = request.LockdownActive;

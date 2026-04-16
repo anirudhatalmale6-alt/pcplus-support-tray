@@ -141,6 +141,8 @@ namespace PCPlus.Service.Engine
             return module;
         }
 
+        public IEnumerable<IModule> GetAllModules() => _modules.Values;
+
         public async Task BroadcastEventAsync(ModuleEvent evt)
         {
             foreach (var (_, module) in _modules)
