@@ -16,6 +16,7 @@ namespace PCPlus.Tray
         private readonly IpcClient _ipc;
         private readonly System.Windows.Forms.Timer _reconnectTimer;
         private bool _serviceConnected;
+        private bool _connecting;
 
         // Cached state from service
         private HealthSnapshot? _lastHealth;
@@ -48,7 +49,7 @@ namespace PCPlus.Tray
             _reconnectTimer = new System.Windows.Forms.Timer { Interval = 10000 };
             _reconnectTimer.Tick += async (s, e) =>
             {
-                if (!_serviceConnected)
+                if (!_serviceConnected && !_connecting)
                     await ConnectToServiceAsync();
             };
             _reconnectTimer.Start();
@@ -56,14 +57,20 @@ namespace PCPlus.Tray
 
         private async Task ConnectToServiceAsync()
         {
+            if (_connecting) return;
+            _connecting = true;
             try
             {
-                await _ipc.ConnectAsync(3000);
+                // Run IPC connection off the UI thread to prevent freezing
+                await Task.Run(async () =>
+                {
+                    await _ipc.ConnectAsync(3000);
+                });
                 _serviceConnected = true;
                 UpdateTrayIcon();
 
-                // Get initial status
-                var response = await _ipc.GetServiceStatusAsync();
+                // Get initial status (also off UI thread)
+                var response = await Task.Run(async () => await _ipc.GetServiceStatusAsync());
                 if (response.Success)
                 {
                     _serviceStatus = response.GetData<ServiceStatusReport>();
@@ -73,6 +80,10 @@ namespace PCPlus.Tray
             {
                 _serviceConnected = false;
                 UpdateTrayIcon();
+            }
+            finally
+            {
+                _connecting = false;
             }
         }
 
