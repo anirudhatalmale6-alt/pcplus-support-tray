@@ -217,7 +217,8 @@ async function loadOverview() {
         }
         drawAlertTimeline('alerts-timeline', timelineData);
 
-        // Security threats table
+        // Security threats table - store devices globally for detail view
+        allDevices = devices;
         const threatsTable = document.getElementById('security-threats-table');
         if (devices.length === 0) {
             threatsTable.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No devices</td></tr>';
@@ -229,8 +230,8 @@ async function loadOverview() {
                 const deviceAlerts = alerts.filter(a => (a.hostname || a.deviceId) === (d.hostname || d.deviceId)).length;
                 const protectionPct = d.runningModules > 0 ? Math.round((d.runningModules / Math.max(d.totalModules || 5, 1)) * 100) : 0;
                 const protColor = protectionPct >= 80 ? '#22c55e' : protectionPct >= 50 ? '#f59e0b' : '#ef4444';
-                return `<tr>
-                    <td style="font-weight:500">${esc(d.hostname || d.deviceId)}</td>
+                return `<tr style="cursor:pointer" onclick="showDeviceDetail('${d.deviceId}')">
+                    <td style="font-weight:500;color:#3b82f6;text-decoration:underline">${esc(d.hostname || d.deviceId)}</td>
                     <td><span class="score ${gradeClass}">${esc(d.securityGrade || '?')}</span> <span style="font-size:11px;color:var(--text-muted)">${d.securityScore}/100</span></td>
                     <td>${deviceAlerts > 0 ? `<span style="color:#ef4444;font-weight:600">${deviceAlerts}</span>` : '<span style="color:var(--text-muted)">0</span>'}</td>
                     <td><span class="badge ${status}"><span class="badge-dot"></span>${statusLabel}</span></td>
@@ -357,27 +358,80 @@ function showDeviceDetail(deviceId) {
 
     const modal = document.getElementById('device-modal');
     const content = document.getElementById('device-modal-content');
+
+    const status = d.lockdownActive ? 'lockdown' : (d.isOnline ? 'online' : 'offline');
+    const statusLabel = d.lockdownActive ? 'LOCKDOWN' : (d.isOnline ? 'Online' : 'Offline');
+    const gradeClass = (d.securityGrade || '?').toLowerCase();
+    const cpuColor = d.cpuPercent > 90 ? '#ef4444' : d.cpuPercent > 70 ? '#f59e0b' : '#22c55e';
+    const ramColor = d.ramPercent > 90 ? '#ef4444' : d.ramPercent > 70 ? '#f59e0b' : '#22c55e';
+    const diskColor = d.diskPercent > 90 ? '#ef4444' : d.diskPercent > 80 ? '#f59e0b' : '#22c55e';
+    const cpuTempColor = d.cpuTempC > 85 ? '#ef4444' : d.cpuTempC > 70 ? '#f59e0b' : '#22c55e';
+
     content.innerHTML = `
-        <h3>${esc(d.hostname)}</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-            <div><span style="color:var(--text-muted);font-size:12px">Device ID</span><br>${esc(d.deviceId)}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">Customer</span><br>${esc(d.customerName || d.customerId || '-')}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">OS</span><br>${esc(d.osVersion || '-')}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">Agent Version</span><br>${esc(d.agentVersion || '-')}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">Local IP</span><br>${esc(d.localIp || d.ipAddress || '-')}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">Public IP</span><br>${esc(d.publicIp || '-')}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">License</span><br>${esc(d.licenseTier)}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">Policy</span><br>${esc(d.policyProfile || 'default')}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">Registered</span><br>${new Date(d.registeredAt).toLocaleDateString()}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">Security Score</span><br><span class="score ${(d.securityGrade||'?').toLowerCase()}">${d.securityGrade}</span> ${d.securityScore}/100</div>
-            <div><span style="color:var(--text-muted);font-size:12px">CPU Temp</span><br>${d.cpuTempC > 0 ? Math.round(d.cpuTempC) + '°C' : '-'}</div>
-            <div><span style="color:var(--text-muted);font-size:12px">GPU Temp</span><br>${d.gpuTempC > 0 ? Math.round(d.gpuTempC) + '°C' : '-'}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <div>
+                <h3 style="margin:0;font-size:20px">${esc(d.hostname || d.deviceId)}</h3>
+                <div style="color:var(--text-muted);font-size:13px;margin-top:4px">${esc(d.customerName || '')} | ${esc(d.osVersion || '-')} | Agent v${esc(d.agentVersion || '-')}</div>
+            </div>
+            <span class="badge ${status}" style="font-size:13px;padding:6px 14px"><span class="badge-dot"></span>${statusLabel}</span>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-secondary" onclick="sendCommand('${d.deviceId}','rescan')">Run Security Scan</button>
+
+        <!-- Real-Time Stats Row -->
+        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-bottom:20px">
+            <div style="background:var(--bg-main);border-radius:8px;padding:14px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">CPU</div>
+                <div style="font-size:28px;font-weight:bold;color:${cpuColor}">${Math.round(d.cpuPercent)}%</div>
+                <div class="progress" style="margin-top:8px"><div class="progress-bar" style="width:${d.cpuPercent}%;background:${cpuColor}"></div></div>
+            </div>
+            <div style="background:var(--bg-main);border-radius:8px;padding:14px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Memory</div>
+                <div style="font-size:28px;font-weight:bold;color:${ramColor}">${Math.round(d.ramPercent)}%</div>
+                <div class="progress" style="margin-top:8px"><div class="progress-bar" style="width:${d.ramPercent}%;background:${ramColor}"></div></div>
+            </div>
+            <div style="background:var(--bg-main);border-radius:8px;padding:14px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Disk</div>
+                <div style="font-size:28px;font-weight:bold;color:${diskColor}">${Math.round(d.diskPercent)}%</div>
+                <div class="progress" style="margin-top:8px"><div class="progress-bar" style="width:${d.diskPercent}%;background:${diskColor}"></div></div>
+            </div>
+            <div style="background:var(--bg-main);border-radius:8px;padding:14px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">CPU Temp</div>
+                <div style="font-size:28px;font-weight:bold;color:${cpuTempColor}">${d.cpuTempC > 0 ? Math.round(d.cpuTempC) + '°' : '-'}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:8px">GPU: ${d.gpuTempC > 0 ? Math.round(d.gpuTempC) + '°C' : '-'}</div>
+            </div>
+        </div>
+
+        <!-- Security & Network Info -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+            <div style="background:var(--bg-main);border-radius:8px;padding:16px">
+                <h4 style="margin:0 0 12px;font-size:13px;color:var(--text-muted);text-transform:uppercase">Security</h4>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+                    <span class="score ${gradeClass}" style="font-size:18px;padding:8px 14px">${esc(d.securityGrade || '?')}</span>
+                    <div>
+                        <div style="font-size:22px;font-weight:bold">${d.securityScore}/100</div>
+                        <div style="font-size:11px;color:var(--text-muted)">Security Score</div>
+                    </div>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted)">
+                    Modules: ${d.runningModules} running | License: ${esc(d.licenseTier)} | Policy: ${esc(d.policyProfile || 'default')}
+                </div>
+            </div>
+            <div style="background:var(--bg-main);border-radius:8px;padding:16px">
+                <h4 style="margin:0 0 12px;font-size:13px;color:var(--text-muted);text-transform:uppercase">Network</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+                    <div><span style="color:var(--text-muted)">Local IP:</span><br><strong>${esc(d.localIp || d.ipAddress || '-')}</strong></div>
+                    <div><span style="color:var(--text-muted)">Public IP:</span><br><strong>${esc(d.publicIp || '-')}</strong></div>
+                    <div><span style="color:var(--text-muted)">Last Seen:</span><br><strong>${timeAgo(d.lastSeen)}</strong></div>
+                    <div><span style="color:var(--text-muted)">Registered:</span><br><strong>${new Date(d.registeredAt).toLocaleDateString()}</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)">
+            <button class="btn btn-sm btn-primary" onclick="sendCommand('${d.deviceId}','rescan')">Run Security Scan</button>
             <button class="btn btn-sm btn-secondary" onclick="sendCommand('${d.deviceId}','maintenance')">Fix My Computer</button>
-            <button class="btn btn-sm btn-danger" onclick="sendCommand('${d.deviceId}','lockdown')">Lockdown</button>
-            <button class="btn btn-sm btn-secondary" onclick="closeModal()">Close</button>
+            <button class="btn btn-sm btn-danger" onclick="sendCommand('${d.deviceId}','lockdown')">Emergency Lockdown</button>
+            <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="closeModal()">Close</button>
         </div>
     `;
     modal.classList.add('active');
