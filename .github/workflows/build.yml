@@ -22,8 +22,18 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=4.3.0" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish Service
-        run: dotnet publish src/PCPlus.Service/PCPlus.Service.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/Service
+        run: dotnet publish src/PCPlus.Service/PCPlus.Service.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=${{ steps.version.outputs.VERSION }} -o publish/Service
 
       - name: Upload Service artifact
         uses: actions/upload-artifact@v4
@@ -41,8 +51,18 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=4.3.0" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish Tray
-        run: dotnet publish src/PCPlus.Tray/PCPlus.Tray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/Tray
+        run: dotnet publish src/PCPlus.Tray/PCPlus.Tray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=${{ steps.version.outputs.VERSION }} -o publish/Tray
 
       - name: Upload Tray artifact
         uses: actions/upload-artifact@v4
