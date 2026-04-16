@@ -25,6 +25,9 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<DashboardDb>();
     db.Database.EnsureCreated();
+
+    // Add new columns if missing (EnsureCreated doesn't alter existing tables)
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Devices ADD COLUMN GpuTempC REAL NOT NULL DEFAULT 0"); } catch { }
 }
 
 app.UseCors();
