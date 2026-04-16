@@ -167,7 +167,7 @@ function Install-Service {
 
         Write-Log "Registering Windows Service..."
         New-Service -Name $ServiceName `
-            -BinaryPathName $serviceExe `
+            -BinaryPathName "`"$serviceExe`"" `
             -DisplayName "PC Plus Endpoint Protection" `
             -Description "PC Plus Endpoint Protection - Background security monitoring, ransomware defense, and system health." `
             -StartupType Automatic `
