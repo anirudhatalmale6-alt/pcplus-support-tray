@@ -166,48 +166,66 @@ namespace PCPlus.Core.IPC
                 JsonData = JsonSerializer.Serialize(data, IpcProtocol.JsonOptions)
             });
 
+        private NamedPipeServerStream CreateSecuredPipe()
+        {
+            try
+            {
+                // Tightened ACLs: only SYSTEM, Administrators, and Interactive Users
+                var pipeSecurity = new PipeSecurity();
+
+                // SYSTEM account (the service itself)
+                pipeSecurity.AddAccessRule(new PipeAccessRule(
+                    new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
+                    PipeAccessRights.FullControl,
+                    AccessControlType.Allow));
+
+                // Local Administrators
+                pipeSecurity.AddAccessRule(new PipeAccessRule(
+                    new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null),
+                    PipeAccessRights.ReadWrite,
+                    AccessControlType.Allow));
+
+                // Interactive users (logged-in users - needed for the tray app)
+                pipeSecurity.AddAccessRule(new PipeAccessRule(
+                    new SecurityIdentifier(WellKnownSidType.InteractiveSid, null),
+                    PipeAccessRights.ReadWrite,
+                    AccessControlType.Allow));
+
+                // Explicitly deny network logon (prevent remote pipe access)
+                pipeSecurity.AddAccessRule(new PipeAccessRule(
+                    new SecurityIdentifier(WellKnownSidType.NetworkSid, null),
+                    PipeAccessRights.ReadWrite,
+                    AccessControlType.Deny));
+
+                return NamedPipeServerStreamAcl.Create(
+                    IpcProtocol.PIPE_NAME,
+                    PipeDirection.InOut,
+                    NamedPipeServerStream.MaxAllowedServerInstances,
+                    PipeTransmissionMode.Byte,
+                    PipeOptions.Asynchronous,
+                    0, 0,
+                    pipeSecurity);
+            }
+            catch
+            {
+                // Fallback: create pipe without custom ACLs if ACL creation fails
+                // (e.g. on some Windows editions or .NET runtime issues)
+                return new NamedPipeServerStream(
+                    IpcProtocol.PIPE_NAME,
+                    PipeDirection.InOut,
+                    NamedPipeServerStream.MaxAllowedServerInstances,
+                    PipeTransmissionMode.Byte,
+                    PipeOptions.Asynchronous);
+            }
+        }
+
         private async Task AcceptClientsAsync(CancellationToken ct)
         {
             while (!ct.IsCancellationRequested)
             {
                 try
                 {
-                    // Tightened ACLs: only SYSTEM, Administrators, and Interactive Users
-                    // (the logged-in user running the tray app)
-                    var pipeSecurity = new PipeSecurity();
-
-                    // SYSTEM account (the service itself)
-                    pipeSecurity.AddAccessRule(new PipeAccessRule(
-                        new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
-                        PipeAccessRights.FullControl,
-                        AccessControlType.Allow));
-
-                    // Local Administrators
-                    pipeSecurity.AddAccessRule(new PipeAccessRule(
-                        new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null),
-                        PipeAccessRights.ReadWrite,
-                        AccessControlType.Allow));
-
-                    // Interactive users (logged-in users - needed for the tray app)
-                    pipeSecurity.AddAccessRule(new PipeAccessRule(
-                        new SecurityIdentifier(WellKnownSidType.InteractiveSid, null),
-                        PipeAccessRights.ReadWrite,
-                        AccessControlType.Allow));
-
-                    // Explicitly deny network logon (prevent remote pipe access)
-                    pipeSecurity.AddAccessRule(new PipeAccessRule(
-                        new SecurityIdentifier(WellKnownSidType.NetworkSid, null),
-                        PipeAccessRights.ReadWrite,
-                        AccessControlType.Deny));
-
-                    var pipe = NamedPipeServerStreamAcl.Create(
-                        IpcProtocol.PIPE_NAME,
-                        PipeDirection.InOut,
-                        NamedPipeServerStream.MaxAllowedServerInstances,
-                        PipeTransmissionMode.Byte,
-                        PipeOptions.Asynchronous,
-                        0, 0,
-                        pipeSecurity);
+                    var pipe = CreateSecuredPipe();
 
                     await pipe.WaitForConnectionAsync(ct);
 

@@ -17,6 +17,7 @@ namespace PCPlus.Core.IPC
         private StreamReader? _reader;
         private StreamWriter? _writer;
         private readonly SemaphoreSlim _sendLock = new(1, 1);
+        private readonly SemaphoreSlim _connectLock = new(1, 1);
         private CancellationTokenSource? _listenerCts;
         private Task? _listenerTask;
         private bool _disposed;
@@ -39,21 +40,38 @@ namespace PCPlus.Core.IPC
         {
             if (IsConnected) return;
 
-            _pipe = new NamedPipeClientStream(".", IpcProtocol.PIPE_NAME,
-                PipeDirection.InOut, PipeOptions.Asynchronous);
+            // Prevent concurrent connection attempts
+            if (!await _connectLock.WaitAsync(0))
+                return;
 
-            await _pipe.ConnectAsync(timeoutMs);
-            _reader = new StreamReader(_pipe, Encoding.UTF8);
-            _writer = new StreamWriter(_pipe, Encoding.UTF8) { AutoFlush = true };
+            try
+            {
+                if (IsConnected) return;
 
-            // Start listening for responses and notifications
-            _listenerCts = new CancellationTokenSource();
-            _listenerTask = ListenAsync(_listenerCts.Token);
+                // Dispose any stale pipe
+                _listenerCts?.Cancel();
+                _pipe?.Dispose();
 
-            OnConnectionChanged?.Invoke(true);
+                _pipe = new NamedPipeClientStream(".", IpcProtocol.PIPE_NAME,
+                    PipeDirection.InOut, PipeOptions.Asynchronous);
 
-            // Authenticate immediately after connecting
-            await AuthenticateAsync();
+                await _pipe.ConnectAsync(timeoutMs);
+                _reader = new StreamReader(_pipe, Encoding.UTF8);
+                _writer = new StreamWriter(_pipe, Encoding.UTF8) { AutoFlush = true };
+
+                // Start listening for responses and notifications
+                _listenerCts = new CancellationTokenSource();
+                _listenerTask = ListenAsync(_listenerCts.Token);
+
+                OnConnectionChanged?.Invoke(true);
+
+                // Authenticate immediately after connecting
+                await AuthenticateAsync();
+            }
+            finally
+            {
+                _connectLock.Release();
+            }
         }
 
         /// <summary>Authenticate with the service to get a session token.</summary>

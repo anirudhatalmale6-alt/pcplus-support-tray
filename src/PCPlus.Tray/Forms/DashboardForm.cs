@@ -164,12 +164,39 @@ namespace PCPlus.Tray.Forms
         {
             try
             {
+                // Try to connect if not connected
+                if (!_ipc.IsConnected)
+                {
+                    try { await Task.Run(() => _ipc.ConnectAsync(5000)); }
+                    catch { }
+                }
+
+                if (!_ipc.IsConnected)
+                {
+                    if (InvokeRequired)
+                        Invoke(new Action(() =>
+                        {
+                            _statusLabel.Text = "Service not connected - retrying...";
+                            _statusLabel.ForeColor = AccentOrange;
+                        }));
+                    return;
+                }
+
                 var healthResponse = await Task.Run(() => _ipc.GetHealthSnapshotAsync());
                 if (healthResponse.Success)
                 {
                     _health = healthResponse.GetData<HealthSnapshot>();
                     if (_health != null)
                         UpdateGauges();
+                }
+                else
+                {
+                    if (InvokeRequired)
+                        Invoke(new Action(() =>
+                        {
+                            _statusLabel.Text = $"Connected - waiting for data ({healthResponse.Message})";
+                            _statusLabel.ForeColor = AccentBlue;
+                        }));
                 }
 
                 var statusResponse = await Task.Run(() => _ipc.GetServiceStatusAsync());

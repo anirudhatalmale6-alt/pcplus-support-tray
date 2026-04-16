@@ -283,32 +283,29 @@ namespace PCPlus.Tray
             return menu;
         }
 
-        private DashboardForm? _dashboardForm;
-        private SecurityReportForm? _securityForm;
+        private MainForm? _mainForm;
         private SystemInfoForm? _sysInfoForm;
 
         private void ShowDashboard()
         {
-            if (_dashboardForm != null && !_dashboardForm.IsDisposed)
+            ShowMainForm();
+        }
+
+        private void ShowMainForm()
+        {
+            if (_mainForm != null && !_mainForm.IsDisposed)
             {
-                _dashboardForm.BringToFront();
-                _dashboardForm.Focus();
+                _mainForm.BringToFront();
+                _mainForm.Focus();
                 return;
             }
-            _dashboardForm = new DashboardForm(_ipc);
-            _dashboardForm.Show();
+            _mainForm = new MainForm(_ipc);
+            _mainForm.Show();
         }
 
         private void ShowSecurityReport()
         {
-            if (_securityForm != null && !_securityForm.IsDisposed)
-            {
-                _securityForm.BringToFront();
-                _securityForm.Focus();
-                return;
-            }
-            _securityForm = new SecurityReportForm(_ipc);
-            _securityForm.Show();
+            ShowMainForm();
         }
 
         private void ShowTicketForm()
