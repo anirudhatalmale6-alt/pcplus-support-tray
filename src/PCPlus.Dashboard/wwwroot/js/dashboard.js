@@ -32,14 +32,128 @@ function refreshCurrentPage() {
     }
 }
 
+// --- SVG Donut Chart Helper ---
+function createDonutChart(containerId, segments, centerText, size = 140) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const total = segments.reduce((s, seg) => s + seg.value, 0);
+    if (total === 0) {
+        el.innerHTML = `<div style="color:var(--text-muted);font-size:13px">No data</div>`;
+        return;
+    }
+    const r = size / 2 - 10;
+    const cx = size / 2, cy = size / 2;
+    const strokeWidth = 18;
+    const circumference = 2 * Math.PI * r;
+    let offset = 0;
+
+    let arcs = '';
+    let legend = '';
+    segments.forEach(seg => {
+        if (seg.value === 0) return;
+        const pct = seg.value / total;
+        const dash = pct * circumference;
+        const gap = circumference - dash;
+        arcs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${strokeWidth}" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+        offset += dash;
+        legend += `<div style="display:flex;align-items:center;gap:6px;font-size:11px;margin:2px 0"><span style="width:10px;height:10px;border-radius:2px;background:${seg.color};flex-shrink:0"></span><span style="color:var(--text-muted)">${seg.label}</span><span style="margin-left:auto;color:var(--text-primary);font-weight:600">${seg.value}</span></div>`;
+    });
+
+    el.innerHTML = `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+            <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="${strokeWidth}"/>
+            ${arcs}
+            <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--text-primary)" font-size="24" font-weight="bold">${centerText}</text>
+            <text x="${cx}" y="${cy + 14}" text-anchor="middle" fill="var(--text-muted)" font-size="10">total</text>
+        </svg>
+        <div style="margin-top:8px">${legend}</div>
+    `;
+}
+
+// --- Canvas Line Chart Helper ---
+function drawAlertTimeline(canvasId, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = (rect.width - 40) * dpr;
+    canvas.height = 200 * dpr;
+    canvas.style.width = (rect.width - 40) + 'px';
+    canvas.style.height = '200px';
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width - 40, h = 200;
+    const padding = { top: 10, right: 10, bottom: 30, left: 40 };
+    const plotW = w - padding.left - padding.right;
+    const plotH = h - padding.top - padding.bottom;
+
+    ctx.clearRect(0, 0, w, h);
+
+    if (!data || data.length === 0) {
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '13px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText('No alert data yet', w / 2, h / 2);
+        return;
+    }
+
+    const maxVal = Math.max(...data.map(d => d.count), 1);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (plotH / 4) * i;
+        ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(w - padding.right, y); ctx.stroke();
+        ctx.fillStyle = '#6b7280'; ctx.font = '10px Segoe UI'; ctx.textAlign = 'right';
+        ctx.fillText(Math.round(maxVal - (maxVal / 4) * i), padding.left - 6, y + 4);
+    }
+
+    // Line
+    ctx.beginPath();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    data.forEach((d, i) => {
+        const x = padding.left + (i / Math.max(data.length - 1, 1)) * plotW;
+        const y = padding.top + plotH - (d.count / maxVal) * plotH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Fill under line
+    const lastIdx = data.length - 1;
+    ctx.lineTo(padding.left + plotW, padding.top + plotH);
+    ctx.lineTo(padding.left, padding.top + plotH);
+    ctx.closePath();
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + plotH);
+    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.15)');
+    gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // X labels
+    ctx.fillStyle = '#6b7280'; ctx.font = '10px Segoe UI'; ctx.textAlign = 'center';
+    const step = Math.max(1, Math.floor(data.length / 5));
+    data.forEach((d, i) => {
+        if (i % step === 0 || i === lastIdx) {
+            const x = padding.left + (i / Math.max(data.length - 1, 1)) * plotW;
+            ctx.fillText(d.label, x, h - 8);
+        }
+    });
+}
+
 // --- Overview ---
 async function loadOverview() {
     try {
-        const [overview, alerts] = await Promise.all([
+        const [overview, alerts, devices] = await Promise.all([
             fetch(API + '/overview').then(r => r.json()),
-            fetch(API + '/alerts?limit=10&acknowledged=false').then(r => r.json())
+            fetch(API + '/alerts?limit=50&acknowledged=false').then(r => r.json()),
+            fetch(API + '/devices').then(r => r.json())
         ]);
 
+        // Top stat cards
         const statsEl = document.getElementById('overview-stats');
         statsEl.innerHTML = `
             <div class="stat-card blue">
@@ -67,16 +181,103 @@ async function loadOverview() {
                 <div class="value">${overview.openIncidents}</div>
             </div>
             <div class="stat-card purple">
-                <div class="label">License Tiers</div>
-                <div class="value" style="font-size:16px">${Object.entries(overview.devicesByTier || {}).map(([k,v]) => `${k}: ${v}`).join(', ') || 'None'}</div>
+                <div class="label">Protected Endpoints</div>
+                <div class="value">${devices.filter(d => d.isOnline && d.runningModules > 0).length}</div>
+                <div class="sub">of ${overview.totalDevices} total</div>
             </div>
         `;
 
+        // Alerts by category donut
+        const categories = {};
+        alerts.forEach(a => {
+            const cat = a.category || a.moduleId || 'Other';
+            categories[cat] = (categories[cat] || 0) + 1;
+        });
+        const catColors = ['#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6', '#ec4899', '#06b6d4'];
+        const catSegments = Object.entries(categories).map(([label, value], i) => ({
+            label: label.charAt(0).toUpperCase() + label.slice(1),
+            value,
+            color: catColors[i % catColors.length]
+        }));
+        createDonutChart('alerts-donut', catSegments, alerts.length.toString());
+
+        // Alerts over time (group by day for last 7 days)
+        const now = new Date();
+        const timelineData = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now); d.setDate(d.getDate() - i);
+            const dayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
+            const count = alerts.filter(a => {
+                const t = new Date(a.timestamp);
+                return t >= dayStart && t < dayEnd;
+            }).length;
+            timelineData.push({ label: dayStr, count });
+        }
+        drawAlertTimeline('alerts-timeline', timelineData);
+
+        // Security threats table
+        const threatsTable = document.getElementById('security-threats-table');
+        if (devices.length === 0) {
+            threatsTable.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No devices</td></tr>';
+        } else {
+            threatsTable.innerHTML = devices.map(d => {
+                const status = d.lockdownActive ? 'lockdown' : (d.isOnline ? 'online' : 'offline');
+                const statusLabel = d.lockdownActive ? 'LOCKDOWN' : (d.isOnline ? 'Online' : 'Offline');
+                const gradeClass = (d.securityGrade || '?').toLowerCase();
+                const deviceAlerts = alerts.filter(a => (a.hostname || a.deviceId) === (d.hostname || d.deviceId)).length;
+                const protectionPct = d.runningModules > 0 ? Math.round((d.runningModules / Math.max(d.totalModules || 5, 1)) * 100) : 0;
+                const protColor = protectionPct >= 80 ? '#22c55e' : protectionPct >= 50 ? '#f59e0b' : '#ef4444';
+                return `<tr>
+                    <td style="font-weight:500">${esc(d.hostname || d.deviceId)}</td>
+                    <td><span class="score ${gradeClass}">${esc(d.securityGrade || '?')}</span> <span style="font-size:11px;color:var(--text-muted)">${d.securityScore}/100</span></td>
+                    <td>${deviceAlerts > 0 ? `<span style="color:#ef4444;font-weight:600">${deviceAlerts}</span>` : '<span style="color:var(--text-muted)">0</span>'}</td>
+                    <td><span class="badge ${status}"><span class="badge-dot"></span>${statusLabel}</span></td>
+                    <td><div class="progress" style="width:60px;display:inline-block;vertical-align:middle"><div class="progress-bar ${protColor === '#22c55e' ? 'green' : protColor === '#f59e0b' ? 'orange' : 'red'}" style="width:${protectionPct}%"></div></div> <span style="font-size:11px">${d.runningModules}/${d.totalModules || '?'}</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Protection status donuts
+        const onlineCount = devices.filter(d => d.isOnline).length;
+        const offlineCount = devices.filter(d => !d.isOnline).length;
+        const lockdownCount = devices.filter(d => d.lockdownActive).length;
+        const protectedCount = devices.filter(d => d.runningModules > 0 && d.isOnline).length;
+        const unprotectedCount = devices.filter(d => d.runningModules === 0 && d.isOnline).length;
+        const goodScore = devices.filter(d => d.securityScore >= 80).length;
+        const medScore = devices.filter(d => d.securityScore >= 50 && d.securityScore < 80).length;
+        const lowScore = devices.filter(d => d.securityScore < 50).length;
+
+        createDonutChart('donut-ransomware', [
+            { label: 'Active', value: protectedCount, color: '#22c55e' },
+            { label: 'Inactive', value: unprotectedCount, color: '#6b7280' },
+            { label: 'Lockdown', value: lockdownCount, color: '#ef4444' }
+        ], devices.length.toString(), 120);
+
+        createDonutChart('donut-defender', [
+            { label: 'Protected', value: protectedCount, color: '#22c55e' },
+            { label: 'Unprotected', value: unprotectedCount + offlineCount, color: '#6b7280' }
+        ], protectedCount.toString(), 120);
+
+        createDonutChart('donut-security', [
+            { label: 'Good (80+)', value: goodScore, color: '#22c55e' },
+            { label: 'Medium (50-79)', value: medScore, color: '#f59e0b' },
+            { label: 'Low (<50)', value: lowScore, color: '#ef4444' }
+        ], Math.round(overview.avgSecurityScore).toString(), 120);
+
+        createDonutChart('donut-status', [
+            { label: 'Online', value: onlineCount, color: '#22c55e' },
+            { label: 'Offline', value: offlineCount, color: '#6b7280' },
+            { label: 'Lockdown', value: lockdownCount, color: '#ef4444' }
+        ], onlineCount.toString(), 120);
+
+        // Recent alerts feed
         const alertsEl = document.getElementById('overview-alerts');
         if (alerts.length === 0) {
             alertsEl.innerHTML = '<div class="empty-state"><p>No active alerts. All systems healthy.</p></div>';
         } else {
-            alertsEl.innerHTML = alerts.map(a => `
+            alertsEl.innerHTML = alerts.slice(0, 10).map(a => `
                 <div class="alert-item">
                     <div class="alert-severity ${a.severity}"></div>
                     <div class="alert-content">

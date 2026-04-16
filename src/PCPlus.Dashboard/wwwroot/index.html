@@ -48,16 +48,72 @@
 
     <!-- Main Content -->
     <main class="main">
-        <!-- Overview Page -->
+        <!-- Overview Page - Security Dashboard -->
         <div id="page-overview" class="page">
             <div class="page-header">
-                <h2>Dashboard Overview</h2>
+                <h2>Security Dashboard</h2>
                 <div class="header-actions">
                     <span class="refresh-dot"></span>
                     <span style="font-size:12px;color:var(--text-muted);margin-left:4px">Live</span>
                 </div>
             </div>
+
+            <!-- Top Row: Summary Cards -->
             <div class="stat-grid" id="overview-stats"></div>
+
+            <!-- Middle Row: Alerts Chart + Donut -->
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:16px">
+                <div class="card" style="padding:20px">
+                    <div class="card-header" style="margin-bottom:12px"><h3>Alerts by Category</h3></div>
+                    <div id="alerts-donut" style="display:flex;align-items:center;justify-content:center;min-height:200px"></div>
+                </div>
+                <div class="card" style="padding:20px">
+                    <div class="card-header" style="margin-bottom:12px"><h3>Security Alerts Over Time</h3></div>
+                    <canvas id="alerts-timeline" height="200" style="width:100%"></canvas>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Threats Table + Protection Status -->
+            <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:16px">
+                <div class="card" style="padding:20px">
+                    <div class="card-header" style="margin-bottom:12px">
+                        <h3>Security Threats by Device</h3>
+                        <button class="btn btn-sm btn-secondary" onclick="showPage('devices')">View All</button>
+                    </div>
+                    <table style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Score</th>
+                                <th>Alerts</th>
+                                <th>Status</th>
+                                <th>Protection</th>
+                            </tr>
+                        </thead>
+                        <tbody id="security-threats-table"></tbody>
+                    </table>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <div class="card" style="padding:20px;text-align:center">
+                        <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Ransomware Protection</h4>
+                        <div id="donut-ransomware"></div>
+                    </div>
+                    <div class="card" style="padding:20px;text-align:center">
+                        <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Windows Defender</h4>
+                        <div id="donut-defender"></div>
+                    </div>
+                    <div class="card" style="padding:20px;text-align:center">
+                        <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Security Score</h4>
+                        <div id="donut-security"></div>
+                    </div>
+                    <div class="card" style="padding:20px;text-align:center">
+                        <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Device Status</h4>
+                        <div id="donut-status"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Alerts -->
             <div class="card">
                 <div class="card-header">
                     <h3>Recent Alerts</h3>
