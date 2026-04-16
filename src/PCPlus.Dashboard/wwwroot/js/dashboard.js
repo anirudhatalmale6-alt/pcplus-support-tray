@@ -27,6 +27,7 @@ function refreshCurrentPage() {
     switch (currentPage) {
         case 'overview': loadOverview(); break;
         case 'customer': loadCustomerDashboard(currentCustomer); break;
+        case 'device': loadDeviceDetail(); break;
         case 'devices': loadDevices(); break;
         case 'alerts': loadAlerts(); break;
         case 'incidents': loadIncidents(); break;
@@ -507,8 +508,20 @@ function showDeviceDetail(deviceId) {
     const d = allDevices.find(x => x.deviceId === deviceId);
     if (!d) return;
 
-    const modal = document.getElementById('device-modal');
-    const content = document.getElementById('device-modal-content');
+    // Show device page instead of modal
+    currentDevice = deviceId;
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-device').style.display = 'block';
+    currentPage = 'device';
+    loadDeviceDetail(d);
+}
+
+let currentDevice = '';
+
+function loadDeviceDetail(d) {
+    if (!d && currentDevice) d = allDevices.find(x => x.deviceId === currentDevice);
+    if (!d) return;
 
     const status = d.lockdownActive ? 'lockdown' : (d.isOnline ? 'online' : 'offline');
     const statusLabel = d.lockdownActive ? 'LOCKDOWN' : (d.isOnline ? 'Online' : 'Offline');
@@ -517,75 +530,340 @@ function showDeviceDetail(deviceId) {
     const ramColor = d.ramPercent > 90 ? '#ef4444' : d.ramPercent > 70 ? '#f59e0b' : '#22c55e';
     const diskColor = d.diskPercent > 90 ? '#ef4444' : d.diskPercent > 80 ? '#f59e0b' : '#22c55e';
     const cpuTempColor = d.cpuTempC > 85 ? '#ef4444' : d.cpuTempC > 70 ? '#f59e0b' : '#22c55e';
+    const gpuTempColor = d.gpuTempC > 85 ? '#ef4444' : d.gpuTempC > 70 ? '#f59e0b' : '#22c55e';
+    const scoreColor = d.securityScore >= 80 ? '#22c55e' : d.securityScore >= 60 ? '#f59e0b' : '#ef4444';
+    const uptimeStr = d.uptime || '-';
 
+    // Build circular gauge SVG helper
+    function gauge(pct, color, size=80) {
+        const r = (size/2) - 6;
+        const circ = 2 * Math.PI * r;
+        const dash = (pct/100) * circ;
+        return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+            <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+            <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="8"
+                stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${circ/4}" stroke-linecap="round"
+                transform="rotate(-90 ${size/2} ${size/2})"/>
+            <text x="${size/2}" y="${size/2 + 5}" text-anchor="middle" fill="var(--text-primary)" font-size="18" font-weight="bold">${Math.round(pct)}%</text>
+        </svg>`;
+    }
+
+    // Navigation breadcrumb
+    const custName = d.customerName || d.customerId || 'Unassigned';
+    document.getElementById('device-title').textContent = d.hostname || d.deviceId;
+    document.getElementById('device-breadcrumb').innerHTML = `
+        <a href="#" onclick="showPage('overview');return false" style="color:#3b82f6;text-decoration:none">Dashboard</a>
+        <span style="color:var(--text-muted);margin:0 6px">/</span>
+        <a href="#" onclick="showCustomerDashboard('${esc(custName)}');return false" style="color:#3b82f6;text-decoration:none">${esc(custName)}</a>
+        <span style="color:var(--text-muted);margin:0 6px">/</span>
+        <span style="color:var(--text-primary)">${esc(d.hostname || d.deviceId)}</span>
+    `;
+
+    const content = document.getElementById('device-detail-content');
     content.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-            <div>
-                <h3 style="margin:0;font-size:20px">${esc(d.hostname || d.deviceId)}</h3>
-                <div style="color:var(--text-muted);font-size:13px;margin-top:4px">${esc(d.customerName || '')} | ${esc(d.osVersion || '-')} | Agent v${esc(d.agentVersion || '-')}</div>
-            </div>
-            <span class="badge ${status}" style="font-size:13px;padding:6px 14px"><span class="badge-dot"></span>${statusLabel}</span>
-        </div>
-
-        <!-- Real-Time Stats Row -->
-        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-bottom:20px">
-            <div style="background:var(--bg-main);border-radius:8px;padding:14px;text-align:center">
-                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">CPU</div>
-                <div style="font-size:28px;font-weight:bold;color:${cpuColor}">${Math.round(d.cpuPercent)}%</div>
-                <div class="progress" style="margin-top:8px"><div class="progress-bar" style="width:${d.cpuPercent}%;background:${cpuColor}"></div></div>
-            </div>
-            <div style="background:var(--bg-main);border-radius:8px;padding:14px;text-align:center">
-                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Memory</div>
-                <div style="font-size:28px;font-weight:bold;color:${ramColor}">${Math.round(d.ramPercent)}%</div>
-                <div class="progress" style="margin-top:8px"><div class="progress-bar" style="width:${d.ramPercent}%;background:${ramColor}"></div></div>
-            </div>
-            <div style="background:var(--bg-main);border-radius:8px;padding:14px;text-align:center">
-                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Disk</div>
-                <div style="font-size:28px;font-weight:bold;color:${diskColor}">${Math.round(d.diskPercent)}%</div>
-                <div class="progress" style="margin-top:8px"><div class="progress-bar" style="width:${d.diskPercent}%;background:${diskColor}"></div></div>
-            </div>
-            <div style="background:var(--bg-main);border-radius:8px;padding:14px;text-align:center">
-                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">CPU Temp</div>
-                <div style="font-size:28px;font-weight:bold;color:${cpuTempColor}">${d.cpuTempC > 0 ? Math.round(d.cpuTempC) + '°' : '-'}</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:8px">GPU: ${d.gpuTempC > 0 ? Math.round(d.gpuTempC) + '°C' : '-'}</div>
-            </div>
-        </div>
-
-        <!-- Security & Network Info -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-            <div style="background:var(--bg-main);border-radius:8px;padding:16px">
-                <h4 style="margin:0 0 12px;font-size:13px;color:var(--text-muted);text-transform:uppercase">Security</h4>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-                    <span class="score ${gradeClass}" style="font-size:18px;padding:8px 14px">${esc(d.securityGrade || '?')}</span>
+        <!-- Device Header -->
+        <div class="card" style="padding:20px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                <div style="display:flex;align-items:center;gap:16px">
+                    <div style="width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#1e293b,#334155);display:flex;align-items:center;justify-content:center">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    </div>
                     <div>
-                        <div style="font-size:22px;font-weight:bold">${d.securityScore}/100</div>
-                        <div style="font-size:11px;color:var(--text-muted)">Security Score</div>
+                        <h2 style="margin:0;font-size:22px;font-weight:700">${esc(d.hostname || d.deviceId)}</h2>
+                        <div style="color:var(--text-muted);font-size:13px;margin-top:2px">
+                            ${esc(custName)} &middot; ${esc(d.osVersion || 'Unknown OS')} &middot; Agent v${esc(d.agentVersion || '-')}
+                        </div>
                     </div>
                 </div>
-                <div style="font-size:12px;color:var(--text-muted)">
-                    Modules: ${d.runningModules} running | License: ${esc(d.licenseTier)} | Policy: ${esc(d.policyProfile || 'default')}
-                </div>
-            </div>
-            <div style="background:var(--bg-main);border-radius:8px;padding:16px">
-                <h4 style="margin:0 0 12px;font-size:13px;color:var(--text-muted);text-transform:uppercase">Network</h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-                    <div><span style="color:var(--text-muted)">Local IP:</span><br><strong>${esc(d.localIp || d.ipAddress || '-')}</strong></div>
-                    <div><span style="color:var(--text-muted)">Public IP:</span><br><strong>${esc(d.publicIp || '-')}</strong></div>
-                    <div><span style="color:var(--text-muted)">Last Seen:</span><br><strong>${timeAgo(d.lastSeen)}</strong></div>
-                    <div><span style="color:var(--text-muted)">Registered:</span><br><strong>${new Date(d.registeredAt).toLocaleDateString()}</strong></div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <span class="badge ${status}" style="font-size:13px;padding:8px 16px"><span class="badge-dot"></span>${statusLabel}</span>
+                    <button class="btn btn-sm btn-primary" onclick="sendCommand('${d.deviceId}','rescan')">Run Security Scan</button>
+                    <button class="btn btn-sm btn-secondary" onclick="sendCommand('${d.deviceId}','maintenance')">Fix My Computer</button>
+                    <button class="btn btn-sm btn-danger" onclick="sendCommand('${d.deviceId}','lockdown')">Emergency Lockdown</button>
                 </div>
             </div>
         </div>
 
-        <!-- Actions -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)">
-            <button class="btn btn-sm btn-primary" onclick="sendCommand('${d.deviceId}','rescan')">Run Security Scan</button>
-            <button class="btn btn-sm btn-secondary" onclick="sendCommand('${d.deviceId}','maintenance')">Fix My Computer</button>
-            <button class="btn btn-sm btn-danger" onclick="sendCommand('${d.deviceId}','lockdown')">Emergency Lockdown</button>
-            <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="closeModal()">Close</button>
+        <!-- Performance Gauges Row -->
+        <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:12px;margin-bottom:16px">
+            <div class="card" style="padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">CPU Usage</div>
+                ${gauge(d.cpuPercent || 0, cpuColor)}
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${d.cpuModel || 'CPU'}</div>
+            </div>
+            <div class="card" style="padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Memory</div>
+                ${gauge(d.ramPercent || 0, ramColor)}
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${d.ramUsedGB ? d.ramUsedGB.toFixed(1) + ' / ' + d.ramTotalGB.toFixed(1) + ' GB' : '-'}</div>
+            </div>
+            <div class="card" style="padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Disk Usage</div>
+                ${gauge(d.diskPercent || 0, diskColor)}
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${d.diskFreeGB ? d.diskFreeGB.toFixed(0) + ' GB free' : '-'}</div>
+            </div>
+            <div class="card" style="padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">CPU Temp</div>
+                <div style="font-size:42px;font-weight:700;color:${cpuTempColor};line-height:1.2">${d.cpuTempC > 0 ? Math.round(d.cpuTempC) + '°' : '-'}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:8px">GPU: ${d.gpuTempC > 0 ? Math.round(d.gpuTempC) + '°C' : '-'}</div>
+            </div>
+            <div class="card" style="padding:16px;text-align:center">
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Security Score</div>
+                ${gauge(d.securityScore || 0, scoreColor)}
+                <div style="margin-top:4px"><span class="score ${gradeClass}" style="font-size:14px;padding:4px 10px">${esc(d.securityGrade || '?')}</span></div>
+            </div>
+        </div>
+
+        <!-- Middle Row: Security + Network + System -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+            <!-- Security Details -->
+            <div class="card" style="padding:20px">
+                <h4 style="margin:0 0 16px;font-size:14px;display:flex;align-items:center;gap:8px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Security Details
+                </h4>
+                <div style="display:grid;gap:10px;font-size:13px">
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Security Score</span>
+                        <span style="font-weight:600;color:${scoreColor}">${d.securityScore}/100</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Grade</span>
+                        <span class="score ${gradeClass}" style="font-size:12px;padding:2px 8px">${esc(d.securityGrade || '?')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Running Modules</span>
+                        <span style="font-weight:600">${d.runningModules}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">License Tier</span>
+                        <span class="badge info">${esc(d.licenseTier || 'Free')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Policy Profile</span>
+                        <span style="font-weight:500">${esc(d.policyProfile || 'default')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Lockdown</span>
+                        <span style="color:${d.lockdownActive ? '#ef4444' : '#22c55e'};font-weight:600">${d.lockdownActive ? 'ACTIVE' : 'Inactive'}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between">
+                        <span style="color:var(--text-muted)">Windows Defender</span>
+                        <span style="color:${d.defenderEnabled !== false ? '#22c55e' : '#ef4444'};font-weight:600">${d.defenderEnabled !== false ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Network Details -->
+            <div class="card" style="padding:20px">
+                <h4 style="margin:0 0 16px;font-size:14px;display:flex;align-items:center;gap:8px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    Network
+                </h4>
+                <div style="display:grid;gap:10px;font-size:13px">
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Local IP</span>
+                        <span style="font-weight:600;font-family:monospace">${esc(d.localIp || d.ipAddress || '-')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Public IP</span>
+                        <span style="font-weight:600;font-family:monospace">${esc(d.publicIp || '-')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">MAC Address</span>
+                        <span style="font-weight:500;font-family:monospace;font-size:11px">${esc(d.macAddress || '-')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Network Up</span>
+                        <span style="font-weight:500">${d.networkSentKBps ? d.networkSentKBps.toFixed(0) + ' KB/s' : '-'}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Network Down</span>
+                        <span style="font-weight:500">${d.networkRecvKBps ? d.networkRecvKBps.toFixed(0) + ' KB/s' : '-'}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Firewall</span>
+                        <span style="color:${d.firewallEnabled !== false ? '#22c55e' : '#ef4444'};font-weight:600">${d.firewallEnabled !== false ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between">
+                        <span style="color:var(--text-muted)">Open Ports</span>
+                        <span style="font-weight:500">${d.openPorts || '-'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Details -->
+            <div class="card" style="padding:20px">
+                <h4 style="margin:0 0 16px;font-size:14px;display:flex;align-items:center;gap:8px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    System Info
+                </h4>
+                <div style="display:grid;gap:10px;font-size:13px">
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">OS Version</span>
+                        <span style="font-weight:500;font-size:11px">${esc(d.osVersion || '-')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Agent Version</span>
+                        <span style="font-weight:600">v${esc(d.agentVersion || '-')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Customer</span>
+                        <span style="font-weight:500">${esc(custName)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Device ID</span>
+                        <span style="font-weight:500;font-family:monospace;font-size:10px">${esc(d.deviceId.substring(0,16))}...</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Registered</span>
+                        <span style="font-weight:500">${d.registeredAt ? new Date(d.registeredAt).toLocaleDateString() : '-'}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Last Seen</span>
+                        <span style="font-weight:600;color:${d.isOnline ? '#22c55e' : '#ef4444'}">${timeAgo(d.lastSeen)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between">
+                        <span style="color:var(--text-muted)">Processes</span>
+                        <span style="font-weight:500">${d.processCount || '-'}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Storage & Donuts Row -->
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:16px">
+            <!-- Storage Drives -->
+            <div class="card" style="padding:20px">
+                <h4 style="margin:0 0 16px;font-size:14px;display:flex;align-items:center;gap:8px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    Storage Drives
+                </h4>
+                ${(d.disks && d.disks.length > 0) ? d.disks.map(disk => {
+                    const dColor = disk.usedPercent > 90 ? '#ef4444' : disk.usedPercent > 80 ? '#f59e0b' : '#22c55e';
+                    return `<div style="margin-bottom:12px">
+                        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                            <span style="font-weight:600">${esc(disk.name)} Drive</span>
+                            <span style="color:var(--text-muted)">${disk.freeGB ? disk.freeGB.toFixed(0) : '?'} GB free / ${disk.totalGB ? disk.totalGB.toFixed(0) : '?'} GB</span>
+                        </div>
+                        <div class="progress" style="height:10px"><div class="progress-bar" style="width:${disk.usedPercent}%;background:${dColor}"></div></div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${Math.round(disk.usedPercent)}% used</div>
+                    </div>`;
+                }).join('') : `
+                    <div style="margin-bottom:12px">
+                        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                            <span style="font-weight:600">System Drive</span>
+                            <span style="color:var(--text-muted)">${d.diskFreeGB ? d.diskFreeGB.toFixed(0) + ' GB free' : '-'}</span>
+                        </div>
+                        <div class="progress" style="height:10px"><div class="progress-bar" style="width:${d.diskPercent}%;background:${diskColor}"></div></div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${Math.round(d.diskPercent || 0)}% used</div>
+                    </div>
+                `}
+            </div>
+
+            <!-- Device Status Donut -->
+            <div class="card" style="padding:20px;text-align:center">
+                <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Protection Status</h4>
+                <div id="dev-donut-protection"></div>
+            </div>
+
+            <!-- Resource Health Donut -->
+            <div class="card" style="padding:20px;text-align:center">
+                <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Resource Health</h4>
+                <div id="dev-donut-resources"></div>
+            </div>
+        </div>
+
+        <!-- Top Processes + Recent Alerts -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <!-- Top Processes -->
+            <div class="card" style="padding:20px">
+                <h4 style="margin:0 0 12px;font-size:14px;display:flex;align-items:center;gap:8px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    Top Processes
+                </h4>
+                <table style="width:100%;font-size:12px">
+                    <thead><tr><th style="text-align:left;padding:4px 8px">Process</th><th>CPU</th><th>Memory</th></tr></thead>
+                    <tbody id="dev-processes">
+                        <tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text-muted)">Process data from agent</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Recent Device Alerts -->
+            <div class="card" style="padding:20px">
+                <h4 style="margin:0 0 12px;font-size:14px;display:flex;align-items:center;gap:8px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    Recent Alerts
+                </h4>
+                <div id="dev-alerts"></div>
+            </div>
+        </div>
+
+        <!-- Modules Running -->
+        <div class="card" style="padding:20px;margin-bottom:16px">
+            <h4 style="margin:0 0 12px;font-size:14px;display:flex;align-items:center;gap:8px">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Active Protection Modules
+            </h4>
+            <div id="dev-modules" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:8px">
+            </div>
         </div>
     `;
-    modal.classList.add('active');
+
+    // Populate donuts
+    const protectedModules = d.runningModules || 0;
+    createDonutChart('dev-donut-protection', [
+        { label: 'Active', value: Math.max(protectedModules, 0), color: '#22c55e' },
+        { label: 'Inactive', value: Math.max((d.totalModules || 6) - protectedModules, 0), color: '#6b7280' }
+    ], protectedModules.toString(), 120);
+
+    const cpuHealth = d.cpuPercent <= 70 ? 1 : 0;
+    const ramHealth = d.ramPercent <= 80 ? 1 : 0;
+    const diskHealth = d.diskPercent <= 85 ? 1 : 0;
+    const tempHealth = (d.cpuTempC <= 75 || d.cpuTempC === 0) ? 1 : 0;
+    const healthyCount = cpuHealth + ramHealth + diskHealth + tempHealth;
+    createDonutChart('dev-donut-resources', [
+        { label: 'Healthy', value: healthyCount, color: '#22c55e' },
+        { label: 'Warning', value: 4 - healthyCount, color: '#f59e0b' }
+    ], healthyCount + '/4', 120);
+
+    // Load device-specific alerts
+    loadDeviceAlerts(d);
+
+    // Populate modules
+    const modulesEl = document.getElementById('dev-modules');
+    const moduleNames = ['Health Monitor', 'Security Scanner', 'Ransomware Guard', 'Maintenance', 'Network Monitor', 'Process Monitor'];
+    modulesEl.innerHTML = moduleNames.slice(0, Math.max(d.totalModules || 6, d.runningModules || 0)).map((name, i) => {
+        const running = i < (d.runningModules || 0);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-main);border-radius:6px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${running ? '#22c55e' : '#6b7280'}"></div>
+            <span style="font-size:13px;font-weight:500">${name}</span>
+            <span style="margin-left:auto;font-size:11px;color:${running ? '#22c55e' : 'var(--text-muted)'}">${running ? 'Running' : 'Stopped'}</span>
+        </div>`;
+    }).join('');
+}
+
+async function loadDeviceAlerts(d) {
+    try {
+        const alerts = await fetch(API + '/alerts?limit=50&acknowledged=false').then(r => r.json());
+        const devAlerts = alerts.filter(a => (a.hostname || a.deviceId) === (d.hostname || d.deviceId));
+        const alertsEl = document.getElementById('dev-alerts');
+        if (!alertsEl) return;
+
+        if (devAlerts.length === 0) {
+            alertsEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">No active alerts for this device</div>';
+        } else {
+            alertsEl.innerHTML = devAlerts.slice(0, 10).map(a => `
+                <div class="alert-item" style="padding:8px 0;border-bottom:1px solid var(--border)">
+                    <div class="alert-severity ${a.severity}"></div>
+                    <div class="alert-content">
+                        <div style="font-size:12px;font-weight:600">${esc(a.title)}</div>
+                        <div style="font-size:11px;color:var(--text-muted)">${timeAgo(a.timestamp)} &middot; ${a.severity}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch(err) { console.error('Failed to load device alerts', err); }
 }
 
 function closeModal() {

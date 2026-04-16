@@ -189,6 +189,20 @@
             </div>
         </div>
 
+        <!-- Device Detail Page (Full Kundli View) -->
+        <div id="page-device" class="page" style="display:none">
+            <div class="page-header">
+                <div>
+                    <div id="device-breadcrumb" style="font-size:12px;margin-bottom:4px"></div>
+                    <h2 id="device-title">Device Detail</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="if(currentCustomer){showCustomerDashboard(currentCustomer)}else{showPage('overview')}">Back</button>
+                </div>
+            </div>
+            <div id="device-detail-content"></div>
+        </div>
+
         <!-- Devices Page -->
         <div id="page-devices" class="page" style="display:none">
             <div class="page-header">

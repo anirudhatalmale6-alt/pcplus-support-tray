@@ -43,6 +43,11 @@ namespace PCPlus.Tray
             };
 
             _trayIcon.DoubleClick += (s, e) => ShowDashboard();
+            _trayIcon.Click += (s, e) =>
+            {
+                if (e is MouseEventArgs me && me.Button == MouseButtons.Left)
+                    ShowDashboard();
+            };
 
             // Connect to service
             _ = ConnectToServiceAsync();
@@ -295,12 +300,18 @@ namespace PCPlus.Tray
         {
             if (_mainForm != null && !_mainForm.IsDisposed)
             {
+                // Restore if minimized
+                if (_mainForm.WindowState == FormWindowState.Minimized)
+                    _mainForm.WindowState = FormWindowState.Maximized;
+                _mainForm.Show();
+                _mainForm.Activate();
                 _mainForm.BringToFront();
                 _mainForm.Focus();
                 return;
             }
             _mainForm = new MainForm(_ipc);
             _mainForm.Show();
+            _mainForm.Activate();
         }
 
         private void ShowSecurityReport()
