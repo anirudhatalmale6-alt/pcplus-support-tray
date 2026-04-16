@@ -920,6 +920,8 @@ namespace PCPlus.Tray.Forms
             items.Add(("System", "OS", GetFriendlyOsVersion()));
             items.Add(("System", "Architecture", Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit"));
             items.Add(("System", ".NET Runtime", System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription));
+            items.Add(("System", "Local IP", GetLocalIpAddress()));
+            items.Add(("System", "Public IP", _cachedPublicIp ?? "Loading..."));
 
             if (_health != null)
             {
@@ -935,14 +937,37 @@ namespace PCPlus.Tray.Forms
                     items.Add(("Disks", $"Drive {disk.Name}", $"{disk.FreeGB:F0} GB free / {disk.TotalGB:F0} GB ({disk.UsedPercent:F0}% used)"));
             }
 
-            // Load WMI info async
-            _ = Task.Run(() =>
+            // Load WMI info and public IP async
+            _ = Task.Run(async () =>
             {
                 var hwItems = GetHardwareInfo();
+                await FetchPublicIpAsync();
                 if (InvokeRequired && !IsDisposed)
-                    Invoke(new Action(() => AddSystemInfoRows(items.Concat(hwItems).ToList(), copyBtn)));
-                else if (!IsDisposed)
-                    AddSystemInfoRows(items.Concat(hwItems).ToList(), copyBtn);
+                    Invoke(new Action(() =>
+                    {
+                        // Rebuild items with public IP resolved
+                        var updatedItems = new List<(string category, string key, string value)>();
+                        updatedItems.Add(("System", "Computer Name", Environment.MachineName));
+                        updatedItems.Add(("System", "User", $"{Environment.UserDomainName}\\{Environment.UserName}"));
+                        updatedItems.Add(("System", "OS", GetFriendlyOsVersion()));
+                        updatedItems.Add(("System", "Architecture", Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit"));
+                        updatedItems.Add(("System", ".NET Runtime", System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription));
+                        updatedItems.Add(("System", "Local IP", GetLocalIpAddress()));
+                        updatedItems.Add(("System", "Public IP", _cachedPublicIp ?? "N/A"));
+                        if (_health != null)
+                        {
+                            updatedItems.Add(("Health", "CPU Usage", $"{_health.CpuPercent:F0}%"));
+                            updatedItems.Add(("Health", "RAM Usage", $"{_health.RamUsedGB:F1} / {_health.RamTotalGB:F1} GB ({_health.RamPercent:F0}%)"));
+                            updatedItems.Add(("Health", "CPU Temperature", _health.CpuTempC > 0 ? $"{_health.CpuTempC:F0} C" : "N/A"));
+                            updatedItems.Add(("Health", "GPU Temperature", _health.GpuTempC > 0 ? $"{_health.GpuTempC:F0} C" : "N/A"));
+                            updatedItems.Add(("Health", "Uptime", $"{(int)_health.Uptime.TotalDays}d {_health.Uptime.Hours}h {_health.Uptime.Minutes}m"));
+                            updatedItems.Add(("Health", "Processes", _health.ProcessCount.ToString()));
+                            updatedItems.Add(("Health", "Network", $"Up: {_health.NetworkSentKBps:F0} KB/s  Down: {_health.NetworkRecvKBps:F0} KB/s"));
+                            foreach (var disk in _health.Disks)
+                                updatedItems.Add(("Disks", $"Drive {disk.Name}", $"{disk.FreeGB:F0} GB free / {disk.TotalGB:F0} GB ({disk.UsedPercent:F0}% used)"));
+                        }
+                        AddSystemInfoRows(updatedItems.Concat(hwItems).ToList(), copyBtn);
+                    }));
             });
 
             // Show what we have immediately
@@ -1183,6 +1208,34 @@ namespace PCPlus.Tray.Forms
             string name = ver.Major == 10 && ver.Build >= 22000 ? "Windows 11" :
                 ver.Major == 10 ? "Windows 10" : $"Windows {ver.Major}.{ver.Minor}";
             return $"{name} (Build {ver.Build})";
+        }
+
+        private static string GetLocalIpAddress()
+        {
+            try
+            {
+                using var socket = new System.Net.Sockets.Socket(
+                    System.Net.Sockets.AddressFamily.InterNetwork,
+                    System.Net.Sockets.SocketType.Dgram, 0);
+                socket.Connect("8.8.8.8", 65530);
+                if (socket.LocalEndPoint is System.Net.IPEndPoint ep)
+                    return ep.Address.ToString();
+            }
+            catch { }
+            return "N/A";
+        }
+
+        private string? _cachedPublicIp;
+
+        private async Task FetchPublicIpAsync()
+        {
+            if (_cachedPublicIp != null) return;
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                _cachedPublicIp = (await client.GetStringAsync("https://api.ipify.org")).Trim();
+            }
+            catch { _cachedPublicIp = "N/A"; }
         }
 
         private static List<(string, string, string)> GetHardwareInfo()
