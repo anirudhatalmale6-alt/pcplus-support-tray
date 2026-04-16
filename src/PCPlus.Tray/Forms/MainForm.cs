@@ -117,12 +117,12 @@ namespace PCPlus.Tray.Forms
                 g.DrawLine(checkPen, 32, 43, 42, 30);
 
                 // App name
-                using var brandFont = new Font("Segoe UI", 14, FontStyle.Bold);
+                using var brandFont = new Font("Segoe UI", 11, FontStyle.Bold);
                 using var brandBrush = new SolidBrush(Color.White);
-                g.DrawString("PC Plus", brandFont, brandBrush, 56, 22);
+                g.DrawString("PC Plus Computing", brandFont, brandBrush, 56, 22);
                 using var subFont = new Font("Segoe UI", 7.5f);
                 using var subBrush = new SolidBrush(SidebarText);
-                g.DrawString("ENDPOINT PROTECTION", subFont, subBrush, 58, 46);
+                g.DrawString("ENDPOINT PROTECTION", subFont, subBrush, 58, 44);
             };
 
             // Navigation items
