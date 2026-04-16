@@ -34,6 +34,9 @@ namespace PCPlus.Dashboard.Models
         public bool LockdownActive { get; set; }
         public int ActiveAlerts { get; set; }
         public int RunningModules { get; set; }
+
+        // Security check details (JSON)
+        public string SecurityChecksJson { get; set; } = "[]";
     }
 
     /// <summary>Alert received from an endpoint.</summary>
@@ -135,6 +138,18 @@ namespace PCPlus.Dashboard.Models
         public int ActiveAlerts { get; set; }
         public int RunningModules { get; set; }
         public List<ModuleStatusReport> Modules { get; set; } = new();
+        public List<SecurityCheckReport>? SecurityChecks { get; set; }
+    }
+
+    public class SecurityCheckReport
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "";
+        public bool Passed { get; set; }
+        public string Detail { get; set; } = "";
+        public string Recommendation { get; set; } = "";
+        public int Weight { get; set; }
     }
 
     public class ModuleStatusReport

@@ -615,7 +615,7 @@ function loadDeviceDetail(d) {
 
         <!-- Middle Row: Security + Network + System -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
-            <!-- Security Details -->
+            <!-- Security Details - from real scan data -->
             <div class="card" style="padding:20px">
                 <h4 style="margin:0 0 16px;font-size:14px;display:flex;align-items:center;gap:8px">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -642,13 +642,9 @@ function loadDeviceDetail(d) {
                         <span style="color:var(--text-muted)">Policy Profile</span>
                         <span style="font-weight:500">${esc(d.policyProfile || 'default')}</span>
                     </div>
-                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between">
                         <span style="color:var(--text-muted)">Lockdown</span>
                         <span style="color:${d.lockdownActive ? '#ef4444' : '#22c55e'};font-weight:600">${d.lockdownActive ? 'ACTIVE' : 'Inactive'}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between">
-                        <span style="color:var(--text-muted)">Windows Defender</span>
-                        <span style="color:${d.defenderEnabled !== false ? '#22c55e' : '#ef4444'};font-weight:600">${d.defenderEnabled !== false ? 'Enabled' : 'Disabled'}</span>
                     </div>
                 </div>
             </div>
@@ -808,6 +804,16 @@ function loadDeviceDetail(d) {
             <div id="dev-modules" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:8px">
             </div>
         </div>
+
+        <!-- Security Audit - 360 View -->
+        <div class="card" style="padding:20px;margin-bottom:16px">
+            <h4 style="margin:0 0 4px;font-size:16px;display:flex;align-items:center;gap:8px">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                360° Security Audit
+            </h4>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Real-time security check results from endpoint agent</div>
+            <div id="dev-security-audit"></div>
+        </div>
     `;
 
     // Populate donuts
@@ -826,6 +832,61 @@ function loadDeviceDetail(d) {
         { label: 'Healthy', value: healthyCount, color: '#22c55e' },
         { label: 'Warning', value: 4 - healthyCount, color: '#f59e0b' }
     ], healthyCount + '/4', 120);
+
+    // Populate security audit from securityChecksJson
+    const auditEl = document.getElementById('dev-security-audit');
+    let checks = [];
+    try {
+        if (d.securityChecksJson && d.securityChecksJson !== '[]')
+            checks = JSON.parse(d.securityChecksJson);
+    } catch(e) {}
+
+    if (checks.length > 0) {
+        // Group by category
+        const categories = {};
+        checks.forEach(c => {
+            if (!categories[c.category]) categories[c.category] = [];
+            categories[c.category].push(c);
+        });
+
+        const catIcons = {
+            'Protection': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+            'Updates': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+            'Data Protection': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+            'Network': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+            'Access': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+        };
+
+        auditEl.innerHTML = Object.entries(categories).map(([cat, catChecks]) => {
+            const passed = catChecks.filter(c => c.passed).length;
+            const total = catChecks.length;
+            const allPassed = passed === total;
+            const icon = catIcons[cat] || catIcons['Protection'];
+
+            return `
+                <div style="margin-bottom:16px">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+                        ${icon}
+                        <span style="font-weight:600;font-size:13px">${esc(cat)}</span>
+                        <span style="margin-left:auto;font-size:12px;padding:2px 8px;border-radius:10px;background:${allPassed ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${allPassed ? '#22c55e' : '#ef4444'};font-weight:600">${passed}/${total} passed</span>
+                    </div>
+                    ${catChecks.map(c => `
+                        <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 4px 8px 8px;border-radius:6px;margin-bottom:2px;background:${c.passed ? 'transparent' : 'rgba(239,68,68,0.05)'}">
+                            <span style="font-size:14px;margin-top:1px;flex-shrink:0">${c.passed ? '<span style="color:#22c55e">&#10003;</span>' : '<span style="color:#ef4444">&#10007;</span>'}</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:13px;font-weight:${c.passed ? '400' : '600'};color:${c.passed ? 'var(--text-primary)' : '#ef4444'}">${esc(c.name)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(c.detail)}</div>
+                                ${!c.passed && c.recommendation ? `<div style="font-size:11px;color:#f59e0b;margin-top:2px;font-style:italic">&#9888; ${esc(c.recommendation)}</div>` : ''}
+                            </div>
+                            <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;padding:2px 6px;background:var(--bg-main);border-radius:4px">${c.weight}pts</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }).join('');
+    } else {
+        auditEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Security audit data will appear after the agent runs its first scan (runs every 30 minutes)</div>';
+    }
 
     // Load device-specific alerts
     loadDeviceAlerts(d);

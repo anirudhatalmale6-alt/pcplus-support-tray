@@ -95,10 +95,11 @@ namespace PCPlus.Service.Engine
                     }
                 }
 
-                // Get security score from module status (more reliable than command)
+                // Get security score and check details from module
                 var secModule = _engine.GetModule("security");
                 int secScore = 0;
                 string secGrade = "?";
+                var securityChecks = new List<object>();
                 if (secModule?.IsRunning == true)
                 {
                     var status = secModule.GetStatus();
@@ -106,6 +107,36 @@ namespace PCPlus.Service.Engine
                         secScore = Convert.ToInt32(scoreObj);
                     if (status.Metrics.TryGetValue("grade", out var gradeObj))
                         secGrade = gradeObj?.ToString() ?? "?";
+
+                    // Get detailed check results
+                    try
+                    {
+                        var secResult = await secModule.HandleCommandAsync(new ModuleCommand
+                        {
+                            ModuleId = "security",
+                            Action = "GetSecurityReport"
+                        });
+                        if (secResult.Success && secResult.Data.TryGetValue("result", out var resultObj))
+                        {
+                            var json = JsonSerializer.Serialize(resultObj);
+                            var scanResult = JsonSerializer.Deserialize<SecurityScanResult>(json,
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                            if (scanResult?.Checks != null)
+                            {
+                                securityChecks = scanResult.Checks.Select(c => (object)new
+                                {
+                                    id = c.Id,
+                                    name = c.Name,
+                                    category = c.Category,
+                                    passed = c.Passed,
+                                    detail = c.Detail,
+                                    recommendation = c.Recommendation,
+                                    weight = c.Weight
+                                }).ToList();
+                            }
+                        }
+                    }
+                    catch { }
                 }
 
                 // Count running modules
@@ -137,7 +168,8 @@ namespace PCPlus.Service.Engine
                     lockdownActive = false,
                     activeAlerts = 0,
                     runningModules = runningCount,
-                    modules = new List<object>()
+                    modules = new List<object>(),
+                    securityChecks = securityChecks
                 };
 
                 var response = await _http.PostAsJsonAsync("/api/endpoint/heartbeat", heartbeat);

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PCPlus.Dashboard.Data;
@@ -72,6 +73,10 @@ namespace PCPlus.Dashboard.Controllers
             device.LockdownActive = request.LockdownActive;
             device.ActiveAlerts = request.ActiveAlerts;
             device.RunningModules = request.RunningModules;
+
+            // Store security check details
+            if (request.SecurityChecks?.Count > 0)
+                device.SecurityChecksJson = JsonSerializer.Serialize(request.SecurityChecks);
 
             await _db.SaveChangesAsync();
 

@@ -103,7 +103,9 @@ namespace PCPlus.Service.Modules.Security
                 CheckGuestAccount(),
                 CheckAutoLogin(),
                 CheckSMBv1(),
-                CheckDefenderRealtime()
+                CheckDefenderRealtime(),
+                CheckBackupStatus(),
+                CheckLastWindowsUpdate()
             };
 
             var score = checks.Where(c => c.Passed).Sum(c => c.Weight);
@@ -331,6 +333,62 @@ namespace PCPlus.Service.Modules.Security
                         ok ? "" : "Enable in Windows Security");
                 }
                 return (true, "Third-party AV may be active", "");
+            }
+            catch { return (true, "Unable to check", ""); }
+        });
+
+        private SecurityCheck CheckBackupStatus() => RunCheck("backup", "Backup Status", "Data Protection", 5, () =>
+        {
+            try
+            {
+                // Check Windows File History
+                using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\FileHistory");
+                if (key != null)
+                {
+                    var protectedUntil = key.GetValue("ProtectedUpToTime");
+                    if (protectedUntil != null)
+                    {
+                        var ft = Convert.ToInt64(protectedUntil);
+                        var lastBackup = DateTime.FromFileTimeUtc(ft);
+                        var daysSince = (DateTime.UtcNow - lastBackup).TotalDays;
+                        if (daysSince <= 7)
+                            return (true, $"File History: last backup {lastBackup:MMM d, yyyy h:mm tt} ({daysSince:F0} days ago)", "");
+                        return (false, $"File History: last backup {lastBackup:MMM d, yyyy} ({daysSince:F0} days ago)", "Run a backup - last one was over a week ago");
+                    }
+                }
+
+                // Check System Restore
+                using var srKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore");
+                if (srKey != null)
+                {
+                    var enabled = Convert.ToInt32(srKey.GetValue("RPSessionInterval", 0));
+                    if (enabled > 0)
+                        return (true, "System Restore enabled (no File History)", "Consider enabling File History backup");
+                }
+
+                return (false, "No backup solution configured", "Enable File History or install backup software");
+            }
+            catch { return (false, "Unable to check backup status", "Configure a backup solution"); }
+        });
+
+        private SecurityCheck CheckLastWindowsUpdate() => RunCheck("last_update", "Last Windows Update", "Updates", 5, () =>
+        {
+            try
+            {
+                // Check registry for last successful update time
+                using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\Results\Install");
+                if (key != null)
+                {
+                    var lastSuccess = key.GetValue("LastSuccessTime")?.ToString();
+                    if (!string.IsNullOrEmpty(lastSuccess) && DateTime.TryParse(lastSuccess, out var lastDate))
+                    {
+                        var daysSince = (DateTime.UtcNow - lastDate).TotalDays;
+                        if (daysSince <= 30)
+                            return (true, $"Last update installed: {lastDate:MMM d, yyyy} ({daysSince:F0} days ago)", "");
+                        return (false, $"Last update: {lastDate:MMM d, yyyy} ({daysSince:F0} days ago)", "Check for updates - last install was over 30 days ago");
+                    }
+                }
+                return (true, "Unable to determine last update date", "");
             }
             catch { return (true, "Unable to check", ""); }
         });
