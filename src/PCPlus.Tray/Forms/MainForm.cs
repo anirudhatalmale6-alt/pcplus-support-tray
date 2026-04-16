@@ -67,6 +67,7 @@ namespace PCPlus.Tray.Forms
             Size = new Size(980, 640);
             MinimumSize = new Size(880, 560);
             StartPosition = FormStartPosition.CenterScreen;
+            WindowState = FormWindowState.Maximized;
             BackColor = ContentBg;
             ForeColor = TextDark;
             Font = new Font("Segoe UI", 9.5f);
