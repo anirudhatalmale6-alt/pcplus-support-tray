@@ -2,6 +2,17 @@
 const API = '/api/dashboard';
 const ENDPOINT_API = '/api/endpoint';
 
+// Auth-aware fetch wrapper - redirects to login on 401
+async function apiFetch(url, options) {
+    const res = await fetch(url, options);
+    if (res.status === 401) { window.location.href = '/login.html'; return null; }
+    return res;
+}
+
+function logout() {
+    fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.href = '/login.html');
+}
+
 // --- Mobile sidebar toggle ---
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -35,7 +46,7 @@ function showPage(page) {
 
     document.getElementById('page-' + page).style.display = 'block';
     document.querySelectorAll('.nav-item')[
-        ['overview', 'devices', 'alerts', 'incidents', 'policies', 'config']
+        ['overview', 'devices', 'alerts', 'incidents', 'policies', 'config', 'email-reports']
             .indexOf(page)
     ]?.classList.add('active');
 
@@ -55,6 +66,7 @@ function refreshCurrentPage() {
         case 'incidents': loadIncidents(); break;
         case 'policies': loadPolicies(); break;
         case 'config': loadConfigPage(); break;
+        case 'email-reports': loadEmailReports(); break;
     }
 }
 
@@ -839,7 +851,19 @@ function loadDeviceDetail(d) {
             <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Real-time security check results from endpoint agent</div>
             <div id="dev-security-audit"></div>
         </div>
+
+        <!-- BitLocker Recovery Keys -->
+        <div class="card" style="padding:20px;margin-bottom:16px">
+            <h4 style="margin:0 0 12px;font-size:14px;display:flex;align-items:center;gap:8px">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                BitLocker Recovery Keys
+            </h4>
+            <div id="dev-bitlocker"></div>
+        </div>
     `;
+
+    // Load BitLocker keys
+    loadBitLockerKeys(d.deviceId);
 
     // Populate donuts
     const protectedModules = d.runningModules || 0;
@@ -1256,3 +1280,217 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('device-modal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('device-modal')) closeModal();
 });
+
+// --- BitLocker Recovery Keys ---
+async function loadBitLockerKeys(deviceId) {
+    const el = document.getElementById('dev-bitlocker');
+    if (!el) return;
+    try {
+        const res = await apiFetch(API + '/devices/' + encodeURIComponent(deviceId) + '/bitlocker');
+        if (!res) return;
+        const keys = await res.json();
+        if (!keys || keys.length === 0) {
+            el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">No BitLocker recovery keys captured yet. Keys will appear after the agent scans encrypted drives.</div>';
+            return;
+        }
+        el.innerHTML = `<table style="width:100%">
+            <thead><tr><th>Drive</th><th>Key Protector ID</th><th>Recovery Key</th><th></th></tr></thead>
+            <tbody>${keys.map(k => `<tr>
+                <td style="font-weight:600;font-size:14px">${esc(k.driveLetter || k.DriveLetter)}</td>
+                <td style="font-size:11px;color:var(--text-muted);font-family:monospace">${esc(k.keyProtectorId || k.KeyProtectorId)}</td>
+                <td>
+                    <span class="bl-key" id="blk-${esc(k.keyProtectorId || k.KeyProtectorId)}" style="font-family:monospace;font-size:12px;letter-spacing:0.5px">
+                        ${'*'.repeat(20)}
+                    </span>
+                    <span class="bl-key-val" style="display:none">${esc(k.recoveryKey || k.RecoveryKey)}</span>
+                </td>
+                <td style="white-space:nowrap">
+                    <button onclick="toggleBLKey(this)" class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px">Reveal</button>
+                    <button onclick="copyBLKey('${esc(k.recoveryKey || k.RecoveryKey)}')" class="btn btn-sm btn-primary" style="font-size:11px;padding:2px 8px;background:#3b82f6">Copy</button>
+                </td>
+            </tr>`).join('')}</tbody>
+        </table>`;
+    } catch (err) {
+        el.innerHTML = '<div style="color:var(--text-muted);font-size:12px">Failed to load BitLocker keys</div>';
+    }
+}
+
+function toggleBLKey(btn) {
+    const row = btn.closest('tr');
+    const masked = row.querySelector('.bl-key');
+    const real = row.querySelector('.bl-key-val');
+    if (masked.style.display !== 'none') {
+        masked.style.display = 'none';
+        real.style.display = 'inline';
+        real.style.fontFamily = 'monospace';
+        real.style.fontSize = '12px';
+        real.style.letterSpacing = '0.5px';
+        btn.textContent = 'Hide';
+    } else {
+        masked.style.display = 'inline';
+        real.style.display = 'none';
+        btn.textContent = 'Reveal';
+    }
+}
+
+function copyBLKey(key) {
+    navigator.clipboard.writeText(key).then(() => {
+        alert('Recovery key copied to clipboard');
+    });
+}
+
+// --- Email Reports ---
+async function loadEmailReports() {
+    try {
+        const [schedules, smtpRes, customers] = await Promise.all([
+            apiFetch(API + '/email-schedules').then(r => r?.json() || []),
+            apiFetch(API + '/email-schedules/smtp').then(r => r?.json() || {}),
+            apiFetch('/api/reports/customers').then(r => r?.json() || [])
+        ]);
+
+        const content = document.getElementById('email-reports-content');
+        const daysOfWeek = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+        content.innerHTML = `
+            <!-- SMTP Settings -->
+            <div class="card" style="padding:20px;margin-bottom:16px">
+                <h4 style="margin:0 0 16px;font-size:14px">SMTP Configuration</h4>
+                <div class="grid-3" style="gap:12px">
+                    <div><label style="font-size:12px;color:var(--text-muted)">SMTP Host</label><input id="smtp-host" value="${esc(smtpRes.host||'')}" class="input" placeholder="smtp.gmail.com"></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Port</label><input id="smtp-port" value="${smtpRes.port||587}" type="number" class="input"></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">SSL/TLS</label><select id="smtp-ssl" class="input"><option value="true" ${smtpRes.useSsl!==false?'selected':''}>Enabled</option><option value="false" ${smtpRes.useSsl===false?'selected':''}>Disabled</option></select></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Username</label><input id="smtp-user" value="${esc(smtpRes.username||'')}" class="input"></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Password</label><input id="smtp-pass" value="${esc(smtpRes.password||'')}" type="password" class="input"></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">From Address</label><input id="smtp-from" value="${esc(smtpRes.fromAddress||'')}" class="input" placeholder="reports@company.com"></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">From Name</label><input id="smtp-name" value="${esc(smtpRes.fromName||'PC Plus Computing')}" class="input"></div>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px">
+                    <button class="btn btn-sm btn-primary" onclick="saveSmtp()">Save SMTP</button>
+                    <button class="btn btn-sm btn-secondary" onclick="testSmtp()">Test Connection</button>
+                </div>
+            </div>
+
+            <!-- Add Schedule -->
+            <div class="card" style="padding:20px;margin-bottom:16px">
+                <h4 style="margin:0 0 16px;font-size:14px">Add Email Schedule</h4>
+                <div class="grid-3" style="gap:12px">
+                    <div><label style="font-size:12px;color:var(--text-muted)">Customer</label>
+                        <select id="sched-customer" class="input">
+                            ${customers.map(c => `<option value="${esc(c.name)}">${esc(c.name)} (${c.deviceCount} devices)</option>`).join('')}
+                        </select>
+                    </div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Recipient Emails (comma-separated)</label><input id="sched-emails" class="input" placeholder="client@company.com"></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Frequency</label>
+                        <select id="sched-freq" class="input"><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select>
+                    </div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Day of Week</label>
+                        <select id="sched-day" class="input">${daysOfWeek.map((d,i) => `<option value="${i}" ${i===1?'selected':''}>${d}</option>`).join('')}</select>
+                    </div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Hour (UTC)</label><input id="sched-hour" type="number" min="0" max="23" value="8" class="input"></div>
+                </div>
+                <div style="margin-top:12px">
+                    <button class="btn btn-sm btn-primary" onclick="createSchedule()">Add Schedule</button>
+                </div>
+            </div>
+
+            <!-- Schedules List -->
+            <div class="card" style="padding:20px">
+                <h4 style="margin:0 0 16px;font-size:14px">Active Schedules</h4>
+                <div class="table-scroll">
+                <table style="width:100%;min-width:700px">
+                    <thead><tr><th>Customer</th><th>Recipients</th><th>Frequency</th><th>Day/Hour</th><th>Last Sent</th><th>Next Send</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="schedules-table">
+                        ${schedules.length === 0 ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">No email schedules configured yet</td></tr>' :
+                        schedules.map(s => `<tr>
+                            <td style="font-weight:600">${esc(s.customerName)}</td>
+                            <td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(s.recipientEmails)}</td>
+                            <td>${s.frequency}</td>
+                            <td>${daysOfWeek[s.dayOfWeek] || '?'} ${s.hour}:00 UTC</td>
+                            <td style="font-size:12px">${s.lastSentAt ? timeAgo(s.lastSentAt) : 'Never'}</td>
+                            <td style="font-size:12px">${s.nextSendAt ? new Date(s.nextSendAt).toLocaleDateString() : '-'}</td>
+                            <td><span class="badge ${s.enabled ? 'online' : 'offline'}">${s.enabled ? 'Active' : 'Paused'}</span></td>
+                            <td style="white-space:nowrap">
+                                <button class="btn btn-sm btn-primary" onclick="sendNow(${s.id})" style="font-size:11px;padding:2px 8px">Send Now</button>
+                                <button class="btn btn-sm btn-secondary" onclick="toggleSchedule(${s.id})" style="font-size:11px;padding:2px 8px">${s.enabled ? 'Pause' : 'Enable'}</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteSchedule(${s.id})" style="font-size:11px;padding:2px 8px">Delete</button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        console.error('Failed to load email reports:', err);
+    }
+}
+
+async function saveSmtp() {
+    const data = {
+        host: document.getElementById('smtp-host').value,
+        port: parseInt(document.getElementById('smtp-port').value) || 587,
+        username: document.getElementById('smtp-user').value,
+        password: document.getElementById('smtp-pass').value,
+        fromAddress: document.getElementById('smtp-from').value,
+        fromName: document.getElementById('smtp-name').value,
+        useSsl: document.getElementById('smtp-ssl').value === 'true'
+    };
+    const res = await apiFetch(API + '/email-schedules/smtp', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    if (res?.ok) alert('SMTP settings saved!');
+}
+
+async function testSmtp() {
+    const data = {
+        host: document.getElementById('smtp-host').value,
+        port: parseInt(document.getElementById('smtp-port').value) || 587,
+        username: document.getElementById('smtp-user').value,
+        password: document.getElementById('smtp-pass').value,
+        fromAddress: document.getElementById('smtp-from').value,
+        fromName: document.getElementById('smtp-name').value,
+        useSsl: document.getElementById('smtp-ssl').value === 'true'
+    };
+    const res = await apiFetch(API + '/email-schedules/smtp/test', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    if (!res) return;
+    const result = await res.json();
+    alert(result.success ? 'SMTP test successful! Check your inbox.' : 'SMTP test failed: ' + result.message);
+}
+
+async function createSchedule() {
+    const data = {
+        customerName: document.getElementById('sched-customer').value,
+        recipientEmails: document.getElementById('sched-emails').value,
+        frequency: document.getElementById('sched-freq').value,
+        dayOfWeek: parseInt(document.getElementById('sched-day').value),
+        hour: parseInt(document.getElementById('sched-hour').value)
+    };
+    if (!data.customerName || !data.recipientEmails) { alert('Please fill in customer and email fields'); return; }
+    await apiFetch(API + '/email-schedules', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    loadEmailReports();
+}
+
+async function toggleSchedule(id) {
+    await apiFetch(API + '/email-schedules/' + id + '/toggle', { method: 'POST' });
+    loadEmailReports();
+}
+
+async function deleteSchedule(id) {
+    if (!confirm('Delete this schedule?')) return;
+    await apiFetch(API + '/email-schedules/' + id, { method: 'DELETE' });
+    loadEmailReports();
+}
+
+async function sendNow(id) {
+    if (!confirm('Send report now?')) return;
+    const res = await apiFetch(API + '/email-schedules/' + id + '/send-now', { method: 'POST' });
+    if (!res) return;
+    const result = await res.json();
+    if (result.error) alert('Error: ' + result.error);
+    else alert('Report sent to ' + result.recipients + ' recipient(s)!');
+    loadEmailReports();
+}

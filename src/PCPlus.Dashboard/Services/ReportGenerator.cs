@@ -1,43 +1,42 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PCPlus.Dashboard.Data;
 using PCPlus.Dashboard.Models;
 
-namespace PCPlus.Dashboard.Controllers
+namespace PCPlus.Dashboard.Services
 {
     /// <summary>
-    /// Server-side rendered HTML/PDF reports.
-    /// Generates self-contained HTML with SVG charts - works in email clients and mobile browsers.
+    /// Generates self-contained HTML security reports for customers.
+    /// Extracted from ReportController so it can be reused by EmailReportService and other callers.
+    /// Uses IServiceScopeFactory to create its own DI scopes for DashboardDb access.
     /// </summary>
-    [ApiController]
-    [Authorize]
-    [Route("api/reports")]
-    public class ReportController : ControllerBase
+    public class ReportGenerator
     {
-        private readonly DashboardDb _db;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public ReportController(DashboardDb db) => _db = db;
-
-        /// <summary>GET /api/reports/company/{customerName} - Full HTML report for a customer.</summary>
-        [HttpGet("company/{customerName}")]
-        public async Task<ContentResult> CompanyReport(string customerName, [FromQuery] string? format = null)
+        public ReportGenerator(IServiceScopeFactory scopeFactory)
         {
-            customerName = WebUtility.UrlDecode(customerName);
-            var devices = await _db.Devices
+            _scopeFactory = scopeFactory;
+        }
+
+        /// <summary>
+        /// Generate full HTML report for a customer.
+        /// If forEmail=true, strips the action bar and script tags so the HTML is email-safe.
+        /// Returns null if no devices found for the customer.
+        /// </summary>
+        public async Task<string?> GenerateCompanyReportHtml(string customerName, bool forEmail = false)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<DashboardDb>();
+
+            var devices = await db.Devices
                 .Where(d => d.CustomerName == customerName)
                 .OrderBy(d => d.SecurityScore)
                 .ToListAsync();
 
-            if (devices.Count == 0)
-                return new ContentResult
-                {
-                    Content = $"<html><body><p>No devices found for \"{Esc(customerName)}\"</p></body></html>",
-                    ContentType = "text/html"
-                };
+            if (devices.Count == 0) return null;
 
             // Parse security checks for each device
             var deviceData = devices.Select(d =>
@@ -105,12 +104,15 @@ namespace PCPlus.Dashboard.Controllers
             sb.Append(GetCss());
             sb.Append("</style></head><body>");
 
-            // Action bar (hidden in print/email)
-            sb.Append(@"<div class=""action-bar no-print"">
-                <button onclick=""window.print()"">Save as PDF</button>
-                <a class=""btn-dl"" id=""dl-btn"">Download HTML</a>
-                <button class=""btn-gray"" onclick=""window.close()"">Close</button>
-            </div>");
+            // Action bar (hidden in print; omitted entirely for email)
+            if (!forEmail)
+            {
+                sb.Append(@"<div class=""action-bar no-print"">
+                    <button onclick=""window.print()"">Save as PDF</button>
+                    <a class=""btn-dl"" id=""dl-btn"">Download HTML</a>
+                    <button class=""btn-gray"" onclick=""window.close()"">Close</button>
+                </div>");
+            }
 
             // Branded header
             sb.Append($@"<div class=""brand-bar"">
@@ -301,46 +303,24 @@ namespace PCPlus.Dashboard.Controllers
                 <p style=""margin-top:6px;color:#bbb"">www.pcpluscomputing.com | Managed IT Services &amp; Security</p>
             </div>");
 
-            // Minimal JS for download button only (stripped in email)
-            sb.Append(@"<script>
-            document.getElementById('dl-btn').addEventListener('click', function() {
-                var html = document.documentElement.outerHTML;
-                var blob = new Blob([html], {type: 'text/html'});
-                var a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = document.title.replace(/[^a-zA-Z0-9 -]/g,'') + '.html';
-                a.click();
-            });
-            </script>");
+            // Minimal JS for download button only (omitted for email)
+            if (!forEmail)
+            {
+                sb.Append(@"<script>
+                document.getElementById('dl-btn').addEventListener('click', function() {
+                    var html = document.documentElement.outerHTML;
+                    var blob = new Blob([html], {type: 'text/html'});
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = document.title.replace(/[^a-zA-Z0-9 -]/g,'') + '.html';
+                    a.click();
+                });
+                </script>");
+            }
 
             sb.Append("</body></html>");
 
-            return new ContentResult
-            {
-                Content = sb.ToString(),
-                ContentType = "text/html",
-                StatusCode = 200
-            };
-        }
-
-        /// <summary>GET /api/reports/customers - List customers with device counts (for report picker).</summary>
-        [HttpGet("customers")]
-        public async Task<ActionResult> GetCustomers()
-        {
-            var devices = await _db.Devices.ToListAsync();
-            var customers = devices
-                .Where(d => !string.IsNullOrEmpty(d.CustomerName))
-                .GroupBy(d => d.CustomerName)
-                .Select(g => new
-                {
-                    name = g.Key,
-                    deviceCount = g.Count(),
-                    avgScore = (int)Math.Round(g.Average(d => d.SecurityScore)),
-                    onlineCount = g.Count(d => d.IsOnline)
-                })
-                .OrderBy(c => c.name)
-                .ToList();
-            return Ok(customers);
+            return sb.ToString();
         }
 
         // --- Helpers ---

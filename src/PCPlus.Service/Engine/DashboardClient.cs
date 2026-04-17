@@ -149,16 +149,14 @@ namespace PCPlus.Service.Engine
                 // Get public IP (cached, refreshed every 5 minutes)
                 var publicIp = await GetPublicIpAddress();
 
-                // Collect software inventory every 10th heartbeat (~5 minutes)
+                // Collect software inventory and BitLocker keys every 10th heartbeat (~5 minutes)
                 _heartbeatCount++;
                 var installedSoftware = new List<object>();
+                List<object>? bitlockerKeys = null;
                 if (_heartbeatCount % 10 == 1)
                 {
-                    try
-                    {
-                        installedSoftware = CollectSoftwareInventory();
-                    }
-                    catch { }
+                    try { installedSoftware = CollectSoftwareInventory(); } catch { }
+                    try { bitlockerKeys = CollectBitLockerRecoveryKeys(); } catch { }
                 }
 
                 var heartbeat = new
@@ -183,7 +181,8 @@ namespace PCPlus.Service.Engine
                     runningModules = runningCount,
                     modules = new List<object>(),
                     securityChecks = securityChecks,
-                    installedSoftware = installedSoftware.Count > 0 ? installedSoftware : null
+                    installedSoftware = installedSoftware.Count > 0 ? installedSoftware : null,
+                    bitLockerRecoveryKeys = bitlockerKeys
                 };
 
                 var response = await _http.PostAsJsonAsync("/api/endpoint/heartbeat", heartbeat);
@@ -437,6 +436,56 @@ namespace PCPlus.Service.Engine
                 }
             }
             return software.DistinctBy(s => ((dynamic)s).name.ToString()).OrderBy(s => ((dynamic)s).name.ToString()).ToList();
+        }
+
+        private List<object> CollectBitLockerRecoveryKeys()
+        {
+            var keys = new List<object>();
+            try
+            {
+                // Query BitLocker volumes via WMI
+                using var searcher = new System.Management.ManagementObjectSearcher(
+                    @"root\CIMV2\Security\MicrosoftVolumeEncryption",
+                    "SELECT * FROM Win32_EncryptableVolume");
+                foreach (System.Management.ManagementObject vol in searcher.Get())
+                {
+                    var driveLetter = vol["DriveLetter"]?.ToString() ?? "";
+                    var protectionStatus = vol["ProtectionStatus"]?.ToString() ?? "0";
+
+                    // Only capture keys for encrypted drives
+                    if (protectionStatus == "0") continue;
+
+                    try
+                    {
+                        // Get key protector IDs - use ManagementBaseObject for WMI method calls
+                        var inParams = vol.GetMethodParameters("GetKeyProtectors");
+                        inParams["KeyProtectorType"] = (uint)3; // 3 = Numerical Password
+                        var outParams = vol.InvokeMethod("GetKeyProtectors", inParams, null);
+                        if (outParams?["VolumeKeyProtectorID"] is string[] protectorIds)
+                        {
+                            foreach (var protectorId in protectorIds)
+                            {
+                                var keyInParams = vol.GetMethodParameters("GetKeyProtectorNumericalPassword");
+                                keyInParams["VolumeKeyProtectorID"] = protectorId;
+                                var keyOutParams = vol.InvokeMethod("GetKeyProtectorNumericalPassword", keyInParams, null);
+                                var recoveryKey = keyOutParams?["NumericalPassword"]?.ToString() ?? "";
+                                if (!string.IsNullOrEmpty(recoveryKey))
+                                {
+                                    keys.Add(new
+                                    {
+                                        driveLetter = driveLetter,
+                                        keyProtectorId = protectorId,
+                                        recoveryKey = recoveryKey
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return keys;
         }
 
         public void Dispose()

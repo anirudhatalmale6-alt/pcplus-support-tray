@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PCPlus.Dashboard.Data;
@@ -11,6 +12,7 @@ namespace PCPlus.Dashboard.Controllers
     /// Provides device management, alert feed, config push, policy management.
     /// </summary>
     [ApiController]
+    [Authorize]
     [Route("api/dashboard")]
     public class DashboardController : ControllerBase
     {
@@ -296,6 +298,24 @@ namespace PCPlus.Dashboard.Controllers
                 .OrderByDescending(i => i.OccurredAt)
                 .Take(Math.Min(limit, 200))
                 .ToListAsync());
+        }
+
+        /// <summary>GET /api/dashboard/devices/{id}/bitlocker - Get BitLocker recovery keys.</summary>
+        [HttpGet("devices/{deviceId}/bitlocker")]
+        public async Task<ActionResult> GetBitLockerKeys(string deviceId)
+        {
+            var device = await _db.Devices.FindAsync(deviceId);
+            if (device == null) return NotFound();
+            try
+            {
+                var keys = JsonSerializer.Deserialize<List<BitLockerKeyReport>>(device.BitLockerKeysJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                return Ok(keys);
+            }
+            catch
+            {
+                return Ok(new List<BitLockerKeyReport>());
+            }
         }
 
         /// <summary>POST /api/dashboard/incidents/{id}/resolve - Resolve an incident.</summary>

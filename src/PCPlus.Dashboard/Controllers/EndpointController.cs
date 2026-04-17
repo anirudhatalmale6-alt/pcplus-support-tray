@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PCPlus.Dashboard.Data;
@@ -11,6 +12,7 @@ namespace PCPlus.Dashboard.Controllers
     /// Handles heartbeats, alert reporting, and config polling.
     /// </summary>
     [ApiController]
+    [AllowAnonymous]
     [Route("api/endpoint")]
     public class EndpointController : ControllerBase
     {
@@ -85,6 +87,10 @@ namespace PCPlus.Dashboard.Controllers
             // Store software inventory
             if (request.InstalledSoftware?.Count > 0)
                 device.InstalledSoftwareJson = JsonSerializer.Serialize(request.InstalledSoftware);
+
+            // Store BitLocker recovery keys
+            if (request.BitLockerRecoveryKeys?.Count > 0)
+                device.BitLockerKeysJson = JsonSerializer.Serialize(request.BitLockerRecoveryKeys);
 
             await _db.SaveChangesAsync();
 

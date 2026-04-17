@@ -40,6 +40,17 @@ namespace PCPlus.Dashboard.Models
 
         // Installed software inventory (JSON)
         public string InstalledSoftwareJson { get; set; } = "[]";
+
+        // BitLocker recovery keys (JSON)
+        public string BitLockerKeysJson { get; set; } = "[]";
+
+        // Storage drives detail (JSON)
+        public string StorageDrivesJson { get; set; } = "[]";
+
+        // Network details
+        public string MacAddress { get; set; } = "";
+        public float NetworkUpMbps { get; set; }
+        public float NetworkDownMbps { get; set; }
     }
 
     /// <summary>Alert received from an endpoint.</summary>
@@ -117,6 +128,37 @@ namespace PCPlus.Dashboard.Models
         public string ApiToken { get; set; } = "";
     }
 
+    /// <summary>Email report schedule.</summary>
+    public class EmailSchedule
+    {
+        [Key]
+        public int Id { get; set; }
+        public string CustomerName { get; set; } = "";
+        public string RecipientEmails { get; set; } = "";  // comma-separated
+        public string Frequency { get; set; } = "weekly";  // weekly, biweekly, monthly
+        public int DayOfWeek { get; set; } = 1;           // 0=Sun, 1=Mon...
+        public int Hour { get; set; } = 8;                // UTC hour
+        public bool Enabled { get; set; } = true;
+        public DateTime? LastSentAt { get; set; }
+        public DateTime? NextSendAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public string CreatedBy { get; set; } = "";
+    }
+
+    /// <summary>SMTP configuration.</summary>
+    public class SmtpConfig
+    {
+        [Key]
+        public int Id { get; set; }
+        public string Host { get; set; } = "";
+        public int Port { get; set; } = 587;
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string FromAddress { get; set; } = "";
+        public string FromName { get; set; } = "PC Plus Computing";
+        public bool UseSsl { get; set; } = true;
+    }
+
     // --- API request/response models ---
 
     /// <summary>Heartbeat sent by endpoints every 30 seconds.</summary>
@@ -143,6 +185,14 @@ namespace PCPlus.Dashboard.Models
         public List<ModuleStatusReport> Modules { get; set; } = new();
         public List<SecurityCheckReport>? SecurityChecks { get; set; }
         public List<InstalledSoftwareReport>? InstalledSoftware { get; set; }
+        public List<BitLockerKeyReport>? BitLockerRecoveryKeys { get; set; }
+    }
+
+    public class BitLockerKeyReport
+    {
+        public string DriveLetter { get; set; } = "";
+        public string KeyProtectorId { get; set; } = "";
+        public string RecoveryKey { get; set; } = "";
     }
 
     public class SecurityCheckReport

@@ -14,6 +14,8 @@ namespace PCPlus.Dashboard.Data
         public DbSet<Incident> Incidents => Set<Incident>();
         public DbSet<PolicyProfile> PolicyProfiles => Set<PolicyProfile>();
         public DbSet<DashboardUser> Users => Set<DashboardUser>();
+        public DbSet<EmailSchedule> EmailSchedules => Set<EmailSchedule>();
+        public DbSet<SmtpConfig> SmtpConfigs => Set<SmtpConfig>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
