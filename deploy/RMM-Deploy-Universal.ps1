@@ -19,7 +19,7 @@ $CustomerId      = "{{site.id}}"         # Tactical RMM variable
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
 # === END CUSTOMIZATION ===
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $ServiceName = "PCPlusEndpoint"
 $InstallDir = "$env:ProgramFiles\PC Plus\Endpoint Protection"
 $ConfigDir = "$env:ProgramData\PCPlusEndpoint"
@@ -55,6 +55,7 @@ Write-Log "Machine: $env:COMPUTERNAME"
 Write-Log "Installed: $isInstalled (version: $currentVersion)"
 Write-Log "Customer: $CustomerName"
 Write-Log "Dashboard: $DashboardUrl"
+Write-Log "Running as: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)"
 
 # --- Add AV exclusions (helps with Avast/Defender false positives) ---
 Write-Log "Adding Windows Defender exclusions..."
@@ -96,8 +97,7 @@ try {
     Invoke-WebRequest -Uri $installerAsset.browser_download_url -OutFile $zipPath -UseBasicParsing
     Write-Log "Download complete."
 } catch {
-    Write-Log "Download failed: $_" "ERROR"
-    # Retry with different TLS settings
+    Write-Log "Download failed: $_" "WARN"
     Write-Log "Retrying with .NET WebClient..."
     try {
         $wc = New-Object System.Net.WebClient
@@ -111,12 +111,21 @@ try {
 
 # --- Extract ---
 Write-Log "Extracting..."
-if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
-Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+try {
+    if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+    Write-Log "Extract complete."
+} catch {
+    Write-Log "Extract failed: $_" "ERROR"
+    exit 1
+}
 
 # Find binaries
 $svcSource = Get-ChildItem -Path $extractPath -Filter "PCPlusService.exe" -Recurse | Select-Object -First 1
 $traySource = Get-ChildItem -Path $extractPath -Filter "PCPlusTray.exe" -Recurse | Select-Object -First 1
+
+Write-Log "Service exe found: $($svcSource -ne $null) ($($svcSource.FullName))"
+Write-Log "Tray exe found: $($traySource -ne $null) ($($traySource.FullName))"
 
 if (-not $svcSource) {
     Write-Log "PCPlusService.exe not found in download" "ERROR"
@@ -125,63 +134,63 @@ if (-not $svcSource) {
 
 # --- Stop existing service and tray ---
 Write-Log "Stopping existing processes..."
-taskkill /F /IM PCPlusService.exe /T 2>$null
-taskkill /F /IM PCPlusTray.exe /T 2>$null
+try { & taskkill /F /IM PCPlusService.exe /T 2>&1 | Out-Null } catch {}
+try { & taskkill /F /IM PCPlusTray.exe /T 2>&1 | Out-Null } catch {}
+Write-Log "Taskkill done."
+
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($svc) {
-    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-    sc.exe delete $ServiceName 2>$null | Out-Null
+    Write-Log "Stopping existing service..."
+    try { Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue } catch {}
+    try { & sc.exe delete $ServiceName 2>&1 | Out-Null } catch {}
+    Start-Sleep -Seconds 2
 }
-Start-Sleep -Seconds 3
+Write-Log "Existing processes stopped."
 
 # --- Create directories ---
+Write-Log "Creating install directories..."
 New-Item -Path "$InstallDir\Service" -ItemType Directory -Force | Out-Null
 New-Item -Path "$InstallDir\Tray" -ItemType Directory -Force | Out-Null
 New-Item -Path "$ConfigDir\Audits" -ItemType Directory -Force | Out-Null
+Write-Log "Directories created."
 
-# Helper: copy files, renaming locked ones out of the way
-function Copy-WithRetry {
-    param([string]$Source, [string]$Dest)
-    Get-ChildItem -Path $Source -Recurse | ForEach-Object {
-        $relPath = $_.FullName.Substring($Source.Length).TrimStart('\')
-        $target = Join-Path $Dest $relPath
-        if ($_.PSIsContainer) {
-            New-Item -Path $target -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-        } else {
-            $targetDir = Split-Path $target -Parent
-            if (-not (Test-Path $targetDir)) { New-Item -Path $targetDir -ItemType Directory -Force | Out-Null }
+# --- Copy binaries ---
+Write-Log "Installing service binaries from $($svcSource.DirectoryName)..."
+try {
+    Copy-Item -Path "$($svcSource.DirectoryName)\*" -Destination "$InstallDir\Service" -Recurse -Force -ErrorAction Stop
+    Write-Log "Service binaries installed."
+} catch {
+    Write-Log "Service copy failed: $_" "ERROR"
+    # Try file-by-file
+    Write-Log "Trying file-by-file copy..."
+    Get-ChildItem -Path $svcSource.DirectoryName -File | ForEach-Object {
+        try {
+            Copy-Item -Path $_.FullName -Destination "$InstallDir\Service\$($_.Name)" -Force
+        } catch {
+            Write-Log "  Failed to copy $($_.Name): $_" "WARN"
+        }
+    }
+}
+
+if ($traySource) {
+    Write-Log "Installing tray binaries from $($traySource.DirectoryName)..."
+    try {
+        Copy-Item -Path "$($traySource.DirectoryName)\*" -Destination "$InstallDir\Tray" -Recurse -Force -ErrorAction Stop
+        Write-Log "Tray binaries installed."
+    } catch {
+        Write-Log "Tray copy failed: $_" "ERROR"
+        Get-ChildItem -Path $traySource.DirectoryName -File | ForEach-Object {
             try {
-                Copy-Item -Path $_.FullName -Destination $target -Force -ErrorAction Stop
+                Copy-Item -Path $_.FullName -Destination "$InstallDir\Tray\$($_.Name)" -Force
             } catch {
-                Write-Log "File locked: $target - renaming old file..."
-                $oldFile = "$target.old_$(Get-Date -Format 'yyyyMMddHHmmss')"
-                try {
-                    [System.IO.File]::Move($target, $oldFile)
-                    Copy-Item -Path $_.FullName -Destination $target -Force -ErrorAction Stop
-                } catch {
-                    Write-Log "Cannot rename - scheduling replacement on reboot..."
-                    $sig = '[DllImport("kernel32.dll",SetLastError=true,CharSet=CharSet.Unicode)] public static extern bool MoveFileEx(string a,string b,int f);'
-                    $t = Add-Type -MemberDefinition $sig -Name "WinAPI" -Namespace "MoveFile" -PassThru -ErrorAction SilentlyContinue
-                    $t::MoveFileEx($_.FullName, $target, 0x5) | Out-Null
-                    Write-Log "Scheduled: $target will be replaced on next reboot."
-                    $script:needsReboot = $true
-                }
+                Write-Log "  Failed to copy $($_.Name): $_" "WARN"
             }
         }
     }
 }
-$script:needsReboot = $false
-
-# --- Copy binaries ---
-Write-Log "Installing service binaries..."
-Copy-WithRetry -Source $svcSource.DirectoryName -Dest "$InstallDir\Service"
-
-if ($traySource) {
-    Write-Log "Installing tray binaries..."
-    Copy-WithRetry -Source $traySource.DirectoryName -Dest "$InstallDir\Tray"
-}
 
 # --- Write/update config (preserve existing values) ---
+Write-Log "Writing config..."
 $configFile = "$ConfigDir\config.json"
 $config = @{}
 if (Test-Path $configFile) {
@@ -207,47 +216,78 @@ $config | ConvertTo-Json -Depth 10 | Set-Content -Path $configFile -Encoding UTF
 Write-Log "Config written to $configFile"
 
 # --- Register/restart Windows Service ---
-if (-not $isInstalled) {
-    # Fresh install - register the service
-    Write-Log "Registering new Windows Service..."
-    if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
-        sc.exe delete $ServiceName | Out-Null
+Write-Log "Registering Windows Service..."
+try {
+    # Clean up any existing registration
+    $existingSvc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($existingSvc) {
+        & sc.exe delete $ServiceName 2>&1 | Out-Null
         Start-Sleep -Seconds 1
     }
+
     $serviceExe = "$InstallDir\Service\PCPlusService.exe"
-    New-Service -Name $ServiceName `
-        -BinaryPathName $serviceExe `
-        -DisplayName "PC Plus Endpoint Protection" `
-        -Description "PC Plus Endpoint Protection - Security monitoring, ransomware defense, system health." `
-        -StartupType Automatic | Out-Null
+    if (Test-Path $serviceExe) {
+        New-Service -Name $ServiceName `
+            -BinaryPathName $serviceExe `
+            -DisplayName "PC Plus Endpoint Protection" `
+            -Description "PC Plus Endpoint Protection - Security monitoring, ransomware defense, system health." `
+            -StartupType Automatic | Out-Null
+        Write-Log "Service registered."
 
-    sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/10000/restart/30000 | Out-Null
-    Write-Log "Service registered."
+        & sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/10000/restart/30000 2>&1 | Out-Null
+
+        # Start service
+        Write-Log "Starting service..."
+        try {
+            Start-Service -Name $ServiceName -ErrorAction Stop
+            Write-Log "Service started successfully."
+        } catch {
+            Write-Log "Service failed to start: $_" "WARN"
+            Write-Log "Service may start on next reboot."
+        }
+    } else {
+        Write-Log "Service exe not found at $serviceExe" "ERROR"
+    }
+} catch {
+    Write-Log "Service registration failed: $_" "ERROR"
 }
-
-# Start service
-Write-Log "Starting service..."
-Start-Service -Name $ServiceName
-Write-Log "Service started."
 
 # --- Set up tray app auto-start ---
 $trayExe = "$InstallDir\Tray\PCPlusTray.exe"
 if (Test-Path $trayExe) {
-    $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-    Set-ItemProperty -Path $regPath -Name "PCPlusEndpoint" -Value "`"$trayExe`""
+    Write-Log "Configuring tray app auto-start..."
+    try {
+        $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+        Set-ItemProperty -Path $regPath -Name "PCPlusEndpoint" -Value "`"$trayExe`""
+        Write-Log "Tray app auto-start configured."
+    } catch {
+        Write-Log "Failed to set auto-start: $_" "WARN"
+    }
 
     # Start tray for logged-in user
-    Start-Process -FilePath $trayExe -WindowStyle Hidden -ErrorAction SilentlyContinue
-    Write-Log "Tray app configured."
+    try {
+        Start-Process -FilePath $trayExe -WindowStyle Hidden -ErrorAction SilentlyContinue
+        Write-Log "Tray app started."
+    } catch {
+        Write-Log "Could not start tray app (no user logged in?): $_" "WARN"
+    }
+} else {
+    Write-Log "Tray exe not found at $trayExe" "WARN"
 }
 
 # --- Update uninstall registry ---
-$uninstallKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PCPlusEndpoint"
-New-Item -Path $uninstallKey -Force | Out-Null
-Set-ItemProperty -Path $uninstallKey -Name "DisplayName" -Value "PC Plus Endpoint Protection"
-Set-ItemProperty -Path $uninstallKey -Name "DisplayVersion" -Value $targetVersion
-Set-ItemProperty -Path $uninstallKey -Name "Publisher" -Value "PC Plus Computing"
-Set-ItemProperty -Path $uninstallKey -Name "InstallLocation" -Value $InstallDir
+Write-Log "Updating uninstall registry..."
+try {
+    $uninstallKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PCPlusEndpoint"
+    New-Item -Path $uninstallKey -Force | Out-Null
+    Set-ItemProperty -Path $uninstallKey -Name "DisplayName" -Value "PC Plus Endpoint Protection"
+    Set-ItemProperty -Path $uninstallKey -Name "DisplayVersion" -Value $targetVersion
+    Set-ItemProperty -Path $uninstallKey -Name "Publisher" -Value "PC Plus Computing"
+    Set-ItemProperty -Path $uninstallKey -Name "InstallLocation" -Value $InstallDir
+    Write-Log "Uninstall registry updated."
+} catch {
+    Write-Log "Failed to update uninstall registry: $_" "WARN"
+}
 
 # --- Cleanup ---
 Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -261,5 +301,6 @@ if ($isInstalled) {
 }
 Write-Log "Customer: $($config['companyName'])"
 Write-Log "Dashboard: $($config['dashboardApiUrl'])"
+Write-Log "Service: $(try { (Get-Service $ServiceName -ErrorAction SilentlyContinue).Status } catch { 'unknown' })"
 Write-Log "Security audit data will appear in dashboard within 30 seconds."
 Write-Log "============================================="
