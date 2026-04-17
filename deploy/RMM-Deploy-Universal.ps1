@@ -124,32 +124,61 @@ if (-not $svcSource) {
 }
 
 # --- Stop existing service and tray ---
+Write-Log "Stopping existing processes..."
+taskkill /F /IM PCPlusService.exe /T 2>$null
+taskkill /F /IM PCPlusTray.exe /T 2>$null
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($svc) {
-    Write-Log "Stopping existing service..."
     Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-    # Force-kill the process if service stop didn't release the file lock
-    Get-Process -Name "PCPlusService" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    # Delete service registration so recovery policy can't restart it
     sc.exe delete $ServiceName 2>$null | Out-Null
-    Start-Sleep -Seconds 2
 }
-Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
+Start-Sleep -Seconds 3
 
 # --- Create directories ---
 New-Item -Path "$InstallDir\Service" -ItemType Directory -Force | Out-Null
 New-Item -Path "$InstallDir\Tray" -ItemType Directory -Force | Out-Null
 New-Item -Path "$ConfigDir\Audits" -ItemType Directory -Force | Out-Null
 
+# Helper: copy files, renaming locked ones out of the way
+function Copy-WithRetry {
+    param([string]$Source, [string]$Dest)
+    Get-ChildItem -Path $Source -Recurse | ForEach-Object {
+        $relPath = $_.FullName.Substring($Source.Length).TrimStart('\')
+        $target = Join-Path $Dest $relPath
+        if ($_.PSIsContainer) {
+            New-Item -Path $target -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+        } else {
+            $targetDir = Split-Path $target -Parent
+            if (-not (Test-Path $targetDir)) { New-Item -Path $targetDir -ItemType Directory -Force | Out-Null }
+            try {
+                Copy-Item -Path $_.FullName -Destination $target -Force -ErrorAction Stop
+            } catch {
+                Write-Log "File locked: $target - renaming old file..."
+                $oldFile = "$target.old_$(Get-Date -Format 'yyyyMMddHHmmss')"
+                try {
+                    [System.IO.File]::Move($target, $oldFile)
+                    Copy-Item -Path $_.FullName -Destination $target -Force -ErrorAction Stop
+                } catch {
+                    Write-Log "Cannot rename - scheduling replacement on reboot..."
+                    $sig = '[DllImport("kernel32.dll",SetLastError=true,CharSet=CharSet.Unicode)] public static extern bool MoveFileEx(string a,string b,int f);'
+                    $t = Add-Type -MemberDefinition $sig -Name "WinAPI" -Namespace "MoveFile" -PassThru -ErrorAction SilentlyContinue
+                    $t::MoveFileEx($_.FullName, $target, 0x5) | Out-Null
+                    Write-Log "Scheduled: $target will be replaced on next reboot."
+                    $script:needsReboot = $true
+                }
+            }
+        }
+    }
+}
+$script:needsReboot = $false
+
 # --- Copy binaries ---
 Write-Log "Installing service binaries..."
-Copy-Item -Path "$($svcSource.DirectoryName)\*" -Destination "$InstallDir\Service" -Recurse -Force
+Copy-WithRetry -Source $svcSource.DirectoryName -Dest "$InstallDir\Service"
 
 if ($traySource) {
     Write-Log "Installing tray binaries..."
-    Copy-Item -Path "$($traySource.DirectoryName)\*" -Destination "$InstallDir\Tray" -Recurse -Force
+    Copy-WithRetry -Source $traySource.DirectoryName -Dest "$InstallDir\Tray"
 }
 
 # --- Write/update config (preserve existing values) ---

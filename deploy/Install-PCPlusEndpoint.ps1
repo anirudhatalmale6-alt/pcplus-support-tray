@@ -128,28 +128,64 @@ function Install-Endpoint {
 
     # Stop processes again right before copying (they may have restarted during download)
     Write-Log "Ensuring processes are stopped before file copy..."
-    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-    if ($svc -and $svc.Status -ne 'Stopped') {
-        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 2
-    }
-    # Force-kill any remaining processes that lock the files
-    Get-Process -Name "PCPlusService" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 1
-
-    # Delete old service registration if still present
+    # Use taskkill for lower-level process termination
+    taskkill /F /IM PCPlusService.exe /T 2>$null
+    taskkill /F /IM PCPlusTray.exe /T 2>$null
     $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     if ($svc) {
+        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
         sc.exe delete $ServiceName 2>$null | Out-Null
-        Start-Sleep -Seconds 2
     }
+    Start-Sleep -Seconds 3
+
+    # Helper: copy files, renaming locked ones out of the way first
+    function Copy-WithRetry {
+        param([string]$Source, [string]$Dest)
+        Get-ChildItem -Path $Source -Recurse | ForEach-Object {
+            $relPath = $_.FullName.Substring($Source.Length).TrimStart('\')
+            $target = Join-Path $Dest $relPath
+            if ($_.PSIsContainer) {
+                New-Item -Path $target -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+            } else {
+                $targetDir = Split-Path $target -Parent
+                if (-not (Test-Path $targetDir)) {
+                    New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
+                }
+                try {
+                    Copy-Item -Path $_.FullName -Destination $target -Force -ErrorAction Stop
+                } catch {
+                    # File is locked - rename the old file out of the way
+                    Write-Log "File locked: $target - renaming old file..."
+                    $oldFile = "$target.old_$(Get-Date -Format 'yyyyMMddHHmmss')"
+                    try {
+                        [System.IO.File]::Move($target, $oldFile)
+                        Write-Log "Renamed to $oldFile"
+                        Copy-Item -Path $_.FullName -Destination $target -Force -ErrorAction Stop
+                    } catch {
+                        # Even rename failed - schedule replacement on reboot
+                        Write-Log "Cannot rename - scheduling replacement on reboot..."
+                        $signature = @'
+[DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+public static extern bool MoveFileEx(string lpExistingFileName, string lpNewFileName, int dwFlags);
+'@
+                        $type = Add-Type -MemberDefinition $signature -Name "WinAPI" -Namespace "MoveFile" -PassThru -ErrorAction SilentlyContinue
+                        # MOVEFILE_DELAY_UNTIL_REBOOT = 0x4, MOVEFILE_REPLACE_EXISTING = 0x1
+                        $type::MoveFileEx($_.FullName, $target, 0x5) | Out-Null
+                        Write-Log "Scheduled: $target will be replaced on next reboot."
+                        $script:needsReboot = $true
+                    }
+                }
+            }
+        }
+    }
+
+    $script:needsReboot = $false
 
     # Copy Service binaries
     $svcSource = Get-ChildItem -Path $extractPath -Filter "PCPlusService.exe" -Recurse | Select-Object -First 1
     if ($svcSource) {
         Write-Log "Installing service binaries..."
-        Copy-Item -Path "$($svcSource.DirectoryName)\*" -Destination "$InstallDir\Service" -Recurse -Force
+        Copy-WithRetry -Source $svcSource.DirectoryName -Dest "$InstallDir\Service"
     } else {
         Write-Log "PCPlusService.exe not found in package!" "ERROR"
         return $false
@@ -159,7 +195,7 @@ function Install-Endpoint {
     $traySource = Get-ChildItem -Path $extractPath -Filter "PCPlusTray.exe" -Recurse | Select-Object -First 1
     if ($traySource) {
         Write-Log "Installing tray app binaries..."
-        Copy-Item -Path "$($traySource.DirectoryName)\*" -Destination "$InstallDir\Tray" -Recurse -Force
+        Copy-WithRetry -Source $traySource.DirectoryName -Dest "$InstallDir\Tray"
     }
 
     Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue
@@ -262,12 +298,19 @@ Write-Host "PC Plus Endpoint Protection has been uninstalled."
 '@
     Set-Content -Path "$InstallDir\Uninstall.ps1" -Value $uninstallScript
 
-    Write-Log "=================================================="
-    Write-Log "Installation complete!"
+    if ($script:needsReboot) {
+        Write-Log "=================================================="
+        Write-Log "REBOOT REQUIRED to complete installation!"
+        Write-Log "Some files were locked and will be replaced on restart."
+        Write-Log "=================================================="
+    } else {
+        Write-Log "=================================================="
+        Write-Log "Installation complete!"
+        Write-Log "=================================================="
+    }
     Write-Log "Install dir: $InstallDir"
     Write-Log "Config dir: $ConfigDir"
     Write-Log "Dashboard: $DashboardUrl"
-    Write-Log "=================================================="
     return $true
 }
 
