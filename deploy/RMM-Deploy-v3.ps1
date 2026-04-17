@@ -13,6 +13,7 @@
 # === CUSTOMIZE THESE ===
 $DashboardUrl    = "https://dashboard.pcpluscomputing.com"
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
+$ReleaseVersion  = "v4.7.2"            # Pin to known working version (use "latest" for newest)
 # === END CUSTOMIZATION ===
 
 $ErrorActionPreference = "Continue"
@@ -91,7 +92,7 @@ $heartbeat = @{
     deviceId = $deviceId
     hostname = $env:COMPUTERNAME
     osVersion = $osVer
-    agentVersion = "4.8.0"
+    agentVersion = "4.7.2"
     licenseTier = "Free"
     customerName = ""
     localIp = $localIp
@@ -118,9 +119,13 @@ try {
 # ============================================================
 # STEP 3: Download and install binaries
 # ============================================================
-Write-Log "STEP 3: Downloading latest release..."
+Write-Log "STEP 3: Downloading release..."
 try {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$GitHubRepo/releases/latest" -UseBasicParsing
+    if ($ReleaseVersion -eq "latest") {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$GitHubRepo/releases/latest" -UseBasicParsing
+    } else {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$GitHubRepo/releases/tags/$ReleaseVersion" -UseBasicParsing
+    }
     $targetVersion = $release.tag_name
     Write-Log "Version: $targetVersion"
 } catch {
