@@ -14,8 +14,8 @@
 
 # === CUSTOMIZE THESE ===
 $DashboardUrl    = "https://dashboard.pcpluscomputing.com"
-$CustomerName    = "{{client.name}}"     # Tactical RMM variable - auto-fills customer name
-$CustomerId      = "{{client.id}}"       # Tactical RMM variable
+$CustomerName    = "{{site.name}}"       # Tactical RMM variable - auto-fills site/customer name
+$CustomerId      = "{{site.id}}"         # Tactical RMM variable
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
 # === END CUSTOMIZATION ===
 
