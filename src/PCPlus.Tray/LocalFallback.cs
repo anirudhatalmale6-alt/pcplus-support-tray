@@ -327,7 +327,20 @@ namespace PCPlus.Tray
                 result.Checks.Add(rtpCheck);
                 if (rtpCheck.Passed) totalScore += 5;
 
-                result.TotalScore = totalScore;
+                // 12. Tactical RMM Agent (bonus - adds to score beyond 100 baseline)
+                var trmmCheck = CheckTacticalRmmAgent();
+                result.Checks.Add(trmmCheck);
+
+                // 13. Wazuh Agent (bonus - adds to score beyond 100 baseline)
+                var wazuhCheck = CheckWazuhAgent();
+                result.Checks.Add(wazuhCheck);
+
+                // Bonus: if both RMM tools are running, add bonus points (max stays 100)
+                // Penalty: if either is missing, deduct from score to flag it
+                if (!trmmCheck.Passed) totalScore = Math.Max(0, totalScore - 5);
+                if (!wazuhCheck.Passed) totalScore = Math.Max(0, totalScore - 5);
+
+                result.TotalScore = Math.Min(totalScore, 100);
                 result.Grade = totalScore >= 90 ? "A" : totalScore >= 80 ? "B" :
                     totalScore >= 70 ? "C" : totalScore >= 60 ? "D" : "F";
 
@@ -657,6 +670,149 @@ namespace PCPlus.Tray
             {
                 return new SecurityCheck { Name = "Real-Time Protection", Category = "Security Software",
                     Passed = true, Detail = "Could not check real-time protection" };
+            }
+        }
+
+        private SecurityCheck CheckTacticalRmmAgent()
+        {
+            // Check if Tactical RMM agent service is installed and running
+            try
+            {
+                var sc = new System.ServiceProcess.ServiceController("tacticalrmm");
+                var running = sc.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+                return new SecurityCheck
+                {
+                    Name = "Tactical RMM Agent",
+                    Category = "RMM Stack",
+                    Passed = running,
+                    Detail = running ? "Tactical RMM agent is running" : "Tactical RMM agent is not running",
+                    Recommendation = !running ? "Contact IT - Tactical RMM agent needs to be installed/started" : ""
+                };
+            }
+            catch
+            {
+                // Service not found - check alternative service names
+                foreach (var svcName in new[] { "TacticalAgent", "tacticalagent", "tabormmSvc", "TacticalRMM" })
+                {
+                    try
+                    {
+                        var sc = new System.ServiceProcess.ServiceController(svcName);
+                        var running = sc.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+                        return new SecurityCheck
+                        {
+                            Name = "Tactical RMM Agent",
+                            Category = "RMM Stack",
+                            Passed = running,
+                            Detail = running ? $"Tactical RMM agent ({svcName}) is running" : $"Tactical RMM agent ({svcName}) is not running",
+                            Recommendation = !running ? "Contact IT - Tactical RMM agent needs to be started" : ""
+                        };
+                    }
+                    catch { continue; }
+                }
+
+                // Also check for the executable
+                var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                var trmmPaths = new[]
+                {
+                    Path.Combine(programFiles, "TacticalAgent", "tacticalrmm.exe"),
+                    Path.Combine(programFiles, "Tactical RMM Agent", "tacticalrmm.exe"),
+                    @"C:\Program Files\TacticalAgent\tacticalrmm.exe"
+                };
+
+                foreach (var path in trmmPaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        return new SecurityCheck
+                        {
+                            Name = "Tactical RMM Agent",
+                            Category = "RMM Stack",
+                            Passed = false,
+                            Detail = "Tactical RMM agent is installed but service is not running",
+                            Recommendation = "Start the Tactical RMM agent service"
+                        };
+                    }
+                }
+
+                return new SecurityCheck
+                {
+                    Name = "Tactical RMM Agent",
+                    Category = "RMM Stack",
+                    Passed = false,
+                    Detail = "Tactical RMM agent is not installed",
+                    Recommendation = "Install Tactical RMM agent for remote management and monitoring"
+                };
+            }
+        }
+
+        private SecurityCheck CheckWazuhAgent()
+        {
+            // Check if Wazuh agent service is installed and running
+            try
+            {
+                var sc = new System.ServiceProcess.ServiceController("WazuhSvc");
+                var running = sc.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+                return new SecurityCheck
+                {
+                    Name = "Wazuh Security Agent",
+                    Category = "RMM Stack",
+                    Passed = running,
+                    Detail = running ? "Wazuh SIEM agent is running - intrusion detection active" : "Wazuh SIEM agent is not running",
+                    Recommendation = !running ? "Contact IT - Wazuh agent needs to be started for SIEM coverage" : ""
+                };
+            }
+            catch
+            {
+                // Check alternative service names
+                foreach (var svcName in new[] { "Wazuh", "wazuh-agent", "OssecSvc" })
+                {
+                    try
+                    {
+                        var sc = new System.ServiceProcess.ServiceController(svcName);
+                        var running = sc.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+                        return new SecurityCheck
+                        {
+                            Name = "Wazuh Security Agent",
+                            Category = "RMM Stack",
+                            Passed = running,
+                            Detail = running ? $"Wazuh SIEM agent ({svcName}) is running" : $"Wazuh agent ({svcName}) is not running",
+                            Recommendation = !running ? "Contact IT - Wazuh agent needs to be started" : ""
+                        };
+                    }
+                    catch { continue; }
+                }
+
+                // Check for Wazuh installation path
+                var wazuhPaths = new[]
+                {
+                    @"C:\Program Files (x86)\ossec-agent\wazuh-agent.exe",
+                    @"C:\Program Files\ossec-agent\wazuh-agent.exe",
+                    @"C:\Program Files (x86)\ossec-agent\ossec-agent.exe"
+                };
+
+                foreach (var path in wazuhPaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        return new SecurityCheck
+                        {
+                            Name = "Wazuh Security Agent",
+                            Category = "RMM Stack",
+                            Passed = false,
+                            Detail = "Wazuh agent is installed but service is not running",
+                            Recommendation = "Start the Wazuh agent service for SIEM coverage"
+                        };
+                    }
+                }
+
+                return new SecurityCheck
+                {
+                    Name = "Wazuh Security Agent",
+                    Category = "RMM Stack",
+                    Passed = false,
+                    Detail = "Wazuh SIEM agent is not installed",
+                    Recommendation = "Install Wazuh agent for intrusion detection and security monitoring"
+                };
             }
         }
 

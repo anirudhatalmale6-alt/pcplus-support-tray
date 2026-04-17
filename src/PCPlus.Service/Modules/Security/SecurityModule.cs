@@ -292,7 +292,11 @@ namespace PCPlus.Service.Modules.Security
                 CheckScriptExecutionPolicy(),
                 CheckSecureBoot(),
                 CheckAttackSurfaceReduction(),
-                CheckSuspiciousScheduledTasks()
+                CheckSuspiciousScheduledTasks(),
+
+                // === RMM STACK ===
+                CheckTacticalRmmAgent(),
+                CheckWazuhAgent()
             };
 
             var totalWeight = checks.Sum(c => c.Weight);
@@ -2308,6 +2312,67 @@ namespace PCPlus.Service.Modules.Security
                 return (true, "DLL loading security properly configured", "");
             }
             catch { return (true, "Unable to check DLL hijacking risk", ""); }
+        });
+
+        private SecurityCheck CheckTacticalRmmAgent() => RunCheck("trmm_agent", "Tactical RMM Agent", "RMM Stack", 5, () =>
+        {
+            // Check for Tactical RMM agent service
+            foreach (var svcName in new[] { "tacticalrmm", "TacticalAgent", "tacticalagent", "TacticalRMM" })
+            {
+                try
+                {
+                    using var sc = new ServiceController(svcName);
+                    if (sc.Status == ServiceControllerStatus.Running)
+                        return (true, $"Tactical RMM agent ({svcName}) is running", "");
+                    return (false, $"Tactical RMM agent ({svcName}) is installed but not running",
+                        "Start the Tactical RMM agent service");
+                }
+                catch { }
+            }
+
+            // Check for agent executable
+            var paths = new[] {
+                @"C:\Program Files\TacticalAgent\tacticalrmm.exe",
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "TacticalAgent", "tacticalrmm.exe")
+            };
+            foreach (var p in paths)
+                if (File.Exists(p))
+                    return (false, "Tactical RMM agent is installed but service is not running",
+                        "Start the Tactical RMM agent service");
+
+            return (false, "Tactical RMM agent is not installed",
+                "Install Tactical RMM agent for remote management and monitoring");
+        });
+
+        private SecurityCheck CheckWazuhAgent() => RunCheck("wazuh_agent", "Wazuh Security Agent", "RMM Stack", 5, () =>
+        {
+            // Check for Wazuh agent service
+            foreach (var svcName in new[] { "WazuhSvc", "Wazuh", "wazuh-agent", "OssecSvc" })
+            {
+                try
+                {
+                    using var sc = new ServiceController(svcName);
+                    if (sc.Status == ServiceControllerStatus.Running)
+                        return (true, $"Wazuh SIEM agent ({svcName}) is running - intrusion detection active", "");
+                    return (false, $"Wazuh agent ({svcName}) is installed but not running",
+                        "Start the Wazuh agent service for SIEM coverage");
+                }
+                catch { }
+            }
+
+            // Check for agent paths
+            var paths = new[] {
+                @"C:\Program Files (x86)\ossec-agent\wazuh-agent.exe",
+                @"C:\Program Files\ossec-agent\wazuh-agent.exe",
+                @"C:\Program Files (x86)\ossec-agent\ossec-agent.exe"
+            };
+            foreach (var p in paths)
+                if (File.Exists(p))
+                    return (false, "Wazuh agent is installed but service is not running",
+                        "Start the Wazuh agent service for SIEM coverage");
+
+            return (false, "Wazuh SIEM agent is not installed",
+                "Install Wazuh agent for intrusion detection and security monitoring");
         });
 
         private static SecurityCheck RunCheck(string id, string name, string category, int weight,
