@@ -51,7 +51,11 @@ namespace PCPlus.Dashboard.Controllers
 
             // Update device state
             device.Hostname = request.Hostname;
-            if (!string.IsNullOrEmpty(request.CustomerName))
+            // Only update customer name from agent if dashboard hasn't set a meaningful one,
+            // and the incoming name isn't an unresolved template variable
+            if (!string.IsNullOrEmpty(request.CustomerName)
+                && !request.CustomerName.Contains("{{")
+                && (string.IsNullOrEmpty(device.CustomerName) || device.CustomerName == request.CustomerName))
                 device.CustomerName = request.CustomerName;
             if (!string.IsNullOrEmpty(request.LocalIp))
                 device.LocalIp = request.LocalIp;
