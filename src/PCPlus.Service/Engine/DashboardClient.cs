@@ -252,6 +252,22 @@ namespace PCPlus.Service.Engine
                 {
                     await ExecuteCommand(change.Value);
                 }
+                else if (change.Key == "_remediate")
+                {
+                    // Execute security remediation for a specific check
+                    var secModule = _engine.GetModule("security");
+                    if (secModule?.IsRunning == true)
+                    {
+                        var remResult = await secModule.HandleCommandAsync(new ModuleCommand
+                        {
+                            ModuleId = "security",
+                            Action = "Remediate",
+                            Parameters = new() { ["checkId"] = change.Value }
+                        });
+                        _engine.Log(remResult.Success ? LogLevel.Info : LogLevel.Warning, "dashboard-client",
+                            $"Remediation '{change.Value}': {(remResult.Success ? "OK" : "FAILED")} - {remResult.Message}");
+                    }
+                }
                 else
                 {
                     _config.SetValue(change.Key, change.Value);

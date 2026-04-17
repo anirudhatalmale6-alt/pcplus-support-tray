@@ -67,8 +67,102 @@ namespace PCPlus.Service.Modules.Security
                         ["result"] = _lastResult
                     }));
 
+                case "Remediate":
+                    var checkId = command.Parameters?.GetValueOrDefault("checkId") ?? "";
+                    var result = ExecuteRemediation(checkId);
+                    // Re-scan after remediation to update scores
+                    if (result.Success) RunFullScan();
+                    return Task.FromResult(result);
+
                 default:
                     return Task.FromResult(ModuleResponse.Fail($"Unknown: {command.Action}"));
+            }
+        }
+
+        private ModuleResponse ExecuteRemediation(string checkId)
+        {
+            try
+            {
+                var (success, message) = checkId switch
+                {
+                    "cfa" => RunPowerShell("Set-MpPreference -EnableControlledFolderAccess Enabled", "Controlled Folder Access"),
+                    "tamper_protect" => (false, "Tamper Protection must be enabled manually in Windows Security settings"),
+                    "defender_rt" => RunPowerShell("Set-MpPreference -DisableRealtimeMonitoring $false", "Real-time Protection"),
+                    "firewall" => RunPowerShell("Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True", "Windows Firewall"),
+                    "rdp" => RunPowerShell("Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 1", "RDP Disabled"),
+                    "rdp_exposure" => RunPowerShell("Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'SecurityLayer' -Value 2; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1", "RDP NLA Enabled"),
+                    "smbv1" => RunPowerShell("Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force", "SMBv1 Disabled"),
+                    "uac" => RunPowerShell("Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1", "UAC Enabled"),
+                    "ps_logging" => RunPowerShell(@"
+                        New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging' -Force | Out-Null;
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging' -Name 'EnableScriptBlockLogging' -Value 1;
+                        New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging' -Force | Out-Null;
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging' -Name 'EnableModuleLogging' -Value 1;
+                        New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription' -Force | Out-Null;
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription' -Name 'EnableTranscripting' -Value 1", "PowerShell Logging"),
+                    "ps_exec_policy" => RunPowerShell("Set-ExecutionPolicy RemoteSigned -Force -Scope LocalMachine", "Script Execution Policy"),
+                    "guest" => RunPowerShell("net user Guest /active:no", "Guest Account Disabled"),
+                    "autologin" => RunPowerShell("Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon' -Name 'DefaultPassword' -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon' -Name 'AutoAdminLogon' -Value '0'", "Auto-Login Disabled"),
+                    "shadow_copies" => RunPowerShell("Enable-ComputerRestore -Drive 'C:\\'; vssadmin create shadow /for=C:", "Shadow Copies Enabled"),
+                    "asr_rules" => RunPowerShell(@"
+                        $rules = @(
+                            'BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550',  # Block executable content from email
+                            'D4F940AB-401B-4EFC-AADC-AD5F3C50688A',  # Block Office apps creating child processes
+                            '3B576869-A4EC-4529-8536-B80A7769E899',  # Block Office apps creating executables
+                            '75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84',  # Block Office apps injecting into processes
+                            'D3E037E1-3EB8-44C8-A917-57927947596D',  # Block JavaScript/VBScript launching executables
+                            '5BEB7EFE-FD9A-4556-801D-275E5FFC04CC',  # Block execution of potentially obfuscated scripts
+                            'E6DB77E5-3DF2-4CF1-B95A-636979351E5B',  # Block persistence through WMI event subscription
+                            'B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4',  # Block untrusted/unsigned processes from USB
+                            '92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B',  # Block Win32 API calls from Office macros
+                            '01443614-CD74-433A-B99E-2ECDC07BFC25'   # Block credential stealing from LSASS
+                        );
+                        foreach ($rule in $rules) { Add-MpPreference -AttackSurfaceReductionRules_Ids $rule -AttackSurfaceReductionRules_Actions Enabled }", "ASR Rules Enabled"),
+                    "lsass_protect" => RunPowerShell("Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' -Name 'RunAsPPL' -Value 1 -Type DWord", "LSASS Protection (requires reboot)"),
+                    "dns_security" => RunPowerShell("Set-DnsClientServerAddress -InterfaceAlias (Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -First 1 -ExpandProperty Name) -ServerAddresses ('9.9.9.9','149.112.112.112')", "Secure DNS (Quad9)"),
+                    "bitlocker" => (false, "BitLocker requires manual setup - run 'manage-bde -on C:' from admin command prompt or use Control Panel"),
+                    "backup" => (false, "Backup configuration requires manual setup - enable File History in Windows Settings > Update & Security > Backup"),
+                    "edr" => (false, "EDR deployment requires manual installation of your chosen EDR product"),
+                    "secure_boot" => (false, "Secure Boot must be enabled in BIOS/UEFI settings - requires physical access"),
+                    _ => (false, $"No automatic remediation available for check '{checkId}'")
+                };
+
+                _context.Log(success ? LogLevel.Info : LogLevel.Warning, Id,
+                    $"Remediation '{checkId}': {(success ? "SUCCESS" : "FAILED")} - {message}");
+
+                return success
+                    ? ModuleResponse.Ok(message)
+                    : ModuleResponse.Fail(message);
+            }
+            catch (Exception ex)
+            {
+                return ModuleResponse.Fail($"Remediation error: {ex.Message}");
+            }
+        }
+
+        private (bool success, string message) RunPowerShell(string script, string description)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo("powershell", $"-NoProfile -NonInteractive -Command \"{script.Replace("\"", "\\\"")}\"")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd() ?? "";
+                var error = proc?.StandardError.ReadToEnd() ?? "";
+                proc?.WaitForExit(30000);
+
+                if (proc?.ExitCode == 0)
+                    return (true, $"{description} applied successfully");
+                return (false, $"{description} failed: {(string.IsNullOrEmpty(error) ? output : error).Trim()}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"{description} error: {ex.Message}");
             }
         }
 

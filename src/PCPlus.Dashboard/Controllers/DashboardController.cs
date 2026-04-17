@@ -197,6 +197,36 @@ namespace PCPlus.Dashboard.Controllers
             return Ok();
         }
 
+        /// <summary>POST /api/dashboard/devices/{id}/remediate - Fix a failed security check.</summary>
+        [HttpPost("devices/{deviceId}/remediate")]
+        public async Task<ActionResult> RemediateCheck(string deviceId, [FromBody] RemediateRequest req)
+        {
+            var device = await _db.Devices.FindAsync(deviceId);
+            if (device == null) return NotFound();
+
+            // Queue remediation command for the agent to pick up
+            _db.ConfigPushes.Add(new ConfigPush
+            {
+                DeviceId = deviceId,
+                Key = "_remediate",
+                Value = req.CheckId,
+                CreatedBy = "dashboard"
+            });
+
+            // Also queue a rescan command so results update quickly
+            _db.ConfigPushes.Add(new ConfigPush
+            {
+                DeviceId = deviceId,
+                Key = "_command",
+                Value = "rescan",
+                CreatedBy = "dashboard"
+            });
+
+            await _db.SaveChangesAsync();
+            _log.LogInformation("Remediation '{CheckId}' queued for device {DeviceId}", req.CheckId, deviceId);
+            return Ok(new { queued = true, checkId = req.CheckId, message = "Fix will be applied on next heartbeat (within 30 seconds)" });
+        }
+
         /// <summary>POST /api/dashboard/devices/{id}/command - Send command to device.</summary>
         [HttpPost("devices/{deviceId}/command")]
         public async Task<ActionResult> SendCommand(string deviceId, [FromBody] DeviceCommandRequest req)
@@ -296,6 +326,7 @@ namespace PCPlus.Dashboard.Controllers
         public string? PolicyProfile { get; set; }
         public Dictionary<string, string> Config { get; set; } = new();
     }
+    public class RemediateRequest { public string CheckId { get; set; } = ""; }
     public class DeviceCommandRequest { public string Command { get; set; } = ""; }
     public class ResolveRequest
     {

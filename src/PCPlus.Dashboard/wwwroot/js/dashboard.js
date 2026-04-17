@@ -885,7 +885,10 @@ function loadDeviceDetail(d) {
                         <span style="font-weight:600;font-size:13px">${esc(cat)}</span>
                         <span style="margin-left:auto;font-size:12px;padding:2px 8px;border-radius:10px;background:${allPassed ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${allPassed ? '#22c55e' : '#ef4444'};font-weight:600">${passed}/${total} passed</span>
                     </div>
-                    ${catChecks.map(c => `
+                    ${catChecks.map(c => {
+                        const remediable = ['cfa','defender_rt','firewall','rdp','rdp_exposure','smbv1','uac','ps_logging','ps_exec_policy','guest','autologin','shadow_copies','asr_rules','lsass_protect','dns_security'].includes(c.id);
+                        const manualOnly = ['tamper_protect','bitlocker','backup','edr','secure_boot'].includes(c.id);
+                        return `
                         <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 4px 8px 8px;border-radius:6px;margin-bottom:2px;background:${c.passed ? 'transparent' : 'rgba(239,68,68,0.05)'}">
                             <span style="font-size:14px;margin-top:1px;flex-shrink:0">${c.passed ? '<span style="color:#22c55e">&#10003;</span>' : '<span style="color:#ef4444">&#10007;</span>'}</span>
                             <div style="flex:1;min-width:0">
@@ -893,9 +896,11 @@ function loadDeviceDetail(d) {
                                 <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(c.detail)}</div>
                                 ${!c.passed && c.recommendation ? `<div style="font-size:11px;color:#f59e0b;margin-top:2px;font-style:italic">&#9888; ${esc(c.recommendation)}</div>` : ''}
                             </div>
+                            ${!c.passed && remediable ? `<button onclick="remediateCheck('${c.id}','${esc(c.name)}')" style="flex-shrink:0;background:#16a34a;color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600" title="Auto-fix this issue">Fix</button>` : ''}
+                            ${!c.passed && manualOnly ? `<span style="flex-shrink:0;font-size:10px;color:var(--text-muted);padding:3px 8px;border:1px solid var(--border);border-radius:4px" title="Requires manual action">Manual</span>` : ''}
                             <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;padding:2px 6px;background:var(--bg-main);border-radius:4px">${c.weight}pts</span>
-                        </div>
-                    `).join('')}
+                        </div>`;
+                    }).join('')}
                 </div>
             `;
         }).join('');
@@ -948,6 +953,29 @@ async function reassignDevice(deviceId, currentCustomer) {
             refreshCurrentPage();
         } else {
             alert('Failed to reassign device: ' + res.statusText);
+        }
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+async function remediateCheck(checkId, checkName) {
+    if (!currentDevice) return;
+    if (!confirm('Apply automatic fix for "' + checkName + '"?\n\nThis will be applied on the next agent heartbeat (within 30 seconds).')) return;
+
+    try {
+        const res = await fetch(API + '/devices/' + encodeURIComponent(currentDevice.deviceId) + '/remediate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ checkId: checkId })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            alert('Fix queued successfully!\n\n' + (data.message || 'The fix will be applied on next heartbeat.') + '\n\nThe security score will update after the device re-scans.');
+            // Refresh device detail after a short delay to show updated status
+            setTimeout(() => refreshCurrentPage(), 2000);
+        } else {
+            alert('Failed to queue fix: ' + res.statusText);
         }
     } catch(e) {
         alert('Error: ' + e.message);
