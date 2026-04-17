@@ -702,9 +702,12 @@ function loadDeviceDetail(d) {
                         <span style="color:var(--text-muted)">Agent Version</span>
                         <span style="font-weight:600">v${esc(d.agentVersion || '-')}</span>
                     </div>
-                    <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid var(--border)">
                         <span style="color:var(--text-muted)">Customer</span>
-                        <span style="font-weight:500">${esc(custName)}</span>
+                        <span style="display:flex;align-items:center;gap:8px">
+                            <span style="font-weight:500" id="dev-customer-label">${esc(custName)}</span>
+                            <button onclick="reassignDevice('${esc(d.deviceId)}','${esc(custName)}')" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px" title="Move to different customer">Move</button>
+                        </span>
                     </div>
                     <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)">
                         <span style="color:var(--text-muted)">Device ID</span>
@@ -910,6 +913,36 @@ function loadDeviceDetail(d) {
             <span style="margin-left:auto;font-size:11px;color:${running ? '#22c55e' : 'var(--text-muted)'}">${running ? 'Running' : 'Stopped'}</span>
         </div>`;
     }).join('');
+}
+
+async function reassignDevice(deviceId, currentCustomer) {
+    // Get list of existing customers from loaded devices
+    const customers = [...new Set(allDevices.map(d => d.customerName).filter(Boolean))].sort();
+    const newCustomer = prompt(
+        'Move device to which customer?\n\nExisting customers:\n' +
+        customers.map(c => '  - ' + c).join('\n') +
+        '\n\nEnter customer name (or type a new one):',
+        currentCustomer
+    );
+    if (!newCustomer || newCustomer === currentCustomer) return;
+
+    try {
+        const res = await fetch(API + '/devices/' + encodeURIComponent(deviceId) + '/customer', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customerName: newCustomer })
+        });
+        if (res.ok) {
+            alert('Device moved to "' + newCustomer + '" successfully!\nThe agent will also update its config on next heartbeat.');
+            document.getElementById('dev-customer-label').textContent = newCustomer;
+            // Refresh data
+            refreshCurrentPage();
+        } else {
+            alert('Failed to reassign device: ' + res.statusText);
+        }
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
 }
 
 async function loadDeviceAlerts(d) {

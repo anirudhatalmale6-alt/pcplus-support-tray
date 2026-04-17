@@ -81,6 +81,33 @@ namespace PCPlus.Dashboard.Controllers
             return Ok(device);
         }
 
+        /// <summary>PUT /api/dashboard/devices/{id}/customer - Reassign device to different customer.</summary>
+        [HttpPut("devices/{deviceId}/customer")]
+        public async Task<ActionResult> SetDeviceCustomer(string deviceId, [FromBody] SetCustomerRequest req)
+        {
+            var device = await _db.Devices.FindAsync(deviceId);
+            if (device == null) return NotFound();
+
+            var oldCustomer = device.CustomerName;
+            device.CustomerName = req.CustomerName;
+            if (!string.IsNullOrEmpty(req.CustomerId))
+                device.CustomerId = req.CustomerId;
+
+            // Also push companyName config so the agent picks it up
+            _db.ConfigPushes.Add(new ConfigPush
+            {
+                DeviceId = deviceId,
+                Key = "companyName",
+                Value = req.CustomerName,
+                CreatedBy = "dashboard"
+            });
+
+            await _db.SaveChangesAsync();
+            _log.LogInformation("Device {DeviceId} reassigned from '{Old}' to '{New}'",
+                deviceId, oldCustomer, req.CustomerName);
+            return Ok();
+        }
+
         /// <summary>PUT /api/dashboard/devices/{id}/policy - Assign policy profile.</summary>
         [HttpPut("devices/{deviceId}/policy")]
         public async Task<ActionResult> SetDevicePolicy(string deviceId, [FromBody] SetPolicyRequest req)
@@ -257,6 +284,11 @@ namespace PCPlus.Dashboard.Controllers
     }
 
     // Request models
+    public class SetCustomerRequest
+    {
+        public string CustomerName { get; set; } = "";
+        public string? CustomerId { get; set; }
+    }
     public class SetPolicyRequest { public string ProfileName { get; set; } = ""; }
     public class PushConfigRequest
     {
