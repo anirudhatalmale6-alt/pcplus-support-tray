@@ -236,10 +236,22 @@ try {
 
         & sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/10000/restart/30000 2>&1 | Out-Null
 
+        # Verify config exists before starting
+        if (Test-Path $configFile) {
+            Write-Log "Config verified at $configFile before service start."
+        } else {
+            Write-Log "WARNING: Config file missing - writing now..."
+            $config | ConvertTo-Json -Depth 10 | Set-Content -Path $configFile -Encoding UTF8
+        }
+
         # Start service
         Write-Log "Starting service..."
         try {
             Start-Service -Name $ServiceName -ErrorAction Stop
+            Start-Sleep -Seconds 3
+            # Restart to ensure config is loaded (service may start before config is fully written)
+            Write-Log "Restarting service to ensure config is loaded..."
+            Restart-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
             Write-Log "Service started successfully."
         } catch {
             Write-Log "Service failed to start: $_" "WARN"
