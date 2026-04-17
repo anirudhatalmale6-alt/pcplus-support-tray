@@ -62,7 +62,7 @@ namespace PCPlus.Dashboard.Data
                 Id = 1,
                 Username = "admin",
                 // Default password: "pcplus2026" - SHA256 hash
-                PasswordHash = "a3c7e0b4f5d9a1c8e2f6b3d7a0c4e8f1b5d9a3c7e0b4f5d9a1c8e2f6b3d7a0c4",
+                PasswordHash = "a23a6ffd2ec65d5bac0b47276832316cc802eae56dfee5b5c3cde8c59c64459b",
                 Role = "admin",
                 DisplayName = "Paul - PC Plus",
                 ApiToken = ""
