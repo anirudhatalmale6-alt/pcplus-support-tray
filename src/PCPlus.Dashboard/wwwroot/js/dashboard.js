@@ -38,6 +38,36 @@ document.addEventListener('DOMContentLoaded', () => {
 let currentPage = 'overview';
 let refreshInterval;
 let allDevices = [];
+let currentUserRole = '';
+let currentUserCustomer = '';
+
+// Load user info and configure portal mode
+(async function initUserContext() {
+    try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+            const me = await res.json();
+            currentUserRole = me.role || '';
+            currentUserCustomer = me.customerName || '';
+            if (currentUserRole === 'customer' && currentUserCustomer) {
+                // Customer portal mode: hide admin nav items, auto-filter to customer
+                document.querySelectorAll('.nav-section').forEach(s => {
+                    if (['Settings', 'Analytics'].includes(s.textContent.trim())) s.style.display = 'none';
+                });
+                // Hide settings nav items
+                const hiddenPages = ['config', 'email-reports', 'notifications', 'users', 'branding', 'trends'];
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    const span = item.querySelector('span');
+                    if (span && ['Config Push', 'Email Reports', 'Notifications', 'Users', 'Branding', 'Trends'].includes(span.textContent.trim())) {
+                        item.style.display = 'none';
+                    }
+                });
+                // Redirect to customer dashboard
+                showCustomerDashboard(currentUserCustomer);
+            }
+        }
+    } catch {}
+})();
 
 // --- Navigation ---
 function showPage(page) {
@@ -46,7 +76,7 @@ function showPage(page) {
 
     document.getElementById('page-' + page).style.display = 'block';
     document.querySelectorAll('.nav-item')[
-        ['overview', 'devices', 'alerts', 'incidents', 'policies', 'config', 'email-reports']
+        ['overview', 'devices', 'alerts', 'incidents', 'policies', 'trends', 'config', 'email-reports', 'notifications', 'users', 'branding']
             .indexOf(page)
     ]?.classList.add('active');
 
@@ -67,6 +97,10 @@ function refreshCurrentPage() {
         case 'policies': loadPolicies(); break;
         case 'config': loadConfigPage(); break;
         case 'email-reports': loadEmailReports(); break;
+        case 'trends': loadTrends(); break;
+        case 'notifications': loadNotifications(); break;
+        case 'users': loadUsers(); break;
+        case 'branding': loadBranding(); break;
     }
 }
 
@@ -611,9 +645,9 @@ function loadDeviceDetail(d) {
                 </div>
                 <div style="display:flex;align-items:center;gap:10px">
                     <span class="badge ${status}" style="font-size:13px;padding:8px 16px"><span class="badge-dot"></span>${statusLabel}</span>
-                    <button class="btn btn-sm btn-primary" onclick="sendCommand('${d.deviceId}','rescan')">Run Security Scan</button>
-                    <button class="btn btn-sm btn-secondary" onclick="sendCommand('${d.deviceId}','maintenance')">Fix My Computer</button>
-                    <button class="btn btn-sm btn-danger" onclick="sendCommand('${d.deviceId}','lockdown')">Emergency Lockdown</button>
+                    <button class="btn btn-sm btn-primary" onclick="showRemoteCommands('${esc(d.deviceId)}','${esc(d.hostname)}')">Remote Commands</button>
+                    <button class="btn btn-sm btn-primary" onclick="sendDeviceCommand('${esc(d.deviceId)}','rescan')">Quick Scan</button>
+                    <button class="btn btn-sm btn-danger" onclick="if(confirm('Lock down ${esc(d.hostname)}?'))sendDeviceCommand('${esc(d.deviceId)}','lockdown')">Lockdown</button>
                 </div>
             </div>
         </div>
@@ -1493,4 +1527,483 @@ async function sendNow(id) {
     if (result.error) alert('Error: ' + result.error);
     else alert('Report sent to ' + result.recipients + ' recipient(s)!');
     loadEmailReports();
+}
+
+// === USER MANAGEMENT ===
+async function loadUsers() {
+    try {
+        const users = await apiFetch('/api/auth/users').then(r => r?.json() || []);
+        const content = document.getElementById('users-content');
+        content.innerHTML = `
+            <div class="card" style="padding:20px;margin-bottom:16px">
+                <h4 style="margin:0 0 16px;font-size:14px">Change My Password</h4>
+                <div class="grid-3" style="gap:12px">
+                    <div><label style="font-size:12px;color:var(--text-muted)">Current Password</label><input id="pw-current" type="password" class="input"></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">New Password</label><input id="pw-new" type="password" class="input"></div>
+                    <div><label style="font-size:12px;color:var(--text-muted)">Confirm New Password</label><input id="pw-confirm" type="password" class="input"></div>
+                </div>
+                <div style="margin-top:12px"><button class="btn btn-sm btn-primary" onclick="changePassword()">Change Password</button></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3>Users</h3></div>
+                <div class="table-scroll">
+                <table style="width:100%;min-width:600px">
+                    <thead><tr><th>Username</th><th>Display Name</th><th>Role</th><th>Last Login</th><th>Created</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        ${users.map(u => `<tr>
+                            <td style="font-weight:600">${esc(u.username)}</td>
+                            <td>${esc(u.displayName)}</td>
+                            <td><span class="badge ${u.role==='admin'?'critical':'info'}">${u.role}</span></td>
+                            <td style="font-size:12px">${u.lastLogin ? timeAgo(u.lastLogin) : 'Never'}</td>
+                            <td style="font-size:12px">${new Date(u.createdAt).toLocaleDateString()}</td>
+                            <td style="white-space:nowrap">
+                                <button class="btn btn-sm btn-secondary" onclick="editUser(${u.id},'${esc(u.role)}','${esc(u.displayName)}')" style="font-size:11px;padding:2px 8px">Edit</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id},'${esc(u.username)}')" style="font-size:11px;padding:2px 8px">Delete</button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+                </div>
+            </div>`;
+    } catch (err) { console.error('Failed to load users:', err); }
+}
+
+function showAddUser() {
+    const modal = document.getElementById('device-modal');
+    const content = document.getElementById('device-modal-content');
+    content.innerHTML = `
+        <h3>Add New User</h3>
+        <div class="form-group"><label>Username</label><input id="new-username" class="input"></div>
+        <div class="form-group"><label>Display Name</label><input id="new-displayname" class="input"></div>
+        <div class="form-group"><label>Password</label><input id="new-password" type="password" class="input"></div>
+        <div class="form-group"><label>Role</label><select id="new-role" class="input" onchange="document.getElementById('new-customer-row').style.display=this.value==='customer'?'block':'none'"><option value="admin">Admin</option><option value="operator">Operator</option><option value="viewer">Viewer</option><option value="customer">Customer Portal</option></select></div>
+        <div class="form-group" id="new-customer-row" style="display:none"><label>Customer Name (must match exactly)</label><input id="new-customer" class="input" placeholder="e.g. 108 Ave Hospital"></div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-primary" onclick="createUser()">Create User</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('device-modal').classList.remove('active')">Cancel</button>
+        </div>`;
+    modal.classList.add('active');
+}
+
+async function createUser() {
+    const data = {
+        username: document.getElementById('new-username').value,
+        displayName: document.getElementById('new-displayname').value,
+        password: document.getElementById('new-password').value,
+        role: document.getElementById('new-role').value,
+        customerName: document.getElementById('new-customer')?.value || ''
+    };
+    if (!data.username || !data.password) { alert('Username and password are required'); return; }
+    const res = await apiFetch('/api/auth/users', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    if (res?.ok) {
+        document.getElementById('device-modal').classList.remove('active');
+        alert('User created!');
+        loadUsers();
+    } else {
+        const err = await res?.json();
+        alert('Error: ' + (err?.error || 'Failed to create user'));
+    }
+}
+
+function editUser(id, role, displayName) {
+    const modal = document.getElementById('device-modal');
+    const content = document.getElementById('device-modal-content');
+    content.innerHTML = `
+        <h3>Edit User</h3>
+        <div class="form-group"><label>Display Name</label><input id="edit-displayname" value="${esc(displayName)}" class="input"></div>
+        <div class="form-group"><label>Role</label><select id="edit-role" class="input"><option value="admin" ${role==='admin'?'selected':''}>Admin</option><option value="operator" ${role==='operator'?'selected':''}>Operator</option><option value="viewer" ${role==='viewer'?'selected':''}>Viewer</option></select></div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-primary" onclick="updateUser(${id})">Save</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('device-modal').classList.remove('active')">Cancel</button>
+        </div>`;
+    modal.classList.add('active');
+}
+
+async function updateUser(id) {
+    const data = {
+        displayName: document.getElementById('edit-displayname').value,
+        role: document.getElementById('edit-role').value
+    };
+    const res = await apiFetch('/api/auth/users/' + id, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    if (res?.ok) {
+        document.getElementById('device-modal').classList.remove('active');
+        loadUsers();
+    } else {
+        const err = await res?.json();
+        alert('Error: ' + (err?.error || 'Failed to update user'));
+    }
+}
+
+async function deleteUser(id, username) {
+    if (!confirm('Delete user "' + username + '"?')) return;
+    const res = await apiFetch('/api/auth/users/' + id, { method: 'DELETE' });
+    if (res?.ok) loadUsers();
+    else { const err = await res?.json(); alert('Error: ' + (err?.error || 'Failed')); }
+}
+
+async function changePassword() {
+    const current = document.getElementById('pw-current').value;
+    const newPw = document.getElementById('pw-new').value;
+    const confirm = document.getElementById('pw-confirm').value;
+    if (!current || !newPw) { alert('Please fill in all fields'); return; }
+    if (newPw !== confirm) { alert('New passwords do not match'); return; }
+    if (newPw.length < 6) { alert('Password must be at least 6 characters'); return; }
+    const res = await apiFetch('/api/auth/change-password', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ currentPassword: current, newPassword: newPw })
+    });
+    if (res?.ok) {
+        alert('Password changed successfully!');
+        document.getElementById('pw-current').value = '';
+        document.getElementById('pw-new').value = '';
+        document.getElementById('pw-confirm').value = '';
+    } else {
+        const err = await res?.json();
+        alert('Error: ' + (err?.error || 'Failed to change password'));
+    }
+}
+
+// === NOTIFICATIONS / WEBHOOKS ===
+async function loadNotifications() {
+    try {
+        const configs = await apiFetch(API + '/notifications').then(r => r?.json() || []);
+        const content = document.getElementById('notifications-content');
+        content.innerHTML = `
+            <div class="card" style="padding:20px;margin-bottom:16px">
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:0">Configure webhook endpoints to receive real-time notifications when critical alerts fire. Supports generic webhooks, Slack, and Microsoft Teams.</p>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3>Configured Webhooks</h3></div>
+                <div class="table-scroll">
+                <table style="width:100%;min-width:700px">
+                    <thead><tr><th>Name</th><th>Type</th><th>URL</th><th>Min Severity</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        ${configs.length === 0 ? '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">No webhooks configured yet. Click "+ Add Webhook" to get started.</td></tr>' :
+                        configs.map(c => `<tr>
+                            <td style="font-weight:600">${esc(c.name)}</td>
+                            <td><span class="badge ${c.type==='slack'?'info':c.type==='teams'?'info':'warning'}">${c.type}</span></td>
+                            <td style="font-size:11px;max-width:250px;overflow:hidden;text-overflow:ellipsis;font-family:monospace">${esc(c.webhookUrl)}</td>
+                            <td><span class="badge ${c.minSeverity==='Critical'||c.minSeverity==='Emergency'?'critical':'warning'}">${c.minSeverity}</span></td>
+                            <td><span class="badge ${c.enabled?'online':'offline'}">${c.enabled?'Active':'Disabled'}</span></td>
+                            <td style="white-space:nowrap">
+                                <button class="btn btn-sm btn-primary" onclick="testNotification(${c.id})" style="font-size:11px;padding:2px 8px">Test</button>
+                                <button class="btn btn-sm btn-secondary" onclick="toggleNotification(${c.id})" style="font-size:11px;padding:2px 8px">${c.enabled?'Disable':'Enable'}</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteNotification(${c.id})" style="font-size:11px;padding:2px 8px">Delete</button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+                </div>
+            </div>`;
+    } catch (err) { console.error('Failed to load notifications:', err); }
+}
+
+function showAddNotification() {
+    const modal = document.getElementById('device-modal');
+    const content = document.getElementById('device-modal-content');
+    content.innerHTML = `
+        <h3>Add Webhook Notification</h3>
+        <div class="form-group"><label>Name</label><input id="notif-name" class="input" placeholder="e.g. Slack - Security Alerts"></div>
+        <div class="form-group"><label>Type</label><select id="notif-type" class="input"><option value="webhook">Generic Webhook</option><option value="slack">Slack</option><option value="teams">Microsoft Teams</option></select></div>
+        <div class="form-group"><label>Webhook URL</label><input id="notif-url" class="input" placeholder="https://hooks.slack.com/services/..."></div>
+        <div class="form-group"><label>Minimum Severity</label><select id="notif-severity" class="input"><option value="Info">Info (all alerts)</option><option value="Warning">Warning+</option><option value="Critical" selected>Critical+</option><option value="Emergency">Emergency only</option></select></div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-primary" onclick="createNotification()">Add Webhook</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('device-modal').classList.remove('active')">Cancel</button>
+        </div>`;
+    modal.classList.add('active');
+}
+
+async function createNotification() {
+    const data = {
+        name: document.getElementById('notif-name').value,
+        type: document.getElementById('notif-type').value,
+        webhookUrl: document.getElementById('notif-url').value,
+        minSeverity: document.getElementById('notif-severity').value,
+        enabled: true
+    };
+    if (!data.name || !data.webhookUrl) { alert('Name and URL are required'); return; }
+    const res = await apiFetch(API + '/notifications', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    if (res?.ok) {
+        document.getElementById('device-modal').classList.remove('active');
+        alert('Webhook added!');
+        loadNotifications();
+    }
+}
+
+async function testNotification(id) {
+    const res = await apiFetch(API + '/notifications/' + id + '/test', { method: 'POST' });
+    if (!res) return;
+    const result = await res.json();
+    alert(result.success ? 'Test notification sent!' : 'Test failed: ' + (result.error || 'Unknown error'));
+}
+
+async function toggleNotification(id) {
+    // Toggle by updating with opposite enabled state
+    const configs = await apiFetch(API + '/notifications').then(r => r?.json() || []);
+    const config = configs.find(c => c.id === id);
+    if (!config) return;
+    await apiFetch(API + '/notifications/' + id, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ ...config, enabled: !config.enabled })
+    });
+    loadNotifications();
+}
+
+async function deleteNotification(id) {
+    if (!confirm('Delete this webhook?')) return;
+    await apiFetch(API + '/notifications/' + id, { method: 'DELETE' });
+    loadNotifications();
+}
+
+// === HISTORICAL TRENDS ===
+function drawTrendChart(canvasId, data, color, label, maxVal) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = (rect.width - 40) * dpr;
+    canvas.height = 200 * dpr;
+    canvas.style.width = (rect.width - 40) + 'px';
+    canvas.style.height = '200px';
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width - 40, h = 200;
+    const padding = { top: 10, right: 10, bottom: 30, left: 45 };
+    const plotW = w - padding.left - padding.right;
+    const plotH = h - padding.top - padding.bottom;
+
+    ctx.clearRect(0, 0, w, h);
+
+    if (!data || data.length === 0) {
+        ctx.fillStyle = '#6b7280'; ctx.font = '13px Segoe UI'; ctx.textAlign = 'center';
+        ctx.fillText('No trend data yet - collecting every 30 minutes', w / 2, h / 2);
+        return;
+    }
+
+    const max = maxVal || Math.max(...data.map(d => d.value), 1);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (plotH / 4) * i;
+        ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(w - padding.right, y); ctx.stroke();
+        ctx.fillStyle = '#6b7280'; ctx.font = '10px Segoe UI'; ctx.textAlign = 'right';
+        ctx.fillText(Math.round(max - (max / 4) * i), padding.left - 6, y + 4);
+    }
+
+    // Line
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    data.forEach((d, i) => {
+        const x = padding.left + (i / Math.max(data.length - 1, 1)) * plotW;
+        const y = padding.top + plotH - (d.value / max) * plotH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Fill
+    const lastIdx = data.length - 1;
+    ctx.lineTo(padding.left + (lastIdx / Math.max(data.length - 1, 1)) * plotW, padding.top + plotH);
+    ctx.lineTo(padding.left, padding.top + plotH);
+    ctx.closePath();
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + plotH);
+    gradient.addColorStop(0, color.replace(')', ',0.15)').replace('rgb', 'rgba'));
+    gradient.addColorStop(1, color.replace(')', ',0)').replace('rgb', 'rgba'));
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // X labels
+    ctx.fillStyle = '#6b7280'; ctx.font = '10px Segoe UI'; ctx.textAlign = 'center';
+    const step = Math.max(1, Math.floor(data.length / 6));
+    data.forEach((d, i) => {
+        if (i % step === 0 || i === lastIdx) {
+            const x = padding.left + (i / Math.max(data.length - 1, 1)) * plotW;
+            ctx.fillText(d.label, x, h - 8);
+        }
+    });
+}
+
+async function loadTrends() {
+    try {
+        const days = document.getElementById('trend-range')?.value || 30;
+        const customer = document.getElementById('trend-customer')?.value || '';
+
+        // Populate customer dropdown if empty
+        const customerSelect = document.getElementById('trend-customer');
+        if (customerSelect && customerSelect.options.length <= 1) {
+            const devices = await apiFetch(API + '/devices').then(r => r?.json() || []);
+            const customers = [...new Set(devices.map(d => d.customerName).filter(Boolean))].sort();
+            customers.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                customerSelect.appendChild(opt);
+            });
+        }
+
+        const url = customer
+            ? API + '/history/customer/' + encodeURIComponent(customer) + '?days=' + days
+            : API + '/history/overview?days=' + days;
+        const history = await apiFetch(url).then(r => r?.json() || []);
+
+        const secData = history.map(h => ({ label: new Date(h.date).toLocaleDateString('en-US', {month:'short',day:'numeric'}), value: h.avgSecurityScore || 0 }));
+        const cpuData = history.map(h => ({ label: new Date(h.date).toLocaleDateString('en-US', {month:'short',day:'numeric'}), value: h.avgCpuPercent || 0 }));
+        const ramData = history.map(h => ({ label: new Date(h.date).toLocaleDateString('en-US', {month:'short',day:'numeric'}), value: h.avgRamPercent || 0 }));
+        const diskData = history.map(h => ({ label: new Date(h.date).toLocaleDateString('en-US', {month:'short',day:'numeric'}), value: h.avgDiskPercent || 0 }));
+
+        drawTrendChart('trend-security', secData, 'rgb(59, 130, 246)', 'Security Score', 100);
+        drawTrendChart('trend-cpu', cpuData, 'rgb(249, 115, 22)', 'CPU %', 100);
+        drawTrendChart('trend-ram', ramData, 'rgb(168, 85, 247)', 'RAM %', 100);
+        drawTrendChart('trend-disk', diskData, 'rgb(34, 197, 94)', 'Disk %', 100);
+    } catch (err) { console.error('Failed to load trends:', err); }
+}
+
+// === BRANDING ===
+async function loadBranding() {
+    const content = document.getElementById('branding-content');
+    let currentLogo = '';
+    let currentName = '';
+    let currentTagline = '';
+    try {
+        const res = await apiFetch(API + '/branding');
+        if (res?.ok) {
+            const data = await res.json();
+            currentLogo = data.logoUrl || '';
+            currentName = data.companyName || 'PC Plus Computing';
+            currentTagline = data.tagline || 'Endpoint Protection';
+        }
+    } catch {}
+
+    content.innerHTML = `
+        <div class="card" style="padding:24px;margin-bottom:16px">
+            <h4 style="margin:0 0 20px;font-size:14px">Company Branding</h4>
+            <div class="grid-2x2" style="gap:16px">
+                <div>
+                    <div class="form-group"><label>Company Name</label><input id="brand-name" value="${esc(currentName)}" class="input"></div>
+                    <div class="form-group"><label>Tagline</label><input id="brand-tagline" value="${esc(currentTagline)}" class="input" placeholder="Endpoint Protection"></div>
+                    <div class="form-group">
+                        <label>Logo (URL or upload)</label>
+                        <input id="brand-logo-url" value="${esc(currentLogo)}" class="input" placeholder="https://example.com/logo.png">
+                        <div style="margin-top:8px">
+                            <input type="file" id="brand-logo-file" accept="image/*" onchange="uploadLogo()" style="font-size:12px">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveBranding()">Save Branding</button>
+                </div>
+                <div style="text-align:center;padding:24px">
+                    <h4 style="color:var(--text-muted);margin-bottom:16px;font-size:12px">PREVIEW</h4>
+                    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:20px;display:inline-block">
+                        ${currentLogo ? `<img src="${esc(currentLogo)}" style="max-width:120px;max-height:60px;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto" id="brand-preview-img">` : `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" style="margin-bottom:12px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>`}
+                        <div style="font-size:18px;font-weight:700;color:var(--accent)" id="brand-preview-name">${esc(currentName)}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px" id="brand-preview-tagline">${esc(currentTagline)}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card" style="padding:20px">
+            <h4 style="margin:0 0 12px;font-size:14px">Report Branding</h4>
+            <p style="color:var(--text-secondary);font-size:13px">The company name and logo will appear on all generated reports (HTML and PDF) and email notifications sent to your clients.</p>
+        </div>`;
+
+    // Live preview
+    document.getElementById('brand-name')?.addEventListener('input', e => {
+        const el = document.getElementById('brand-preview-name');
+        if (el) el.textContent = e.target.value || 'PC Plus Computing';
+    });
+    document.getElementById('brand-tagline')?.addEventListener('input', e => {
+        const el = document.getElementById('brand-preview-tagline');
+        if (el) el.textContent = e.target.value || 'Endpoint Protection';
+    });
+}
+
+async function uploadLogo() {
+    const file = document.getElementById('brand-logo-file')?.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('logo', file);
+    const res = await apiFetch(API + '/branding/logo', { method: 'POST', body: formData });
+    if (res?.ok) {
+        const data = await res.json();
+        document.getElementById('brand-logo-url').value = data.url || '';
+        const img = document.getElementById('brand-preview-img');
+        if (img) img.src = data.url;
+        else loadBranding();
+    }
+}
+
+async function saveBranding() {
+    const data = {
+        companyName: document.getElementById('brand-name').value,
+        tagline: document.getElementById('brand-tagline').value,
+        logoUrl: document.getElementById('brand-logo-url').value
+    };
+    const res = await apiFetch(API + '/branding', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    if (res?.ok) {
+        alert('Branding saved!');
+        // Update sidebar branding
+        const logo = document.querySelector('.sidebar-logo h1');
+        const tagline = document.querySelector('.sidebar-logo span');
+        if (logo) logo.textContent = data.companyName;
+        if (tagline) tagline.textContent = data.tagline;
+    }
+}
+
+// === REMOTE COMMANDS (enhanced device actions) ===
+function showRemoteCommands(deviceId, hostname) {
+    const modal = document.getElementById('device-modal');
+    const content = document.getElementById('device-modal-content');
+    content.innerHTML = `
+        <h3>Remote Commands - ${esc(hostname)}</h3>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Send a command to this endpoint. It will be picked up on the next heartbeat (within 30 seconds).</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="btn btn-primary" onclick="sendDeviceCommand('${esc(deviceId)}','rescan')" style="padding:16px;font-size:14px;flex-direction:column;display:flex;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Run Security Scan
+            </button>
+            <button class="btn btn-secondary" onclick="sendDeviceCommand('${esc(deviceId)}','restart-service')" style="padding:16px;font-size:14px;flex-direction:column;display:flex;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Restart Service
+            </button>
+            <button class="btn btn-secondary" onclick="sendDeviceCommand('${esc(deviceId)}','update-agent')" style="padding:16px;font-size:14px;flex-direction:column;display:flex;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Update Agent
+            </button>
+            <button class="btn btn-danger" onclick="if(confirm('This will lock down the device. Continue?'))sendDeviceCommand('${esc(deviceId)}','lockdown')" style="padding:16px;font-size:14px;flex-direction:column;display:flex;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Lockdown Device
+            </button>
+            <button class="btn btn-secondary" onclick="sendDeviceCommand('${esc(deviceId)}','collect-inventory')" style="padding:16px;font-size:14px;flex-direction:column;display:flex;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Collect Inventory
+            </button>
+            <button class="btn btn-secondary" onclick="sendDeviceCommand('${esc(deviceId)}','collect-bitlocker')" style="padding:16px;font-size:14px;flex-direction:column;display:flex;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+                Get BitLocker Keys
+            </button>
+        </div>
+        <div style="margin-top:16px;text-align:right">
+            <button class="btn btn-secondary" onclick="document.getElementById('device-modal').classList.remove('active')">Close</button>
+        </div>`;
+    modal.classList.add('active');
+}
+
+async function sendDeviceCommand(deviceId, command) {
+    try {
+        const res = await apiFetch(API + '/devices/' + deviceId + '/command', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ command: command })
+        });
+        if (res?.ok) {
+            alert('Command "' + command + '" sent! It will execute on the next heartbeat.');
+            document.getElementById('device-modal').classList.remove('active');
+        }
+    } catch (err) { alert('Failed to send command'); }
 }

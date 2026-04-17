@@ -18,11 +18,13 @@ namespace PCPlus.Dashboard.Controllers
     {
         private readonly DashboardDb _db;
         private readonly ILogger<EndpointController> _log;
+        private readonly PCPlus.Dashboard.Services.NotificationService _notifications;
 
-        public EndpointController(DashboardDb db, ILogger<EndpointController> log)
+        public EndpointController(DashboardDb db, ILogger<EndpointController> log, PCPlus.Dashboard.Services.NotificationService notifications)
         {
             _db = db;
             _log = log;
+            _notifications = notifications;
         }
 
         /// <summary>
@@ -175,6 +177,11 @@ namespace PCPlus.Dashboard.Controllers
 
             _log.LogInformation("[{Severity}] Alert from {DeviceId}: {Title}",
                 report.Severity, report.DeviceId, report.Title);
+
+            // Fire webhook/Slack/Teams notifications
+            _ = _notifications.SendNotificationAsync(
+                report.Title, report.Message, report.Severity,
+                report.DeviceId, report.Hostname);
 
             return Ok();
         }

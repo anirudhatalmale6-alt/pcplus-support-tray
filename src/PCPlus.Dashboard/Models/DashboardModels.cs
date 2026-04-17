@@ -126,6 +126,7 @@ namespace PCPlus.Dashboard.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime LastLogin { get; set; }
         public string ApiToken { get; set; } = "";
+        public string CustomerName { get; set; } = "";  // For customer portal: limits access to this customer only
     }
 
     /// <summary>Email report schedule.</summary>

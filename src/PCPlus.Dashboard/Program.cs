@@ -47,6 +47,9 @@ builder.Services.AddAuthorization();
 // Background services
 builder.Services.AddSingleton<ReportGenerator>();
 builder.Services.AddHostedService<EmailReportService>();
+builder.Services.AddHostedService<HistoryService>();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<NotificationService>();
 
 var app = builder.Build();
 
@@ -78,6 +81,32 @@ using (var scope = app.Services.CreateScope())
         CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
         CreatedBy TEXT NOT NULL DEFAULT ''
     )"); } catch { }
+    try { db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS DeviceHistories (
+        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+        DeviceId TEXT NOT NULL DEFAULT '',
+        Hostname TEXT NOT NULL DEFAULT '',
+        CustomerName TEXT NOT NULL DEFAULT '',
+        SecurityScore INTEGER NOT NULL DEFAULT 0,
+        CpuPercent REAL NOT NULL DEFAULT 0,
+        RamPercent REAL NOT NULL DEFAULT 0,
+        DiskPercent REAL NOT NULL DEFAULT 0,
+        CpuTempC REAL NOT NULL DEFAULT 0,
+        IsOnline INTEGER NOT NULL DEFAULT 0,
+        Timestamp TEXT NOT NULL DEFAULT (datetime('now'))
+    )"); } catch { }
+    try { db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_DeviceHistories_DeviceId ON DeviceHistories (DeviceId)"); } catch { }
+    try { db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_DeviceHistories_CustomerName ON DeviceHistories (CustomerName)"); } catch { }
+    try { db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_DeviceHistories_Timestamp ON DeviceHistories (Timestamp)"); } catch { }
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN CustomerName TEXT NOT NULL DEFAULT ''"); } catch { }
+    try { db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS NotificationConfigs (
+        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+        Name TEXT NOT NULL DEFAULT '',
+        Type TEXT NOT NULL DEFAULT 'webhook',
+        WebhookUrl TEXT NOT NULL DEFAULT '',
+        MinSeverity TEXT NOT NULL DEFAULT 'Critical',
+        Enabled INTEGER NOT NULL DEFAULT 1,
+        CreatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+    )"); } catch { }
     try { db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS SmtpConfigs (
         Id INTEGER PRIMARY KEY AUTOINCREMENT,
         Host TEXT NOT NULL DEFAULT '',
@@ -94,6 +123,18 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseStaticFiles();
+
+// Serve branding assets (uploaded logos) from data directory
+var brandingDir = Path.Combine(AppContext.BaseDirectory, "data");
+if (Directory.Exists(brandingDir))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(brandingDir),
+        RequestPath = "/branding-assets"
+    });
+}
+
 app.MapControllers();
 
 // Serve the dashboard SPA - fallback to index.html (requires auth)

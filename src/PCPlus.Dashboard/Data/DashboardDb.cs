@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PCPlus.Dashboard.Models;
+using PCPlus.Dashboard.Services;
 using System.Text.Json;
 
 namespace PCPlus.Dashboard.Data
@@ -16,6 +17,8 @@ namespace PCPlus.Dashboard.Data
         public DbSet<DashboardUser> Users => Set<DashboardUser>();
         public DbSet<EmailSchedule> EmailSchedules => Set<EmailSchedule>();
         public DbSet<SmtpConfig> SmtpConfigs => Set<SmtpConfig>();
+        public DbSet<DeviceHistory> DeviceHistories => Set<DeviceHistory>();
+        public DbSet<PCPlus.Dashboard.Services.NotificationConfig> NotificationConfigs => Set<PCPlus.Dashboard.Services.NotificationConfig>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -54,6 +57,13 @@ namespace PCPlus.Dashboard.Data
             {
                 e.HasIndex(u => u.Username).IsUnique();
                 e.HasIndex(u => u.ApiToken);
+            });
+
+            modelBuilder.Entity<DeviceHistory>(e =>
+            {
+                e.HasIndex(h => h.DeviceId);
+                e.HasIndex(h => h.CustomerName);
+                e.HasIndex(h => h.Timestamp);
             });
 
             // Seed default admin user and default policy profile
