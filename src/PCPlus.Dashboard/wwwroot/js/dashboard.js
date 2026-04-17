@@ -838,7 +838,15 @@ function loadDeviceDetail(d) {
     let checks = [];
     try {
         if (d.securityChecksJson && d.securityChecksJson !== '[]')
-            checks = JSON.parse(d.securityChecksJson);
+            checks = JSON.parse(d.securityChecksJson).map(c => ({
+                id: c.Id || c.id,
+                name: c.Name || c.name,
+                category: c.Category || c.category,
+                passed: c.Passed != null ? c.Passed : c.passed,
+                detail: c.Detail || c.detail,
+                recommendation: c.Recommendation || c.recommendation,
+                weight: c.Weight || c.weight
+            }));
     } catch(e) {}
 
     if (checks.length > 0) {
