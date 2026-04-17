@@ -203,6 +203,14 @@ namespace PCPlus.Service.Engine
                     {
                         await ExecuteCommand(result.Command);
                     }
+                    // Sync customer name from dashboard (dashboard is source of truth)
+                    if (!string.IsNullOrEmpty(result?.CustomerName) && !result.CustomerName.Contains("{{")
+                        && result.CustomerName != _config.CompanyName)
+                    {
+                        _config.SetValue("companyName", result.CustomerName);
+                        _engine.Log(LogLevel.Info, "dashboard-client",
+                            $"Customer name synced from dashboard: {result.CustomerName}");
+                    }
                 }
                 else
                 {
@@ -445,6 +453,7 @@ namespace PCPlus.Service.Engine
             public bool Ok { get; set; }
             public List<ConfigChange>? PendingConfig { get; set; }
             public string? Command { get; set; }
+            public string? CustomerName { get; set; }
         }
 
         private class ConfigChange

@@ -929,6 +929,11 @@ function generateDeviceReport() {
     window.open('/report.html?deviceId=' + encodeURIComponent(currentDevice), '_blank');
 }
 
+function generateCompanyReport() {
+    if (!currentCustomer) return;
+    window.open('/company-report.html?customer=' + encodeURIComponent(currentCustomer), '_blank');
+}
+
 async function reassignDevice(deviceId, currentCustomer) {
     // Get list of existing customers from loaded devices
     const customers = [...new Set(allDevices.map(d => d.customerName).filter(Boolean))].sort();

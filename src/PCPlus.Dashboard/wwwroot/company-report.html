@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Plus Computing - Company Security Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a2e; background: #fff; padding: 40px; max-width: 1100px; margin: 0 auto; }
+        .no-print { margin-bottom: 20px; text-align: center; }
+        .no-print button { background: #1a56db; color: #fff; border: none; padding: 12px 32px; border-radius: 8px; font-size: 14px; cursor: pointer; margin: 0 5px; }
+        .no-print button:hover { background: #1e40af; }
+        .no-print .btn-gray { background: #6b7280; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1a56db; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { font-size: 26px; color: #1a56db; }
+        .header .company { font-size: 14px; color: #666; }
+        .header .date { font-size: 12px; color: #888; }
+        .customer-name { font-size: 32px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+        .customer-sub { font-size: 14px; color: #666; margin-bottom: 30px; }
+
+        .donut-row { display: flex; justify-content: space-around; align-items: center; margin: 30px 0; padding: 30px 20px; background: linear-gradient(135deg, #f0f4ff, #e8ecff); border-radius: 16px; flex-wrap: wrap; gap: 20px; }
+        .donut-card { text-align: center; flex: 1; min-width: 140px; }
+        .donut-card .label { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
+        .donut-card .sub { font-size: 12px; color: #666; margin-top: 6px; }
+
+        .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0; }
+        .summary-box { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 1px solid #e5e7eb; }
+        .summary-box .num { font-size: 32px; font-weight: 700; }
+        .summary-box .lbl { font-size: 12px; color: #666; text-transform: uppercase; margin-top: 4px; letter-spacing: 0.5px; }
+        .green { color: #16a34a; } .red { color: #dc2626; } .blue { color: #1a56db; } .orange { color: #d97706; }
+
+        .section { margin: 30px 0; }
+        .section h2 { font-size: 20px; color: #1a56db; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
+        .device-table { width: 100%; border-collapse: collapse; }
+        .device-table th { background: #1a56db; color: #fff; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; }
+        .device-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .device-table tr:nth-child(even) { background: #fafbfc; }
+        .pass { color: #16a34a; font-weight: 600; } .fail { color: #dc2626; font-weight: 600; }
+
+        .grade-badge { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 14px; }
+        .grade-a { background: #16a34a; } .grade-b { background: #2563eb; } .grade-c { background: #d97706; } .grade-d { background: #ea580c; } .grade-f { background: #dc2626; }
+
+        .top-issues { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .issue-card { background: #fef3f2; border: 1px solid #fecaca; border-radius: 10px; padding: 16px; }
+        .issue-card .issue-name { font-weight: 600; color: #dc2626; font-size: 14px; }
+        .issue-card .issue-count { font-size: 12px; color: #666; margin-top: 4px; }
+        .issue-card .issue-rec { font-size: 12px; color: #92400e; margin-top: 6px; font-style: italic; }
+
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; text-align: center; color: #999; font-size: 11px; }
+        @media print {
+            body { padding: 20px; }
+            .no-print { display: none; }
+            .donut-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .grade-badge, .summary-box, .device-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <button class="btn-gray" onclick="window.close()">Close</button>
+    </div>
+
+    <div class="header">
+        <div>
+            <h1>Company Security Report</h1>
+            <div class="company">PC Plus Computing - Endpoint Protection</div>
+        </div>
+        <div style="text-align:right">
+            <div class="date" id="r-date"></div>
+            <div class="date" id="r-id"></div>
+        </div>
+    </div>
+
+    <div class="customer-name" id="r-customer">-</div>
+    <div class="customer-sub" id="r-sub">-</div>
+
+    <!-- Donut Charts Row -->
+    <div class="donut-row">
+        <div class="donut-card">
+            <div class="label">Overall Security</div>
+            <canvas id="donut-security" width="150" height="150"></canvas>
+            <div class="sub" id="donut-security-sub">-</div>
+        </div>
+        <div class="donut-card">
+            <div class="label">Device Status</div>
+            <canvas id="donut-status" width="150" height="150"></canvas>
+            <div class="sub" id="donut-status-sub">-</div>
+        </div>
+        <div class="donut-card">
+            <div class="label">Protection Level</div>
+            <canvas id="donut-protection" width="150" height="150"></canvas>
+            <div class="sub" id="donut-protection-sub">-</div>
+        </div>
+        <div class="donut-card">
+            <div class="label">Issues Found</div>
+            <canvas id="donut-issues" width="150" height="150"></canvas>
+            <div class="sub" id="donut-issues-sub">-</div>
+        </div>
+    </div>
+
+    <!-- Summary Numbers -->
+    <div class="summary-row" id="r-summary"></div>
+
+    <!-- Top Security Issues -->
+    <div class="section">
+        <h2>Top Security Issues Across All Devices</h2>
+        <div class="top-issues" id="r-top-issues"></div>
+    </div>
+
+    <!-- Device Overview Table -->
+    <div class="section">
+        <h2>Device Security Overview</h2>
+        <table class="device-table">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Grade</th>
+                    <th>Score</th>
+                    <th>Passed</th>
+                    <th>Failed</th>
+                    <th>CPU</th>
+                    <th>RAM</th>
+                    <th>Disk</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="r-devices-body"></tbody>
+        </table>
+    </div>
+
+    <!-- Per-Device Breakdown -->
+    <div class="section" id="r-device-details"></div>
+
+    <!-- Recommendations -->
+    <div class="section">
+        <h2>Priority Recommendations</h2>
+        <table class="device-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Issue</th>
+                    <th>Affected Devices</th>
+                    <th>Priority</th>
+                    <th>Recommendation</th>
+                </tr>
+            </thead>
+            <tbody id="r-recs-body"></tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>Generated by PC Plus Computing - Endpoint Protection Platform</p>
+        <p>This report reflects the state of all endpoints at the time of generation.</p>
+        <p style="margin-top:8px">www.pcpluscomputing.com | Managed IT Services & Security</p>
+    </div>
+
+    <script>
+        const API = '/api/dashboard';
+        function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+        function drawDonut(canvasId, segments, centerText, centerSub) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            const cx = w / 2, cy = h / 2, r = 55, lw = 20;
+            const total = segments.reduce((s, seg) => s + seg.value, 0);
+
+            ctx.clearRect(0, 0, w, h);
+
+            if (total === 0) {
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = lw; ctx.stroke();
+            } else {
+                let angle = -Math.PI / 2;
+                segments.forEach(seg => {
+                    if (seg.value <= 0) return;
+                    const sweep = (seg.value / total) * Math.PI * 2;
+                    ctx.beginPath(); ctx.arc(cx, cy, r, angle, angle + sweep);
+                    ctx.strokeStyle = seg.color; ctx.lineWidth = lw; ctx.lineCap = 'butt'; ctx.stroke();
+                    angle += sweep;
+                });
+            }
+
+            ctx.fillStyle = '#1a1a2e'; ctx.font = 'bold 28px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(centerText, cx, cy - 6);
+            if (centerSub) {
+                ctx.fillStyle = '#888'; ctx.font = '11px Segoe UI';
+                ctx.fillText(centerSub, cx, cy + 14);
+            }
+        }
+
+        async function generateReport() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const customer = params.get('customer');
+                if (!customer) { document.body.innerHTML = '<p style="padding:40px">Error: No customer specified</p>'; return; }
+
+                const devices = await fetch(API + '/devices').then(r => r.json());
+                const custDevices = devices.filter(d => (d.customerName || '') === customer);
+
+                if (custDevices.length === 0) { document.body.innerHTML = '<p style="padding:40px">No devices found for "' + customer + '"</p>'; return; }
+
+                // Header
+                const now = new Date();
+                document.getElementById('r-date').textContent = 'Generated: ' + now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                document.getElementById('r-id').textContent = 'Report ID: CR-' + now.getTime().toString(36).toUpperCase();
+                document.title = 'Security Report - ' + customer;
+                document.getElementById('r-customer').textContent = customer;
+                document.getElementById('r-sub').textContent = custDevices.length + ' managed endpoint' + (custDevices.length > 1 ? 's' : '') + ' | Managed by PC Plus Computing';
+
+                // Parse all checks for all devices
+                const deviceData = custDevices.map(d => {
+                    let checks = [];
+                    try {
+                        if (d.securityChecksJson && d.securityChecksJson !== '[]')
+                            checks = JSON.parse(d.securityChecksJson).map(c => ({
+                                id: c.Id || c.id, name: c.Name || c.name, category: c.Category || c.category,
+                                passed: c.Passed != null ? c.Passed : c.passed, detail: c.Detail || c.detail,
+                                recommendation: c.Recommendation || c.recommendation, weight: c.Weight || c.weight
+                            }));
+                    } catch(e) {}
+                    return { ...d, checks };
+                });
+
+                // Aggregate stats
+                const online = deviceData.filter(d => d.isOnline).length;
+                const offline = deviceData.length - online;
+                const avgScore = Math.round(deviceData.reduce((s, d) => s + (d.securityScore || 0), 0) / deviceData.length);
+                const totalChecks = deviceData.reduce((s, d) => s + d.checks.length, 0);
+                const totalPassed = deviceData.reduce((s, d) => s + d.checks.filter(c => c.passed).length, 0);
+                const totalFailed = totalChecks - totalPassed;
+                const protected_ = deviceData.filter(d => d.runningModules > 0).length;
+                const grade = avgScore >= 90 ? 'A' : avgScore >= 80 ? 'B' : avgScore >= 70 ? 'C' : avgScore >= 60 ? 'D' : 'F';
+
+                // Donut 1: Security Score
+                const pct = avgScore;
+                drawDonut('donut-security',
+                    [{ value: pct, color: pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626' }, { value: 100 - pct, color: '#e5e7eb' }],
+                    pct + '%', 'Grade ' + grade);
+                document.getElementById('donut-security-sub').textContent = (pct >= 80 ? 'Good' : pct >= 60 ? 'Needs Attention' : 'Critical') + ' - avg across all devices';
+
+                // Donut 2: Device Status
+                drawDonut('donut-status',
+                    [{ value: online, color: '#22c55e' }, { value: offline, color: '#6b7280' }],
+                    online + '/' + deviceData.length, 'online');
+                document.getElementById('donut-status-sub').textContent = online + ' online, ' + offline + ' offline';
+
+                // Donut 3: Protection
+                drawDonut('donut-protection',
+                    [{ value: protected_, color: '#22c55e' }, { value: deviceData.length - protected_, color: '#ef4444' }],
+                    protected_ + '/' + deviceData.length, 'protected');
+                document.getElementById('donut-protection-sub').textContent = protected_ + ' fully protected endpoints';
+
+                // Donut 4: Issues
+                drawDonut('donut-issues',
+                    [{ value: totalPassed, color: '#22c55e' }, { value: totalFailed, color: '#ef4444' }],
+                    totalFailed.toString(), 'issues');
+                document.getElementById('donut-issues-sub').textContent = totalPassed + ' passed, ' + totalFailed + ' failed across all devices';
+
+                // Summary numbers
+                document.getElementById('r-summary').innerHTML = `
+                    <div class="summary-box"><div class="num blue">${deviceData.length}</div><div class="lbl">Total Devices</div></div>
+                    <div class="summary-box"><div class="num green">${totalPassed}</div><div class="lbl">Checks Passed</div></div>
+                    <div class="summary-box"><div class="num red">${totalFailed}</div><div class="lbl">Issues Found</div></div>
+                    <div class="summary-box"><div class="num ${avgScore >= 80 ? 'green' : avgScore >= 60 ? 'orange' : 'red'}">${avgScore}%</div><div class="lbl">Avg Security Score</div></div>
+                `;
+
+                // Top issues (aggregate failed checks across all devices)
+                const issueMap = {};
+                deviceData.forEach(d => {
+                    d.checks.filter(c => !c.passed).forEach(c => {
+                        if (!issueMap[c.id]) issueMap[c.id] = { name: c.name, category: c.category, recommendation: c.recommendation, weight: c.weight, devices: [] };
+                        issueMap[c.id].devices.push(d.hostname || d.deviceId);
+                    });
+                });
+                const topIssues = Object.values(issueMap).sort((a, b) => b.devices.length - a.devices.length || b.weight - a.weight);
+
+                document.getElementById('r-top-issues').innerHTML = topIssues.slice(0, 8).map(issue => `
+                    <div class="issue-card">
+                        <div class="issue-name">${esc(issue.name)}</div>
+                        <div class="issue-count">${issue.devices.length} of ${deviceData.length} devices affected | ${esc(issue.category)} | ${issue.weight} pts</div>
+                        <div class="issue-rec">${esc(issue.recommendation)}</div>
+                    </div>
+                `).join('');
+
+                // Device overview table
+                document.getElementById('r-devices-body').innerHTML = deviceData
+                    .sort((a, b) => (a.securityScore || 0) - (b.securityScore || 0))
+                    .map(d => {
+                        const g = (d.securityGrade || 'F').toLowerCase();
+                        const passed = d.checks.filter(c => c.passed).length;
+                        const failed = d.checks.filter(c => !c.passed).length;
+                        return `<tr>
+                            <td style="font-weight:600">${esc(d.hostname)}</td>
+                            <td><span class="grade-badge grade-${g}">${(d.securityGrade || 'F').toUpperCase()}</span></td>
+                            <td style="font-weight:600">${d.securityScore || 0}/100</td>
+                            <td class="pass">${passed}</td>
+                            <td class="fail">${failed}</td>
+                            <td>${Math.round(d.cpuPercent || 0)}%</td>
+                            <td>${Math.round(d.ramPercent || 0)}%</td>
+                            <td>${Math.round(d.diskPercent || 0)}%</td>
+                            <td style="color:${d.isOnline ? '#16a34a' : '#dc2626'};font-weight:600">${d.isOnline ? 'Online' : 'Offline'}</td>
+                        </tr>`;
+                    }).join('');
+
+                // Per-device failed checks breakdown
+                const detailsEl = document.getElementById('r-device-details');
+                detailsEl.innerHTML = '<h2 style="font-size:20px;color:#1a56db;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #e5e7eb">Device Breakdown</h2>' +
+                    deviceData.sort((a, b) => (a.securityScore || 0) - (b.securityScore || 0)).map(d => {
+                        const failed = d.checks.filter(c => !c.passed);
+                        if (failed.length === 0) return `
+                            <div style="margin-bottom:16px;padding:12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
+                                <strong style="color:#16a34a">${esc(d.hostname)}</strong> - Score: ${d.securityScore}/100 (${d.securityGrade}) - All checks passed!
+                            </div>`;
+                        return `
+                            <div style="margin-bottom:20px">
+                                <div style="padding:10px 14px;background:#1a56db;color:#fff;border-radius:8px 8px 0 0;font-weight:600;display:flex;justify-content:space-between">
+                                    <span>${esc(d.hostname)}</span>
+                                    <span>Score: ${d.securityScore}/100 (${d.securityGrade}) | ${failed.length} issue${failed.length > 1 ? 's' : ''}</span>
+                                </div>
+                                <table class="device-table" style="border:1px solid #e5e7eb;border-top:none">
+                                    <tr style="background:#fef3f2"><th style="background:#fef3f2;color:#1a1a2e">Check</th><th style="background:#fef3f2;color:#1a1a2e">Category</th><th style="background:#fef3f2;color:#1a1a2e">Details</th><th style="background:#fef3f2;color:#1a1a2e;width:50px">Pts</th></tr>
+                                    ${failed.map(c => `<tr><td class="fail" style="font-weight:600">${esc(c.name)}</td><td>${esc(c.category)}</td><td>${esc(c.detail)}</td><td style="text-align:center">${c.weight}</td></tr>`).join('')}
+                                </table>
+                            </div>`;
+                    }).join('');
+
+                // Priority recommendations table
+                document.getElementById('r-recs-body').innerHTML = topIssues.slice(0, 15).map((issue, i) => `
+                    <tr>
+                        <td style="font-weight:600">${i + 1}</td>
+                        <td class="fail" style="font-weight:600">${esc(issue.name)}</td>
+                        <td style="font-size:12px">${issue.devices.map(d => esc(d)).join(', ')}</td>
+                        <td>${issue.weight >= 10 ? '<span style="color:#dc2626;font-weight:600">High</span>' : issue.weight >= 5 ? '<span style="color:#d97706;font-weight:600">Medium</span>' : '<span style="color:#666">Low</span>'}</td>
+                        <td style="font-size:12px">${esc(issue.recommendation)}</td>
+                    </tr>
+                `).join('');
+
+            } catch(err) {
+                console.error('Company report error:', err);
+                document.body.innerHTML = '<p style="color:red;padding:40px">Error generating report: ' + err.message + '</p>';
+            }
+        }
+
+        generateReport();
+    </script>
+</body>
+</html>

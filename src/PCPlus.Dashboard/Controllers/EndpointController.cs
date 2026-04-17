@@ -100,7 +100,8 @@ namespace PCPlus.Dashboard.Controllers
             return Ok(new HeartbeatResponse
             {
                 Ok = true,
-                PendingConfig = pendingConfig
+                PendingConfig = pendingConfig,
+                CustomerName = device.CustomerName
             });
         }
 

@@ -180,6 +180,7 @@ namespace PCPlus.Dashboard.Models
         public bool Ok { get; set; } = true;
         public List<ConfigChange> PendingConfig { get; set; } = new();
         public string? Command { get; set; }  // Optional command: "rescan", "lockdown", "restart"
+        public string? CustomerName { get; set; }  // Sync customer name from dashboard to agent
     }
 
     public class ConfigChange
