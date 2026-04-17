@@ -8,8 +8,14 @@
 </head>
 <body>
 <div class="app">
+    <!-- Mobile menu button -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
     <!-- Sidebar -->
-    <nav class="sidebar">
+    <nav class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <h1>PC Plus Computing</h1>
             <span>Endpoint Protection</span>
@@ -62,7 +68,7 @@
             <div class="stat-grid" id="overview-stats"></div>
 
             <!-- Middle Row: Alerts Chart + Donut -->
-            <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:16px">
+            <div class="grid-2">
                 <div class="card" style="padding:20px">
                     <div class="card-header" style="margin-bottom:12px"><h3>Alerts by Category</h3></div>
                     <div id="alerts-donut" style="display:flex;align-items:center;justify-content:center;min-height:200px"></div>
@@ -74,7 +80,7 @@
             </div>
 
             <!-- Bottom Row: Threats Table + Protection Status -->
-            <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:16px">
+            <div class="grid-3-2">
                 <div class="card" style="padding:20px">
                     <div class="card-header" style="margin-bottom:12px">
                         <h3>Customers</h3>
@@ -93,7 +99,7 @@
                         <tbody id="security-threats-table"></tbody>
                     </table>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="grid-2x2">
                     <div class="card" style="padding:20px;text-align:center">
                         <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Ransomware Protection</h4>
                         <div id="donut-ransomware"></div>
@@ -138,7 +144,7 @@
             <div class="stat-grid" id="customer-stats"></div>
 
             <!-- Customer Donuts + Alerts Chart -->
-            <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:16px;margin-bottom:16px">
+            <div class="grid-4">
                 <div class="card" style="padding:20px;text-align:center">
                     <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">Device Status</h4>
                     <div id="cust-donut-status"></div>
@@ -162,7 +168,8 @@
                 <div class="card-header">
                     <h3>Endpoints</h3>
                 </div>
-                <table style="width:100%">
+                <div class="table-scroll">
+                <table style="width:100%;min-width:800px">
                     <thead>
                         <tr>
                             <th>Status</th>
@@ -180,6 +187,7 @@
                     </thead>
                     <tbody id="customer-devices-table"></tbody>
                 </table>
+                </div>
             </div>
 
             <!-- Customer Alerts -->
@@ -215,7 +223,8 @@
                 </div>
             </div>
             <div class="card">
-                <table>
+                <div class="table-scroll">
+                <table style="min-width:900px">
                     <thead>
                         <tr>
                             <th>Status</th>
@@ -235,6 +244,7 @@
                     </thead>
                     <tbody id="devices-table"></tbody>
                 </table>
+                </div>
             </div>
         </div>
 
@@ -261,7 +271,8 @@
                 <h2>Incidents</h2>
             </div>
             <div class="card">
-                <table>
+                <div class="table-scroll">
+                <table style="min-width:700px">
                     <thead>
                         <tr>
                             <th>Status</th>
@@ -275,6 +286,7 @@
                     </thead>
                     <tbody id="incidents-table"></tbody>
                 </table>
+                </div>
             </div>
         </div>
 
@@ -294,7 +306,7 @@
             </div>
             <div class="card" style="padding:24px">
                 <h3 style="margin-bottom:16px">Push Scoring Weights to Endpoints</h3>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="grid-2x2" style="gap:12px">
                     <div class="form-group">
                         <label>Target Device (empty = all)</label>
                         <select id="config-device">
@@ -309,7 +321,7 @@
                     </div>
                 </div>
                 <h4 style="margin:16px 0 12px;font-size:14px;color:var(--text-secondary)">Behavior Scoring Weights</h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px" id="scoring-weights">
+                <div class="grid-3" id="scoring-weights">
                     <div class="form-group"><label>Honeypot Triggered</label><input type="number" data-key="scoreHoneypotTriggered" value="50"></div>
                     <div class="form-group"><label>Known Ransomware</label><input type="number" data-key="scoreKnownRansomware" value="50"></div>
                     <div class="form-group"><label>Shadow Copy Deletion</label><input type="number" data-key="scoreShadowCopyDeletion" value="40"></div>
@@ -326,7 +338,7 @@
                     <div class="form-group"><label>Unsigned Process</label><input type="number" data-key="scoreUnsignedProcess" value="5"></div>
                 </div>
                 <h4 style="margin:16px 0 12px;font-size:14px;color:var(--text-secondary)">Thresholds</h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+                <div class="grid-4col">
                     <div class="form-group"><label>Warning Threshold</label><input type="number" id="cfg-warning" value="30"></div>
                     <div class="form-group"><label>Containment Threshold</label><input type="number" id="cfg-containment" value="60"></div>
                     <div class="form-group"><label>Lockdown Threshold</label><input type="number" id="cfg-lockdown" value="80"></div>

@@ -395,11 +395,115 @@ tr:last-child td { border-bottom: none; }
 .empty-state svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.3; }
 .empty-state p { font-size: 14px; }
 
-/* Responsive */
+/* Mobile menu toggle */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 200;
+    width: 40px;
+    height: 40px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+.mobile-menu-btn svg { width: 22px; height: 22px; }
+
+/* Scrollable table wrapper */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Fluid grid helpers */
+.grid-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 16px; }
+.grid-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+.grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.grid-4col { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+/* Sidebar overlay for mobile */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 260px; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 101;
+}
+.sidebar-overlay.active { display: block; }
+
+/* --- TABLET (max-width: 1024px) --- */
+@media (max-width: 1024px) {
+    .main { padding: 16px; }
+    .stat-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3-2 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .grid-4col { grid-template-columns: 1fr 1fr; }
+    .page-header { flex-wrap: wrap; gap: 10px; }
+    .header-actions { flex-wrap: wrap; }
+}
+
+/* --- MOBILE (max-width: 768px) --- */
 @media (max-width: 768px) {
-    .sidebar { width: 60px; }
-    .sidebar-logo h1, .sidebar-logo span, .nav-item span, .nav-section { display: none; }
-    .nav-item { justify-content: center; padding: 12px; }
-    .main { margin-left: 60px; padding: 16px; }
-    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .mobile-menu-btn { display: flex; }
+
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        width: 260px;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    .main { margin-left: 0; padding: 14px; padding-top: 60px; }
+
+    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .page-header h2 { font-size: 18px; }
+    .header-actions { width: 100%; flex-wrap: wrap; }
+    .header-actions .btn { flex: 1; min-width: 0; text-align: center; justify-content: center; font-size: 11px; padding: 6px 8px; }
+
+    .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-card { padding: 14px; }
+    .stat-card .value { font-size: 22px; }
+    .stat-card .label { font-size: 11px; }
+
+    .grid-2, .grid-3-2 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: 1fr; }
+    .grid-2x2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-4col { grid-template-columns: 1fr 1fr; }
+
+    .card-header { padding: 10px 14px; }
+    .card-header h3 { font-size: 14px; }
+
+    th { padding: 8px 10px; font-size: 10px; }
+    td { padding: 10px; font-size: 12px; }
+
+    .modal { width: 95vw; max-width: 95vw; padding: 16px; margin: 10px; }
+
+    .form-group input, .form-group select { font-size: 14px; padding: 10px 12px; }
+
+    .alert-item { padding: 10px 12px; }
+    .alert-title { font-size: 12px; }
+    .alert-message { font-size: 11px; }
+
+    /* Device detail cards - stack on mobile */
+    #device-detail-content .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* --- SMALL MOBILE (max-width: 480px) --- */
+@media (max-width: 480px) {
+    .main { padding: 10px; padding-top: 56px; }
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card { padding: 10px; }
+    .stat-card .value { font-size: 18px; }
+    .header-actions .btn { font-size: 10px; padding: 5px 6px; }
+    .grid-4col { grid-template-columns: 1fr; }
 }
