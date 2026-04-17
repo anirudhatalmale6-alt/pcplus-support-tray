@@ -929,9 +929,13 @@ function generateDeviceReport() {
     window.open('/report.html?deviceId=' + encodeURIComponent(currentDevice), '_blank');
 }
 
-function generateCompanyReport() {
+function generateCompanyReport(mode) {
     if (!currentCustomer) return;
-    window.open('/company-report.html?customer=' + encodeURIComponent(currentCustomer), '_blank');
+    if (mode === 'html') {
+        window.open('/api/reports/company/' + encodeURIComponent(currentCustomer), '_blank');
+    } else {
+        window.open('/company-report.html?customer=' + encodeURIComponent(currentCustomer), '_blank');
+    }
 }
 
 async function reassignDevice(deviceId, currentCustomer) {

@@ -128,7 +128,8 @@
             <div class="page-header">
                 <h2 id="customer-title">Customer Dashboard</h2>
                 <div class="header-actions">
-                    <button class="btn btn-sm btn-primary" onclick="generateCompanyReport()" style="background:#1a56db;color:#fff">Generate Company Report</button>
+                    <button class="btn btn-sm btn-primary" onclick="generateCompanyReport('html')" style="background:#1a56db;color:#fff" title="Email-friendly HTML report">Report (HTML)</button>
+                    <button class="btn btn-sm btn-primary" onclick="generateCompanyReport('pdf')" style="background:#7c3aed;color:#fff" title="Print-ready PDF report">Report (PDF)</button>
                     <button class="btn btn-sm btn-secondary" onclick="showPage('overview')">Back to Overview</button>
                 </div>
             </div>
