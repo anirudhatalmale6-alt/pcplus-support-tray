@@ -12,21 +12,33 @@
         .no-print button:hover { background: #1e40af; }
         .no-print .btn-gray { background: #6b7280; }
 
+        /* --- BRANDED HEADER BAR --- */
+        .brand-bar { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 28px 60px; display: flex; justify-content: space-between; align-items: center; }
+        .brand-left { display: flex; align-items: center; gap: 16px; }
+        .brand-shield { width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+        .brand-shield svg { width: 28px; height: 28px; }
+        .brand-text .brand-name { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+        .brand-text .brand-tagline { color: #94a3b8; font-size: 12px; font-weight: 500; margin-top: 2px; letter-spacing: 0.5px; }
+        .brand-right { text-align: right; }
+        .brand-right .date { color: #94a3b8; font-size: 12px; }
+        .brand-right .report-id { color: #64748b; font-size: 10px; margin-top: 3px; }
+
         /* --- COVER / EXECUTIVE SUMMARY (Page 1) --- */
-        .cover { padding: 50px 60px; min-height: 100vh; display: flex; flex-direction: column; }
-        .cover-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 50px; }
-        .cover-brand { }
-        .cover-brand .customer-logo { font-size: 42px; font-weight: 800; color: #1a1a2e; line-height: 1.1; }
-        .cover-brand .report-type { font-size: 18px; color: #1a56db; font-weight: 600; margin-top: 8px; }
-        .cover-meta { text-align: right; }
-        .cover-meta .date { font-size: 13px; color: #888; }
-        .cover-meta .report-id { font-size: 11px; color: #aaa; margin-top: 4px; }
+        .cover { padding: 50px 60px; min-height: calc(100vh - 104px); display: flex; flex-direction: column; }
+        .cover-header { margin-bottom: 36px; }
+        .cover-brand .customer-logo { font-size: 44px; font-weight: 800; color: #1a1a2e; line-height: 1.1; }
+        .cover-brand .report-type { font-size: 16px; color: #64748b; font-weight: 500; margin-top: 6px; text-transform: uppercase; letter-spacing: 1px; }
 
-        .msp-badge { display: inline-flex; align-items: center; gap: 8px; background: #f0f4ff; border: 1px solid #c7d7ff; border-radius: 8px; padding: 10px 16px; margin-bottom: 40px; }
-        .msp-badge .msp-name { font-size: 13px; color: #1a56db; font-weight: 600; }
-        .msp-badge .msp-label { font-size: 11px; color: #888; }
+        .exec-title { font-size: 20px; color: #1a56db; font-weight: 700; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
 
-        .exec-title { font-size: 22px; color: #1a56db; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; }
+        /* --- CATEGORY BREAKDOWN --- */
+        .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+        .cat-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; }
+        .cat-icon { font-size: 16px; width: 24px; text-align: center; }
+        .cat-name { font-size: 12px; font-weight: 600; color: #334155; width: 130px; flex-shrink: 0; }
+        .cat-bar-wrap { flex: 1; height: 10px; background: #e5e7eb; border-radius: 5px; overflow: hidden; }
+        .cat-bar { height: 100%; border-radius: 5px; transition: width 0.3s; }
+        .cat-pct { font-size: 11px; font-weight: 700; width: 36px; text-align: right; }
 
         .score-hero { display: flex; align-items: center; gap: 40px; padding: 30px 40px; background: linear-gradient(135deg, #f8faff, #eef2ff); border-radius: 16px; margin-bottom: 30px; }
         .score-hero-left { text-align: center; }
@@ -91,24 +103,29 @@
         <button class="btn-gray" onclick="window.close()">Close</button>
     </div>
 
+    <!-- BRANDED HEADER -->
+    <div class="brand-bar">
+        <div class="brand-left">
+            <div class="brand-shield">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="brand-text">
+                <div class="brand-name">PC Plus Computing</div>
+                <div class="brand-tagline">Your Security. Our Priority. Always Protected.</div>
+            </div>
+        </div>
+        <div class="brand-right">
+            <div class="date" id="r-date"></div>
+            <div class="report-id" id="r-id"></div>
+        </div>
+    </div>
+
     <!-- PAGE 1: EXECUTIVE SUMMARY -->
     <div class="cover" id="page-exec">
         <div class="cover-header">
             <div class="cover-brand">
                 <div class="customer-logo" id="r-customer">-</div>
-                <div class="report-type">Endpoint Security Report</div>
-            </div>
-            <div class="cover-meta">
-                <div class="date" id="r-date"></div>
-                <div class="report-id" id="r-id"></div>
-            </div>
-        </div>
-
-        <div class="msp-badge">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a56db" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <div>
-                <div class="msp-name">PC Plus Computing</div>
-                <div class="msp-label">Managed Security Provider</div>
+                <div class="report-type">Endpoint Security Assessment</div>
             </div>
         </div>
 
@@ -143,6 +160,11 @@
         <div class="summary-row" id="r-summary"></div>
 
         <div style="margin-top:20px">
+            <div class="exec-title">Security by Category</div>
+            <div class="cat-grid" id="r-categories"></div>
+        </div>
+
+        <div style="margin-top:24px">
             <div class="exec-title">Top Issues Requiring Attention</div>
             <div class="top-issues-grid" id="r-top-issues"></div>
         </div>
@@ -329,6 +351,32 @@
                     });
                 });
                 const topIssues = Object.values(issueMap).sort((a, b) => b.devices.length - a.devices.length || b.weight - a.weight);
+
+                // Category breakdown
+                const catIcons = { 'Protection': '\u{1F6E1}', 'Identity & Access': '\u{1F511}', 'Network': '\u{1F310}',
+                    'Ransomware Protection': '\u{1F6A8}', 'Updates': '\u{1F504}', 'Data Protection': '\u{1F4BE}',
+                    'Device Health': '\u{1F4BB}', 'EDR & Advanced': '\u{1F52C}', 'Access': '\u{1F511}' };
+                const catMap = {};
+                deviceData.forEach(d => {
+                    d.checks.forEach(c => {
+                        const cat = c.category || 'Other';
+                        if (!catMap[cat]) catMap[cat] = { total: 0, passed: 0 };
+                        catMap[cat].total++;
+                        if (c.passed) catMap[cat].passed++;
+                    });
+                });
+                const catEntries = Object.entries(catMap).sort((a, b) => (a[1].passed / a[1].total) - (b[1].passed / b[1].total));
+                document.getElementById('r-categories').innerHTML = catEntries.map(([cat, data]) => {
+                    const pct = Math.round(data.passed / data.total * 100);
+                    const color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
+                    const icon = catIcons[cat] || '\u{2699}';
+                    return `<div class="cat-row">
+                        <span class="cat-icon">${icon}</span>
+                        <span class="cat-name">${esc(cat)}</span>
+                        <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%;background:${color}"></div></div>
+                        <span class="cat-pct" style="color:${color}">${pct}%</span>
+                    </div>`;
+                }).join('');
 
                 document.getElementById('r-top-issues').innerHTML = topIssues.slice(0, 6).map(issue => `
                     <div class="issue-card">
