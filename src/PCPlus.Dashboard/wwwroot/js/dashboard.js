@@ -926,7 +926,7 @@ function loadDeviceDetail(d) {
 
 function generateDeviceReport() {
     if (!currentDevice) return;
-    window.open('/report.html?deviceId=' + encodeURIComponent(currentDevice.deviceId), '_blank');
+    window.open('/report.html?deviceId=' + encodeURIComponent(currentDevice), '_blank');
 }
 
 async function reassignDevice(deviceId, currentCustomer) {
@@ -964,7 +964,7 @@ async function remediateCheck(checkId, checkName) {
     if (!confirm('Apply automatic fix for "' + checkName + '"?\n\nThis will be applied on the next agent heartbeat (within 30 seconds).')) return;
 
     try {
-        const res = await fetch(API + '/devices/' + encodeURIComponent(currentDevice.deviceId) + '/remediate', {
+        const res = await fetch(API + '/devices/' + encodeURIComponent(currentDevice) + '/remediate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ checkId: checkId })

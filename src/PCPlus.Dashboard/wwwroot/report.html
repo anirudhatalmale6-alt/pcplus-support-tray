@@ -171,12 +171,15 @@
         function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
         async function generateReport() {
+            try {
             const params = new URLSearchParams(window.location.search);
             const deviceId = params.get('deviceId');
             if (!deviceId) { document.body.innerHTML = '<p>Error: No deviceId specified</p>'; return; }
 
             // Fetch device data
-            const device = await fetch(API + '/devices/' + encodeURIComponent(deviceId)).then(r => r.json());
+            const resp = await fetch(API + '/devices/' + encodeURIComponent(deviceId));
+            if (!resp.ok) { document.body.innerHTML = '<p>Error: Failed to load device (HTTP ' + resp.status + '). DeviceId: ' + deviceId + '</p>'; return; }
+            const device = await resp.json();
 
             // Report metadata
             const now = new Date();
@@ -289,6 +292,10 @@
                         <td style="font-size:12px;color:#666">${esc(s.publisher)}</td>
                     </tr>
                 `).join('');
+            }
+            } catch(err) {
+                console.error('Report generation error:', err);
+                document.body.innerHTML = '<p style="color:red;padding:40px">Error generating report: ' + err.message + '</p>';
             }
         }
 
