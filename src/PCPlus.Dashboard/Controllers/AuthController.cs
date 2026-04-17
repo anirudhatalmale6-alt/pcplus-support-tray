@@ -34,6 +34,11 @@ public class AuthController : ControllerBase
         if (user is null)
             return Unauthorized(new { ok = false, error = "Invalid credentials" });
 
+        // Portal mode: only allow customer role users
+        var isPortal = HttpContext.Items.ContainsKey("PortalMode");
+        if (isPortal && user.Role != "customer")
+            return Unauthorized(new { ok = false, error = "Please use the admin dashboard for this account" });
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -61,6 +66,13 @@ public class AuthController : ControllerBase
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Ok();
+    }
+
+    [HttpGet("portal-mode")]
+    public IActionResult GetPortalMode()
+    {
+        var isPortal = HttpContext.Items.ContainsKey("PortalMode");
+        return Ok(new { portalMode = isPortal });
     }
 
     [HttpGet("me")]

@@ -120,6 +120,17 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors();
+
+// Portal mode detection - when accessed via portal.pcpluscomputing.com,
+// nginx adds X-Portal-Mode header. Pass it to responses for JS to detect.
+app.Use(async (context, next) =>
+{
+    var portalMode = context.Request.Headers["X-Portal-Mode"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(portalMode))
+        context.Items["PortalMode"] = portalMode;
+    await next();
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseStaticFiles();

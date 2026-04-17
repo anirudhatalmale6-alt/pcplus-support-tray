@@ -216,6 +216,14 @@
             var errorEl = document.getElementById('error-message');
             var btnSignin = document.getElementById('btn-signin');
 
+            // Detect portal mode
+            fetch('/api/auth/portal-mode').then(function(r){return r.json()}).then(function(d){
+                if(d.portalMode){
+                    document.querySelector('.login-header p').textContent='Customer Portal';
+                    document.title='Sign In - Customer Portal';
+                }
+            }).catch(function(){});
+
             function showError(msg) {
                 errorEl.textContent = msg;
                 errorEl.classList.add('visible');
