@@ -8,6 +8,8 @@ namespace PCPlus.Tray
         [STAThread]
         static void Main(string[] args)
         {
+            // DPI awareness for proper scaling on high-DPI displays
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 

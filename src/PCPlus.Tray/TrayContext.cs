@@ -16,6 +16,7 @@ namespace PCPlus.Tray
     {
         private readonly NotifyIcon _trayIcon;
         private readonly IpcClient _ipc;
+        private readonly LocalFallback _localFallback;
         private readonly System.Windows.Forms.Timer _reconnectTimer;
         private bool _serviceConnected;
         private bool _connecting;
@@ -27,6 +28,7 @@ namespace PCPlus.Tray
         public TrayContext()
         {
             _ipc = new IpcClient();
+            _localFallback = new LocalFallback();
             _ipc.OnNotification += HandleNotification;
             _ipc.OnConnectionChanged += connected =>
             {
@@ -176,6 +178,10 @@ namespace PCPlus.Tray
             var menu = new ContextMenuStrip();
             menu.Font = new Font("Segoe UI", 9.5f);
             menu.BackColor = Color.White;
+            menu.LayoutStyle = ToolStripLayoutStyle.VerticalStackWithOverflow;
+            menu.TextDirection = ToolStripTextDirection.Horizontal;
+            menu.RenderMode = ToolStripRenderMode.System;
+            menu.AutoSize = true;
 
             // Header
             var header = new ToolStripMenuItem($"  PC Plus Endpoint Protection")
@@ -198,7 +204,7 @@ namespace PCPlus.Tray
 
             // Live Chat
             var chatItem = new ToolStripMenuItem("Live Chat");
-            chatItem.Click += (s, e) => OpenUrl("https://pcpluscomputing.com/contact/");
+            chatItem.Click += (s, e) => OpenUrl("https://pcpluscomputing.com/contact-us/");
             menu.Items.Add(chatItem);
 
             // Support Ticket
@@ -217,20 +223,29 @@ namespace PCPlus.Tray
             var fixItem = new ToolStripMenuItem("Fix My Computer");
             fixItem.Click += async (s, e) =>
             {
-                var result = MessageBox.Show(
+                var confirm = MessageBox.Show(
                     "This will:\n- Clear temporary files\n- Flush DNS cache\n" +
-                    "- Reset network stack\n- Run System File Checker\n- Refresh Explorer\n\nContinue?",
+                    "- Reset Winsock catalog\n- Refresh icons\n- Restart Explorer\n\nContinue?",
                     "Fix My Computer", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result == DialogResult.Yes)
+                if (confirm == DialogResult.Yes)
                 {
-                    var response = await _ipc.SendModuleCommandAsync("maintenance", "RunMaintenance",
-                        new() { ["action"] = "fixmypc" });
-                    if (response.Success)
-                        MessageBox.Show("Repair complete! Your computer has been optimized.",
-                            "Fix My Computer", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    if (_serviceConnected)
+                    {
+                        var response = await _ipc.SendModuleCommandAsync("maintenance", "RunMaintenance",
+                            new() { ["action"] = "fixmypc" });
+                        if (response.Success)
+                            MessageBox.Show("Repair complete! Your computer has been optimized.",
+                                "Fix My Computer", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        else
+                            MessageBox.Show($"Error: {response.Message}", "Fix My Computer",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                     else
-                        MessageBox.Show($"Error: {response.Message}", "Fix My Computer",
-                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    {
+                        var output = await _localFallback.RunFixMyComputerAsync();
+                        MessageBox.Show("Repair complete!\n\n" + output,
+                            "Fix My Computer", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
                 }
             };
             menu.Items.Add(fixItem);
@@ -293,10 +308,10 @@ namespace PCPlus.Tray
 
         private void ShowDashboard()
         {
-            ShowMainForm();
+            ShowMainForm("dashboard");
         }
 
-        private void ShowMainForm()
+        private void ShowMainForm(string view = "dashboard")
         {
             if (_mainForm != null && !_mainForm.IsDisposed)
             {
@@ -307,21 +322,24 @@ namespace PCPlus.Tray
                 _mainForm.Activate();
                 _mainForm.BringToFront();
                 _mainForm.Focus();
+                _mainForm.NavigateToView(view);
                 return;
             }
             _mainForm = new MainForm(_ipc);
             _mainForm.Show();
             _mainForm.Activate();
+            if (view != "dashboard")
+                _mainForm.NavigateToView(view);
         }
 
         private void ShowSecurityReport()
         {
-            ShowMainForm();
+            ShowMainForm("scanner");
         }
 
         private void ShowTicketForm()
         {
-            OpenUrl("https://support.pcpluscomputing.com/ticket");
+            OpenUrl("https://pcpluscomputing.com/contact-us/");
         }
 
         private void ShowSystemInfo()
@@ -430,6 +448,7 @@ namespace PCPlus.Tray
                 _reconnectTimer.Stop();
                 _reconnectTimer.Dispose();
                 _ipc.Dispose();
+                _localFallback.Dispose();
                 _trayIcon.Visible = false;
                 _trayIcon.Dispose();
             }

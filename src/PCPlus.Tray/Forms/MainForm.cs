@@ -15,7 +15,9 @@ namespace PCPlus.Tray.Forms
     public class MainForm : Form
     {
         private readonly IpcClient _ipc;
+        private readonly LocalFallback _localFallback;
         private readonly System.Windows.Forms.Timer _refreshTimer;
+        private bool _usingLocalFallback;
 
         // Theme colors - clean, professional light theme like Malwarebytes
         private static readonly Color SidebarBg = Color.FromArgb(22, 27, 34);
@@ -49,6 +51,7 @@ namespace PCPlus.Tray.Forms
         public MainForm(IpcClient ipc)
         {
             _ipc = ipc;
+            _localFallback = new LocalFallback();
             InitializeForm();
             BuildSidebar();
             BuildContentArea();
@@ -155,8 +158,11 @@ namespace PCPlus.Tray.Forms
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
                 using var font = new Font("Segoe UI", 8);
                 using var brush = new SolidBrush(SidebarText);
-                var status = _ipc.IsConnected ? "Service: Connected" : "Service: Disconnected";
-                var color = _ipc.IsConnected ? AccentGreen : AccentRed;
+                var status = _ipc.IsConnected ? "Service: Connected"
+                    : _usingLocalFallback ? "Local Monitoring"
+                    : "Service: Disconnected";
+                var color = _ipc.IsConnected ? AccentGreen
+                    : _usingLocalFallback ? AccentBlue : AccentRed;
                 using var dotBrush = new SolidBrush(color);
                 g.FillEllipse(dotBrush, 18, 18, 8, 8);
                 g.DrawString(status, font, brush, 32, 14);
@@ -212,6 +218,9 @@ namespace PCPlus.Tray.Forms
             y += 42;
         }
 
+        /// <summary>Navigate to a specific view. Called externally by TrayContext.</summary>
+        public void NavigateToView(string viewId) => ShowView(viewId);
+
         private void ShowView(string viewId)
         {
             _currentView = viewId;
@@ -266,15 +275,15 @@ namespace PCPlus.Tray.Forms
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-                var connected = _ipc.IsConnected && _health != null;
-                var statusColor = connected ? AccentGreen : AccentOrange;
-                var statusText = connected ? "Your device is protected" : "Connecting to service...";
+                var hasData = _health != null && (_health.CpuPercent > 0 || _health.RamPercent > 0);
+                var statusColor = hasData ? AccentGreen : AccentOrange;
+                var statusText = hasData ? "Your device is protected" : "Connecting to service...";
 
                 // Large shield icon
                 using var shieldBrush = new SolidBrush(statusColor);
                 g.FillEllipse(shieldBrush, 20, 25, 56, 56);
                 using var checkPen = new Pen(Color.White, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-                if (connected)
+                if (hasData)
                 {
                     g.DrawLine(checkPen, 37, 53, 45, 61);
                     g.DrawLine(checkPen, 45, 61, 59, 42);
@@ -294,9 +303,9 @@ namespace PCPlus.Tray.Forms
                 // Subtitle
                 using var subFont = new Font("Segoe UI", 9.5f);
                 using var subBrush = new SolidBrush(TextMuted);
-                var sub = connected
+                var sub = hasData
                     ? $"Last scan: {_securityResult?.ScanTime.ToString("MMM d, h:mm tt") ?? "Never"}     Score: {_securityResult?.TotalScore ?? 0}/100"
-                    : "Waiting for service connection...";
+                    : "Waiting for data...";
                 g.DrawString(sub, subFont, subBrush, 92, 56);
 
                 // Uptime on right
@@ -457,15 +466,43 @@ namespace PCPlus.Tray.Forms
             {
                 ("Run Security Scan", "Scan for vulnerabilities and misconfigurations", AccentTeal, async () =>
                 {
-                    await Task.Run(() => _ipc.RunSecurityScanAsync());
-                    await Task.Delay(3000);
+                    if (_ipc.IsConnected && !_usingLocalFallback)
+                    {
+                        await Task.Run(() => _ipc.RunSecurityScanAsync());
+                        await Task.Delay(3000);
+                    }
+                    else
+                    {
+                        _securityResult = await _localFallback.RunSecurityScanAsync();
+                    }
                     await RefreshDataAsync();
                     ShowView("scanner");
                 }),
                 ("Fix My Computer", "Clear temp files, flush DNS, reset network", AccentBlue, async () =>
                 {
-                    await Task.Run(() => _ipc.SendModuleCommandAsync("maintenance", "RunMaintenance",
-                        new() { ["action"] = "fixmypc" }));
+                    var confirm = MessageBox.Show(
+                        "This will:\n- Clear temporary files\n- Flush DNS cache\n" +
+                        "- Reset Winsock catalog\n- Refresh icons\n- Restart Explorer\n\nContinue?",
+                        "Fix My Computer", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (confirm != DialogResult.Yes) return;
+
+                    if (_ipc.IsConnected && !_usingLocalFallback)
+                    {
+                        var response = await Task.Run(() => _ipc.SendModuleCommandAsync("maintenance", "RunMaintenance",
+                            new() { ["action"] = "fixmypc" }));
+                        if (response.Success)
+                            MessageBox.Show("Repair complete!", "Fix My Computer",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        else
+                            MessageBox.Show($"Error: {response.Message}", "Fix My Computer",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                    else
+                    {
+                        var result = await _localFallback.RunFixMyComputerAsync();
+                        MessageBox.Show("Repair complete!\n\n" + result, "Fix My Computer",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
                 }),
                 ("Take Screenshot", "Save a screenshot to Pictures folder", AccentGreen, async () =>
                 {
@@ -578,8 +615,15 @@ namespace PCPlus.Tray.Forms
             {
                 scanBtn.Enabled = false;
                 scanBtn.Text = "Scanning...";
-                await Task.Run(() => _ipc.RunSecurityScanAsync());
-                await Task.Delay(3000);
+                if (_ipc.IsConnected && !_usingLocalFallback)
+                {
+                    await Task.Run(() => _ipc.RunSecurityScanAsync());
+                    await Task.Delay(3000);
+                }
+                else
+                {
+                    _securityResult = await _localFallback.RunSecurityScanAsync();
+                }
                 await RefreshDataAsync();
                 scanBtn.Text = "Run Full Scan";
                 scanBtn.Enabled = true;
@@ -1062,40 +1106,57 @@ namespace PCPlus.Tray.Forms
         {
             try
             {
+                bool gotServiceData = false;
+
+                // Try IPC first
                 if (!_ipc.IsConnected)
                 {
-                    try { await Task.Run(() => _ipc.ConnectAsync(5000)); }
+                    try { await Task.Run(() => _ipc.ConnectAsync(3000)); }
                     catch { }
                 }
 
-                if (!_ipc.IsConnected)
+                if (_ipc.IsConnected)
                 {
-                    if (!IsDisposed && InvokeRequired)
-                        Invoke(new Action(() => _sidebar.Controls.OfType<Panel>().LastOrDefault()?.Invalidate()));
-                    return;
+                    // Fetch health from service
+                    var healthResp = await Task.Run(() => _ipc.GetHealthSnapshotAsync());
+                    if (healthResp.Success)
+                    {
+                        _health = healthResp.GetData<HealthSnapshot>();
+                        if (_health != null) gotServiceData = true;
+                    }
+
+                    // Fetch security
+                    var secResp = await Task.Run(() => _ipc.GetSecurityScoreAsync());
+                    if (secResp.Success)
+                        _securityResult = secResp.GetData<SecurityScanResult>();
+
+                    // Fetch service status
+                    var statusResp = await Task.Run(() => _ipc.GetServiceStatusAsync());
+                    if (statusResp.Success)
+                        _serviceStatus = statusResp.GetData<ServiceStatusReport>();
+
+                    // Fetch alerts
+                    var alertResp = await Task.Run(() => _ipc.GetRecentAlertsAsync(20));
+                    if (alertResp.Success)
+                    {
+                        var alerts = alertResp.GetData<List<Alert>>();
+                        if (alerts != null) _alerts = alerts;
+                    }
                 }
 
-                // Fetch health
-                var healthResp = await Task.Run(() => _ipc.GetHealthSnapshotAsync());
-                if (healthResp.Success)
-                    _health = healthResp.GetData<HealthSnapshot>();
-
-                // Fetch security
-                var secResp = await Task.Run(() => _ipc.GetSecurityScoreAsync());
-                if (secResp.Success)
-                    _securityResult = secResp.GetData<SecurityScanResult>();
-
-                // Fetch service status
-                var statusResp = await Task.Run(() => _ipc.GetServiceStatusAsync());
-                if (statusResp.Success)
-                    _serviceStatus = statusResp.GetData<ServiceStatusReport>();
-
-                // Fetch alerts
-                var alertResp = await Task.Run(() => _ipc.GetRecentAlertsAsync(20));
-                if (alertResp.Success)
+                // Fallback: use local monitoring if service didn't provide health data
+                if (!gotServiceData || _health == null)
                 {
-                    var alerts = alertResp.GetData<List<Alert>>();
-                    if (alerts != null) _alerts = alerts;
+                    if (!_usingLocalFallback)
+                    {
+                        _usingLocalFallback = true;
+                        _localFallback.Start();
+                    }
+                    _health = _localFallback.CurrentHealth;
+
+                    // Use local security scan result if no service result
+                    if (_securityResult == null)
+                        _securityResult = _localFallback.LastSecurityScan;
                 }
 
                 // Refresh current view
@@ -1286,6 +1347,7 @@ namespace PCPlus.Tray.Forms
         {
             _refreshTimer.Stop();
             _refreshTimer.Dispose();
+            _localFallback.Dispose();
             base.OnFormClosing(e);
         }
     }
