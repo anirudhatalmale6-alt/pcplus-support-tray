@@ -124,6 +124,17 @@ namespace PCPlus.Service.Modules.Security
                     "backup" => (false, "Backup configuration requires manual setup - enable File History in Windows Settings > Update & Security > Backup"),
                     "edr" => (false, "EDR deployment requires manual installation of your chosen EDR product"),
                     "secure_boot" => (false, "Secure Boot must be enabled in BIOS/UEFI settings - requires physical access"),
+                    // New check remediations
+                    "account_lockout" => RunPowerShell("net accounts /lockoutthreshold:5 /lockoutduration:30 /lockoutwindow:30", "Account Lockout Policy"),
+                    "llmnr_netbios" => RunPowerShell(@"
+                        New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient' -Force | Out-Null;
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient' -Name 'EnableMulticast' -Value 0 -Type DWord", "LLMNR Disabled"),
+                    "smartscreen" => RunPowerShell("Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer' -Name 'SmartScreenEnabled' -Value 'RequireAdmin'", "SmartScreen Enabled"),
+                    "usb_storage" => RunPowerShell("Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\USBSTOR' -Name 'Start' -Value 4 -Type DWord", "USB Storage Blocked"),
+                    "office_macros" => RunPowerShell(@"
+                        New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Office\16.0\Common\Security' -Force | Out-Null;
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Office\16.0\Common\Security' -Name 'blockcontentexecutionfrominternet' -Value 1 -Type DWord", "Office Macros from Internet Blocked"),
+                    "rdp_port_exposure" => (false, "Change RDP port manually: Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'PortNumber' -Value <new_port>"),
                     _ => (false, $"No automatic remediation available for check '{checkId}'")
                 };
 
@@ -205,15 +216,22 @@ namespace PCPlus.Service.Modules.Security
                 CheckPasswordPolicy(),
                 CheckInactiveUsers(),
                 CheckPrivilegeEscalation(),
+                CheckAccountLockoutPolicy(),
+                CheckLocalAdminRisk(),
+                CheckMfaStatus(),
 
                 // === NETWORK ===
                 CheckRDP(),
                 CheckRdpExposure(),
+                CheckRdpBruteForce(),
+                CheckRdpPortExposure(),
                 CheckSMBv1(),
                 CheckOpenPorts(),
                 CheckDnsSecurity(),
                 CheckWifiSecurity(),
                 CheckVpnStatus(),
+                CheckLlmnrNetbios(),
+                CheckFirewallRuleAudit(),
 
                 // === UPDATES & PATCHES ===
                 CheckWindowsUpdate(),
@@ -222,6 +240,8 @@ namespace PCPlus.Service.Modules.Security
                 CheckEndOfLifeSoftware(),
                 CheckOutdatedSoftware(),
                 CheckMissingCriticalUpdates(),
+                CheckPatchAge(),
+                CheckRebootPending(),
 
                 // === DATA PROTECTION ===
                 CheckBitLocker(),
@@ -229,12 +249,42 @@ namespace PCPlus.Service.Modules.Security
                 CheckShadowCopies(),
                 CheckBackupFrequency(),
                 CheckFolderProtection(),
+                CheckBackupImmutability(),
 
                 // === DEVICE HEALTH ===
                 CheckDiskSmartHealth(),
                 CheckSsdWearLevel(),
                 CheckBatteryHealth(),
                 CheckRamErrors(),
+
+                // === LOGGING & VISIBILITY ===
+                CheckEventLoggingAudit(),
+                CheckLogRetention(),
+
+                // === ENDPOINT HARDENING ===
+                CheckAppLockerWdac(),
+                CheckOfficeMacroSecurity(),
+                CheckSmartScreen(),
+
+                // === DEVICE CONTROL ===
+                CheckUsbStoragePolicy(),
+                CheckBluetoothRisk(),
+
+                // === BROWSER & USER RISK ===
+                CheckSavedPasswordRisk(),
+                CheckBrowserExtensions(),
+
+                // === DATA EXPOSURE ===
+                CheckDesktopDataExposure(),
+
+                // === HARDWARE SECURITY ===
+                CheckBiosPassword(),
+                CheckVirtualizationSecurity(),
+
+                // === PRIVILEGE ESCALATION (ADVANCED) ===
+                CheckWeakServicePermissions(),
+                CheckWritableSystemFolders(),
+                CheckDllHijackingRisk(),
 
                 // === EDR & ADVANCED ===
                 CheckEdrInstalled(),
@@ -1451,6 +1501,813 @@ namespace PCPlus.Service.Modules.Security
                 return (true, "No end-of-life software detected", "");
             }
             catch { return (true, "Unable to check for EOL software", ""); }
+        });
+
+        // ===================================================================
+        // NEW CHECKS: Enterprise / SOC Level
+        // ===================================================================
+
+        // --- IDENTITY & ACCESS (EXPANDED) ---
+
+        private SecurityCheck CheckAccountLockoutPolicy() => RunCheck("account_lockout", "Account Lockout Policy", "Identity & Access", 5, () =>
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo("net", "accounts")
+                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd() ?? "";
+                proc?.WaitForExit(10000);
+
+                int threshold = 0;
+                foreach (var line in output.Split('\n'))
+                {
+                    if (line.Contains("Lockout threshold", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var parts = line.Split(':');
+                        if (parts.Length > 1) int.TryParse(parts[1].Trim(), out threshold);
+                    }
+                }
+
+                if (threshold == 0)
+                    return (false, "No account lockout policy (unlimited login attempts)", "Set account lockout threshold to 5 attempts - prevents brute-force attacks");
+                if (threshold > 10)
+                    return (false, $"Lockout threshold too high: {threshold} attempts", "Reduce lockout threshold to 5 attempts");
+                return (true, $"Account lockout after {threshold} failed attempts", "");
+            }
+            catch { return (true, "Unable to check lockout policy", ""); }
+        });
+
+        private SecurityCheck CheckLocalAdminRisk() => RunCheck("local_admin_risk", "Local Admin Risk", "Identity & Access", 5, () =>
+        {
+            try
+            {
+                // Check if current interactive users are running with admin privileges
+                var startInfo = new ProcessStartInfo("powershell", "-NoProfile -NonInteractive -Command \"Get-LocalGroupMember -Group 'Administrators' | Select-Object -ExpandProperty Name\"")
+                { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd() ?? "";
+                proc?.WaitForExit(15000);
+
+                var admins = output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Trim()).Where(l => !string.IsNullOrEmpty(l)).ToList();
+                var nonBuiltIn = admins.Where(a =>
+                    !a.EndsWith("\\Administrator", StringComparison.OrdinalIgnoreCase) &&
+                    !a.Contains("Domain Admins", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                if (nonBuiltIn.Count > 2)
+                    return (false, $"{nonBuiltIn.Count} users with admin rights: {string.Join(", ", nonBuiltIn.Take(4))}",
+                        "Remove unnecessary admin rights - users should run as standard users");
+                return (true, $"{admins.Count} admin accounts (within normal range)", "");
+            }
+            catch { return (true, "Unable to check local admin risk", ""); }
+        });
+
+        private SecurityCheck CheckMfaStatus() => RunCheck("mfa_status", "MFA Status", "Identity & Access", 8, () =>
+        {
+            try
+            {
+                // Check Windows Hello / PIN / biometric enrollment
+                var helloConfigured = false;
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WinBio\Databases"))
+                    if (key?.GetSubKeyNames().Length > 0) helloConfigured = true;
+
+                // Check if device is Azure AD joined (typically has MFA via Conditional Access)
+                var aadJoined = false;
+                var startInfo = new ProcessStartInfo("dsregcmd", "/status")
+                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd() ?? "";
+                proc?.WaitForExit(10000);
+                if (output.Contains("AzureAdJoined : YES", StringComparison.OrdinalIgnoreCase))
+                    aadJoined = true;
+
+                // Check Credential Provider (e.g. Duo, AuthLite)
+                var thirdPartyMfa = false;
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers"))
+                {
+                    if (key != null)
+                    {
+                        foreach (var subKey in key.GetSubKeyNames())
+                        {
+                            using var cp = key.OpenSubKey(subKey);
+                            var name = cp?.GetValue("")?.ToString() ?? "";
+                            if (name.Contains("Duo", StringComparison.OrdinalIgnoreCase) ||
+                                name.Contains("AuthLite", StringComparison.OrdinalIgnoreCase) ||
+                                name.Contains("RSA", StringComparison.OrdinalIgnoreCase) ||
+                                name.Contains("Yubikey", StringComparison.OrdinalIgnoreCase))
+                            {
+                                thirdPartyMfa = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (aadJoined || thirdPartyMfa)
+                    return (true, $"MFA available: {(aadJoined ? "Azure AD joined" : "")}{(thirdPartyMfa ? " + 3rd party MFA" : "")}", "");
+                if (helloConfigured)
+                    return (true, "Windows Hello biometric/PIN configured", "");
+                return (false, "No MFA detected - password-only authentication",
+                    "Enable MFA (Azure AD, Duo, or Windows Hello) - 80%+ attacks are credential-based");
+            }
+            catch { return (true, "Unable to check MFA status", ""); }
+        });
+
+        // --- NETWORK (EXPANDED) ---
+
+        private SecurityCheck CheckRdpBruteForce() => RunCheck("rdp_bruteforce", "RDP Brute-force Protection", "Network", 5, () =>
+        {
+            try
+            {
+                // Check if RDP is enabled first
+                using var rdpKey = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Terminal Server");
+                var fDeny = rdpKey?.GetValue("fDenyTSConnections");
+                if (fDeny != null && Convert.ToInt32(fDeny) == 1)
+                    return (true, "RDP is disabled - no brute-force risk", "");
+
+                // Check account lockout (brute-force protection)
+                var startInfo = new ProcessStartInfo("net", "accounts")
+                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd() ?? "";
+                proc?.WaitForExit(10000);
+
+                int threshold = 0;
+                foreach (var line in output.Split('\n'))
+                    if (line.Contains("Lockout threshold", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var parts = line.Split(':');
+                        if (parts.Length > 1) int.TryParse(parts[1].Trim(), out threshold);
+                    }
+
+                if (threshold == 0)
+                    return (false, "RDP enabled with NO account lockout - vulnerable to brute-force",
+                        "Set account lockout threshold (net accounts /lockoutthreshold:5) or disable RDP if not needed");
+                return (true, $"RDP protected with lockout after {threshold} attempts", "");
+            }
+            catch { return (true, "Unable to check RDP brute-force protection", ""); }
+        });
+
+        private SecurityCheck CheckRdpPortExposure() => RunCheck("rdp_port_exposure", "RDP Port Exposure", "Network", 5, () =>
+        {
+            try
+            {
+                // Check if RDP is enabled
+                using var rdpKey = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Terminal Server");
+                var fDeny = rdpKey?.GetValue("fDenyTSConnections");
+                if (fDeny != null && Convert.ToInt32(fDeny) == 1)
+                    return (true, "RDP is disabled", "");
+
+                // Check RDP port
+                int rdpPort = 3389;
+                using (var portKey = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp"))
+                {
+                    var portVal = portKey?.GetValue("PortNumber");
+                    if (portVal != null) rdpPort = Convert.ToInt32(portVal);
+                }
+
+                // Check if standard port 3389 is in use (higher risk if default)
+                if (rdpPort == 3389)
+                    return (false, "RDP using default port 3389 - easily discovered by attackers",
+                        "Change RDP port from 3389 to a non-standard port, or use RDP Gateway");
+                return (true, $"RDP on non-standard port {rdpPort}", "");
+            }
+            catch { return (true, "Unable to check RDP port", ""); }
+        });
+
+        private SecurityCheck CheckLlmnrNetbios() => RunCheck("llmnr_netbios", "LLMNR / NetBIOS Status", "Network", 5, () =>
+        {
+            try
+            {
+                var issues = new List<string>();
+
+                // Check LLMNR
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"))
+                {
+                    var val = key?.GetValue("EnableMulticast");
+                    if (val == null || Convert.ToInt32(val) != 0)
+                        issues.Add("LLMNR enabled (poisoning attack vector)");
+                }
+
+                // Check NetBIOS over TCP/IP
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT TcpipNetbiosOptions FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled=True");
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    var nbOption = obj["TcpipNetbiosOptions"];
+                    if (nbOption != null && Convert.ToInt32(nbOption) != 2) // 2 = disabled
+                    {
+                        issues.Add("NetBIOS over TCP/IP enabled");
+                        break;
+                    }
+                }
+
+                if (issues.Count > 0)
+                    return (false, string.Join("; ", issues),
+                        "Disable LLMNR and NetBIOS - common attack vectors for credential theft (Responder/MITM attacks)");
+                return (true, "LLMNR and NetBIOS disabled", "");
+            }
+            catch { return (true, "Unable to check LLMNR/NetBIOS", ""); }
+        });
+
+        private SecurityCheck CheckFirewallRuleAudit() => RunCheck("fw_rule_audit", "Firewall Rule Audit", "Network", 5, () =>
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo("powershell", "-NoProfile -NonInteractive -Command \"(Get-NetFirewallRule -Direction Inbound -Action Allow -Enabled True | Measure-Object).Count\"")
+                { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd()?.Trim() ?? "";
+                proc?.WaitForExit(15000);
+
+                if (int.TryParse(output, out int ruleCount))
+                {
+                    if (ruleCount > 50)
+                        return (false, $"{ruleCount} inbound allow rules - excessive exposure",
+                            "Audit firewall rules - remove unnecessary inbound allow rules to reduce attack surface");
+                    return (true, $"{ruleCount} inbound allow rules (within normal range)", "");
+                }
+                return (true, "Unable to count firewall rules", "");
+            }
+            catch { return (true, "Unable to audit firewall rules", ""); }
+        });
+
+        // --- UPDATES & PATCHES (EXPANDED) ---
+
+        private SecurityCheck CheckPatchAge() => RunCheck("patch_age", "Patch Age", "Updates", 8, () =>
+        {
+            try
+            {
+                // Check last installed hotfix date
+                var startInfo = new ProcessStartInfo("powershell", "-NoProfile -NonInteractive -Command \"(Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 1).InstalledOn.ToString('yyyy-MM-dd')\"")
+                { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd()?.Trim() ?? "";
+                proc?.WaitForExit(15000);
+
+                if (DateTime.TryParse(output, out var lastPatch))
+                {
+                    var daysSince = (DateTime.Now - lastPatch).Days;
+                    if (daysSince > 60)
+                        return (false, $"Last patch installed {daysSince} days ago ({lastPatch:MMM d, yyyy})",
+                            "Install Windows updates immediately - patches more than 60 days old leave known vulnerabilities unpatched");
+                    if (daysSince > 30)
+                        return (false, $"Last patch installed {daysSince} days ago ({lastPatch:MMM d, yyyy})",
+                            "Install pending Windows updates - monthly patching recommended");
+                    return (true, $"Last patch: {daysSince} days ago ({lastPatch:MMM d, yyyy})", "");
+                }
+                return (true, "Unable to determine patch age", "");
+            }
+            catch { return (true, "Unable to check patch age", ""); }
+        });
+
+        private SecurityCheck CheckRebootPending() => RunCheck("reboot_pending", "Reboot Pending", "Updates", 5, () =>
+        {
+            try
+            {
+                var pendingReasons = new List<string>();
+
+                // Component Based Servicing
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending"))
+                    if (key != null) pendingReasons.Add("Windows Update");
+
+                // Windows Update
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"))
+                    if (key != null) pendingReasons.Add("Update reboot required");
+
+                // Pending file rename operations
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager"))
+                {
+                    var val = key?.GetValue("PendingFileRenameOperations") as string[];
+                    if (val != null && val.Length > 0) pendingReasons.Add("File rename operations");
+                }
+
+                if (pendingReasons.Count > 0)
+                    return (false, $"Reboot pending: {string.Join(", ", pendingReasons)}",
+                        "Reboot the machine to complete pending updates - unpatched vulnerabilities remain until reboot");
+                return (true, "No pending reboots", "");
+            }
+            catch { return (true, "Unable to check reboot status", ""); }
+        });
+
+        // --- DATA PROTECTION (EXPANDED) ---
+
+        private SecurityCheck CheckBackupImmutability() => RunCheck("backup_immutable", "Backup Immutability", "Ransomware Protection", 8, () =>
+        {
+            try
+            {
+                var issues = new List<string>();
+
+                // Check if System Restore points exist and are protected
+                var startInfo = new ProcessStartInfo("powershell", "-NoProfile -NonInteractive -Command \"(Get-ComputerRestorePoint | Measure-Object).Count\"")
+                { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd()?.Trim() ?? "";
+                proc?.WaitForExit(15000);
+                int.TryParse(output, out int restorePoints);
+
+                // Check if backup location is local only (no offline/cloud backup detected)
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\FileHistory\DefaultSettings"))
+                {
+                    var target = key?.GetValue("TargetUrl")?.ToString();
+                    if (string.IsNullOrEmpty(target))
+                        issues.Add("No network/cloud backup target detected");
+                }
+
+                // Check if VSS admin access is unrestricted
+                bool vssUnprotected = true;
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\VSS\Settings"))
+                {
+                    var val = key?.GetValue("RequireAccessControl");
+                    if (val != null && Convert.ToInt32(val) == 1) vssUnprotected = false;
+                }
+                if (vssUnprotected) issues.Add("VSS not access-controlled (ransomware can delete shadow copies)");
+
+                if (restorePoints == 0) issues.Add("No system restore points");
+
+                if (issues.Count >= 2)
+                    return (false, string.Join("; ", issues),
+                        "Configure immutable/offline backups - ransomware targets accessible backups first. Use cloud backup with versioning.");
+                if (issues.Count == 1)
+                    return (false, issues[0], "Improve backup immutability - ensure backups cannot be encrypted or deleted by ransomware");
+                return (true, $"Backup protection in place ({restorePoints} restore points)", "");
+            }
+            catch { return (true, "Unable to check backup immutability", ""); }
+        });
+
+        // --- LOGGING & VISIBILITY ---
+
+        private SecurityCheck CheckEventLoggingAudit() => RunCheck("event_logging", "Windows Event Logging", "Logging & Visibility", 5, () =>
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo("auditpol", "/get /category:*")
+                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd() ?? "";
+                proc?.WaitForExit(10000);
+
+                var noAudit = 0;
+                var total = 0;
+                foreach (var line in output.Split('\n'))
+                {
+                    if (line.Contains("No Auditing", StringComparison.OrdinalIgnoreCase))
+                        noAudit++;
+                    if (line.Contains("Success", StringComparison.OrdinalIgnoreCase) ||
+                        line.Contains("Failure", StringComparison.OrdinalIgnoreCase) ||
+                        line.Contains("No Auditing", StringComparison.OrdinalIgnoreCase))
+                        total++;
+                }
+
+                if (total > 0 && noAudit > total * 0.6)
+                    return (false, $"{noAudit}/{total} audit categories disabled - blind spots",
+                        "Enable audit policies for Logon/Logoff, Account Management, and Privilege Use at minimum");
+                if (noAudit > total * 0.3)
+                    return (false, $"{noAudit}/{total} audit categories disabled",
+                        "Review and enable critical audit policies (Security Settings > Local Policies > Audit Policy)");
+                return (true, $"Audit logging active ({total - noAudit}/{total} categories enabled)", "");
+            }
+            catch { return (true, "Unable to check audit policies", ""); }
+        });
+
+        private SecurityCheck CheckLogRetention() => RunCheck("log_retention", "Log Retention", "Logging & Visibility", 3, () =>
+        {
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\EventLog\Security");
+                var maxSize = key?.GetValue("MaxSize");
+                long maxSizeKb = maxSize != null ? Convert.ToInt64(maxSize) / 1024 : 0;
+
+                if (maxSizeKb < 20480) // Less than 20MB
+                    return (false, $"Security log max size: {maxSizeKb / 1024}MB (too small, logs overwritten quickly)",
+                        "Increase Security event log size to at least 256MB for adequate forensic retention");
+                return (true, $"Security log max size: {maxSizeKb / 1024}MB", "");
+            }
+            catch { return (true, "Unable to check log retention", ""); }
+        });
+
+        // --- ENDPOINT HARDENING ---
+
+        private SecurityCheck CheckAppLockerWdac() => RunCheck("applocker_wdac", "Application Control", "Endpoint Hardening", 5, () =>
+        {
+            try
+            {
+                var hasControl = false;
+                var detail = "";
+
+                // Check AppLocker
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows\SrpV2"))
+                {
+                    if (key?.GetSubKeyNames().Length > 0)
+                    {
+                        hasControl = true;
+                        detail = "AppLocker policies configured";
+                    }
+                }
+
+                // Check WDAC (Windows Defender Application Control)
+                if (!hasControl)
+                {
+                    using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\CI");
+                    var ciPolicy = key?.GetValue("UMCIEnabled");
+                    if (ciPolicy != null && Convert.ToInt32(ciPolicy) == 1)
+                    {
+                        hasControl = true;
+                        detail = "WDAC (Code Integrity) enabled";
+                    }
+                }
+
+                if (!hasControl)
+                    return (false, "No application control (AppLocker/WDAC) configured",
+                        "Deploy AppLocker or WDAC to prevent unauthorized applications from running");
+                return (true, detail, "");
+            }
+            catch { return (true, "Unable to check application control", ""); }
+        });
+
+        private SecurityCheck CheckOfficeMacroSecurity() => RunCheck("office_macros", "Office Macro Security", "Endpoint Hardening", 5, () =>
+        {
+            try
+            {
+                // Check Office macro settings in registry (Office 16.0 = 2016/2019/365)
+                var macroBlocked = false;
+                var officeVersions = new[] { "16.0", "15.0", "14.0" };
+                var officeApps = new[] { "Word", "Excel", "PowerPoint" };
+
+                foreach (var ver in officeVersions)
+                {
+                    foreach (var app in officeApps)
+                    {
+                        using var key = Registry.CurrentUser.OpenSubKey($@"SOFTWARE\Microsoft\Office\{ver}\{app}\Security");
+                        if (key != null)
+                        {
+                            var vbaWarnings = key.GetValue("VBAWarnings");
+                            if (vbaWarnings != null && Convert.ToInt32(vbaWarnings) >= 3) // 3=disabled with notification, 4=disabled
+                                macroBlocked = true;
+
+                            var blockInternet = key.GetValue("blockcontentexecutionfrominternet");
+                            if (blockInternet != null && Convert.ToInt32(blockInternet) == 1)
+                                macroBlocked = true;
+                        }
+                    }
+                }
+
+                // Also check Group Policy setting
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Office\16.0\Common\Security"))
+                {
+                    var val = key?.GetValue("blockcontentexecutionfrominternet");
+                    if (val != null && Convert.ToInt32(val) == 1) macroBlocked = true;
+                }
+
+                if (!macroBlocked)
+                    return (false, "Office macros from internet not blocked",
+                        "Block macros from internet sources in Office Trust Center - #1 malware delivery method");
+                return (true, "Office macros from internet blocked", "");
+            }
+            catch { return (true, "Unable to check Office macro security", ""); }
+        });
+
+        private SecurityCheck CheckSmartScreen() => RunCheck("smartscreen", "SmartScreen Status", "Endpoint Hardening", 5, () =>
+        {
+            try
+            {
+                var issues = new List<string>();
+
+                // Windows SmartScreen
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer"))
+                {
+                    var val = key?.GetValue("SmartScreenEnabled")?.ToString();
+                    if (val == null || val == "Off") issues.Add("Windows SmartScreen disabled");
+                }
+
+                // Edge SmartScreen
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Edge"))
+                {
+                    var val = key?.GetValue("SmartScreenEnabled");
+                    if (val != null && Convert.ToInt32(val) == 0) issues.Add("Edge SmartScreen disabled");
+                }
+
+                if (issues.Count > 0)
+                    return (false, string.Join("; ", issues),
+                        "Enable SmartScreen for apps and browser - blocks known malicious downloads and websites");
+                return (true, "SmartScreen enabled for apps and browser", "");
+            }
+            catch { return (true, "Unable to check SmartScreen", ""); }
+        });
+
+        // --- DEVICE CONTROL ---
+
+        private SecurityCheck CheckUsbStoragePolicy() => RunCheck("usb_storage", "USB Storage Policy", "Device Control", 5, () =>
+        {
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\USBSTOR");
+                var start = key?.GetValue("Start");
+                // Start = 3 means enabled, 4 means disabled
+                if (start != null && Convert.ToInt32(start) == 4)
+                    return (true, "USB storage devices blocked", "");
+                if (start != null && Convert.ToInt32(start) == 3)
+                    return (false, "USB storage devices unrestricted - data exfiltration risk",
+                        "Restrict USB storage via Group Policy or disable USBSTOR service to prevent data theft and malware via USB");
+                return (false, "USB storage policy not configured", "Configure USB device policy to control removable media access");
+            }
+            catch { return (true, "Unable to check USB policy", ""); }
+        });
+
+        private SecurityCheck CheckBluetoothRisk() => RunCheck("bluetooth_risk", "Bluetooth File Transfer", "Device Control", 3, () =>
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%Bluetooth%' AND Status='OK'");
+                var btDevices = searcher.Get().Count;
+                if (btDevices == 0)
+                    return (true, "No active Bluetooth adapters", "");
+
+                // Check if OBEX (file transfer) service is running
+                try
+                {
+                    using var sc = new ServiceController("BthServ");
+                    if (sc.Status == ServiceControllerStatus.Running)
+                        return (false, "Bluetooth active with file transfer capability",
+                            "Disable Bluetooth when not in use or restrict file transfer via Group Policy");
+                }
+                catch { }
+                return (true, "Bluetooth adapter present but service not active", "");
+            }
+            catch { return (true, "Unable to check Bluetooth status", ""); }
+        });
+
+        // --- BROWSER & USER RISK ---
+
+        private SecurityCheck CheckSavedPasswordRisk() => RunCheck("saved_passwords", "Saved Password Risk", "Browser & User Risk", 5, () =>
+        {
+            try
+            {
+                var risks = new List<string>();
+                var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+                // Check Chrome saved passwords (Login Data file existence)
+                var chromeLoginData = Path.Combine(userProfile, @"Google\Chrome\User Data\Default\Login Data");
+                if (File.Exists(chromeLoginData))
+                {
+                    var fi = new FileInfo(chromeLoginData);
+                    if (fi.Length > 5000) // More than trivial size = passwords stored
+                        risks.Add("Chrome (passwords stored)");
+                }
+
+                // Check Edge saved passwords
+                var edgeLoginData = Path.Combine(userProfile, @"Microsoft\Edge\User Data\Default\Login Data");
+                if (File.Exists(edgeLoginData))
+                {
+                    var fi = new FileInfo(edgeLoginData);
+                    if (fi.Length > 5000)
+                        risks.Add("Edge (passwords stored)");
+                }
+
+                // Check Firefox
+                var firefoxProfiles = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Mozilla\Firefox\Profiles");
+                if (Directory.Exists(firefoxProfiles))
+                {
+                    foreach (var profile in Directory.GetDirectories(firefoxProfiles))
+                    {
+                        if (File.Exists(Path.Combine(profile, "logins.json")))
+                        { risks.Add("Firefox (passwords stored)"); break; }
+                    }
+                }
+
+                if (risks.Count > 0)
+                    return (false, $"Browser-saved passwords: {string.Join(", ", risks)}",
+                        "Use a dedicated password manager instead of browser-saved passwords - browser credentials are easily extracted by malware");
+                return (true, "No browser-saved passwords detected", "");
+            }
+            catch { return (true, "Unable to check saved passwords", ""); }
+        });
+
+        private SecurityCheck CheckBrowserExtensions() => RunCheck("browser_extensions", "Browser Extensions", "Browser & User Risk", 3, () =>
+        {
+            try
+            {
+                var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var extCount = 0;
+
+                // Count Chrome extensions
+                var chromeExtDir = Path.Combine(userProfile, @"Google\Chrome\User Data\Default\Extensions");
+                if (Directory.Exists(chromeExtDir))
+                    extCount += Directory.GetDirectories(chromeExtDir).Length;
+
+                // Count Edge extensions
+                var edgeExtDir = Path.Combine(userProfile, @"Microsoft\Edge\User Data\Default\Extensions");
+                if (Directory.Exists(edgeExtDir))
+                    extCount += Directory.GetDirectories(edgeExtDir).Length;
+
+                if (extCount > 15)
+                    return (false, $"{extCount} browser extensions installed - increased attack surface",
+                        "Audit and remove unnecessary browser extensions - malicious extensions can steal credentials and data");
+                return (true, $"{extCount} browser extensions (within normal range)", "");
+            }
+            catch { return (true, "Unable to audit browser extensions", ""); }
+        });
+
+        // --- DATA EXPOSURE ---
+
+        private SecurityCheck CheckDesktopDataExposure() => RunCheck("data_exposure", "Desktop / Downloads Risk", "Data Protection", 5, () =>
+        {
+            try
+            {
+                var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                var sensitivePatterns = new[] { "*.xlsx", "*.csv", "*.pdf", "*.docx", "*.pst", "*.kdbx", "*.key", "*.pfx", "*.p12" };
+                var sensitiveCount = 0;
+                var locations = new[] { Path.Combine(userProfile, "Desktop"), Path.Combine(userProfile, "Downloads") };
+
+                foreach (var loc in locations)
+                {
+                    if (!Directory.Exists(loc)) continue;
+                    foreach (var pattern in sensitivePatterns)
+                    {
+                        try { sensitiveCount += Directory.GetFiles(loc, pattern, SearchOption.TopDirectoryOnly).Length; }
+                        catch { }
+                    }
+                }
+
+                if (sensitiveCount > 20)
+                    return (false, $"{sensitiveCount} sensitive files on Desktop/Downloads - ransomware target",
+                        "Move sensitive files to protected folders or OneDrive with versioning - Desktop/Downloads are primary ransomware targets");
+                if (sensitiveCount > 10)
+                    return (false, $"{sensitiveCount} sensitive files exposed on Desktop/Downloads",
+                        "Organize sensitive files into backed-up, protected locations");
+                return (true, $"Desktop/Downloads: {sensitiveCount} sensitive files (low risk)", "");
+            }
+            catch { return (true, "Unable to check data exposure", ""); }
+        });
+
+        // --- HARDWARE SECURITY (EXPANDED) ---
+
+        private SecurityCheck CheckBiosPassword() => RunCheck("bios_password", "BIOS Password", "Hardware Security", 3, () =>
+        {
+            try
+            {
+                // Check for BIOS password status via WMI
+                using var searcher = new ManagementObjectSearcher("root\\WMI",
+                    "SELECT SMBiosData FROM MSSmBios_RawSMBiosTables");
+                // If we can query BIOS without restriction, password may not be set
+                // This is a heuristic - definitive check requires vendor-specific tools
+                var biosInfo = "";
+                using var bioSearch = new ManagementObjectSearcher("SELECT * FROM Win32_BIOS");
+                foreach (ManagementObject obj in bioSearch.Get())
+                    biosInfo = obj["Description"]?.ToString() ?? "";
+
+                // Cannot definitively check BIOS password from OS level - flag as advisory
+                return (false, "BIOS/UEFI password status unknown - recommend setting one",
+                    "Set a BIOS/UEFI password to prevent unauthorized boot device changes and firmware modifications");
+            }
+            catch { return (true, "Unable to check BIOS password", ""); }
+        });
+
+        private SecurityCheck CheckVirtualizationSecurity() => RunCheck("vbs_status", "Virtualization-based Security", "Hardware Security", 5, () =>
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_DeviceGuard");
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    var vbsStatus = obj["VirtualizationBasedSecurityStatus"];
+                    if (vbsStatus != null && Convert.ToInt32(vbsStatus) == 2) // 2 = running
+                        return (true, "Virtualization-based Security (VBS) running", "");
+                    if (vbsStatus != null && Convert.ToInt32(vbsStatus) == 1) // 1 = configured but not running
+                        return (false, "VBS configured but not running", "Ensure Hyper-V is enabled and reboot to activate VBS");
+                }
+
+                // Fallback: check if Hyper-V/VT is available
+                using var cpuSearch = new ManagementObjectSearcher("SELECT VirtualizationFirmwareEnabled FROM Win32_Processor");
+                foreach (ManagementObject obj in cpuSearch.Get())
+                {
+                    var vtEnabled = obj["VirtualizationFirmwareEnabled"];
+                    if (vtEnabled != null && Convert.ToBoolean(vtEnabled))
+                        return (false, "Virtualization available but VBS not enabled",
+                            "Enable Virtualization-based Security for Credential Guard and memory integrity protection");
+                    return (false, "Hardware virtualization not enabled in BIOS",
+                        "Enable VT-x/AMD-V in BIOS settings, then enable VBS for enhanced memory protection");
+                }
+                return (false, "VBS status unknown", "Check BIOS for virtualization support");
+            }
+            catch { return (true, "Unable to check VBS status", ""); }
+        });
+
+        // --- PRIVILEGE ESCALATION (ADVANCED) ---
+
+        private SecurityCheck CheckWeakServicePermissions() => RunCheck("weak_svc_perms", "Weak Service Permissions", "Privilege Escalation", 5, () =>
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo("powershell", @"-NoProfile -NonInteractive -Command ""
+                    $weak = 0;
+                    Get-WmiObject Win32_Service | Where-Object { $_.PathName -and $_.StartMode -eq 'Auto' } | ForEach-Object {
+                        $path = $_.PathName -replace '""','';
+                        if ($path -match '^(.+\.exe)') {
+                            $exePath = $matches[1];
+                            if (Test-Path $exePath) {
+                                $acl = Get-Acl $exePath -ErrorAction SilentlyContinue;
+                                if ($acl) {
+                                    $acl.Access | Where-Object { $_.IdentityReference -match 'Users|Everyone|Authenticated' -and $_.FileSystemRights -match 'Write|Modify|FullControl' } | ForEach-Object { $weak++ }
+                                }
+                            }
+                        }
+                    };
+                    Write-Output $weak""")
+                { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd()?.Trim() ?? "";
+                proc?.WaitForExit(30000);
+
+                if (int.TryParse(output, out int weakCount) && weakCount > 0)
+                    return (false, $"{weakCount} services with weak file permissions - privilege escalation risk",
+                        "Fix service executable permissions - remove write access for non-admin users");
+                return (true, "No weak service permissions detected", "");
+            }
+            catch { return (true, "Unable to check service permissions", ""); }
+        });
+
+        private SecurityCheck CheckWritableSystemFolders() => RunCheck("writable_system", "Writable System Folders", "Privilege Escalation", 3, () =>
+        {
+            try
+            {
+                var writablePaths = new List<string>();
+                var systemPaths = new[] { @"C:\Windows\System32", @"C:\Windows\SysWOW64", @"C:\Windows\Temp" };
+
+                foreach (var sysPath in systemPaths)
+                {
+                    if (!Directory.Exists(sysPath)) continue;
+                    try
+                    {
+                        // Quick write test
+                        var testFile = Path.Combine(sysPath, $"_pcplus_test_{Guid.NewGuid():N}.tmp");
+                        try
+                        {
+                            File.WriteAllText(testFile, "test");
+                            File.Delete(testFile);
+                            if (sysPath != @"C:\Windows\Temp") // Temp is expected to be writable
+                                writablePaths.Add(sysPath);
+                        }
+                        catch (UnauthorizedAccessException) { } // Expected - can't write = good
+                        catch { }
+                    }
+                    catch { }
+                }
+
+                if (writablePaths.Count > 0)
+                    return (false, $"System folders writable by current user: {string.Join(", ", writablePaths)}",
+                        "Fix NTFS permissions on system directories - these should not be writable by standard users");
+                return (true, "System folders properly restricted", "");
+            }
+            catch { return (true, "Unable to check system folder permissions", ""); }
+        });
+
+        private SecurityCheck CheckDllHijackingRisk() => RunCheck("dll_hijack", "DLL Hijacking Risk", "Privilege Escalation", 3, () =>
+        {
+            try
+            {
+                var risks = new List<string>();
+
+                // Check SafeDllSearchMode
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager"))
+                {
+                    var val = key?.GetValue("SafeDllSearchMode");
+                    if (val != null && Convert.ToInt32(val) == 0)
+                        risks.Add("SafeDllSearchMode disabled");
+                }
+
+                // Check for writable directories in PATH
+                var pathVar = Environment.GetEnvironmentVariable("PATH") ?? "";
+                var writablePaths = 0;
+                foreach (var dir in pathVar.Split(';'))
+                {
+                    if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) continue;
+                    try
+                    {
+                        var testFile = Path.Combine(dir, $"_pcplus_dll_test_{Guid.NewGuid():N}.tmp");
+                        try
+                        {
+                            File.WriteAllText(testFile, "test");
+                            File.Delete(testFile);
+                            // If we can write to a PATH directory (except user-specific ones), it's a risk
+                            if (!dir.Contains(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)))
+                                writablePaths++;
+                        }
+                        catch (UnauthorizedAccessException) { }
+                        catch { }
+                    }
+                    catch { }
+                }
+
+                if (writablePaths > 0) risks.Add($"{writablePaths} writable directories in system PATH");
+
+                if (risks.Count > 0)
+                    return (false, string.Join("; ", risks), "Fix DLL search order and PATH permissions to prevent DLL hijacking attacks");
+                return (true, "DLL loading security properly configured", "");
+            }
+            catch { return (true, "Unable to check DLL hijacking risk", ""); }
         });
 
         private static SecurityCheck RunCheck(string id, string name, string category, int weight,

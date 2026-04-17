@@ -177,7 +177,10 @@ namespace PCPlus.Dashboard.Controllers
             {
                 ["Protection"] = "\U0001F6E1", ["Identity & Access"] = "\U0001F511", ["Network"] = "\U0001F310",
                 ["Ransomware Protection"] = "\U0001F6A8", ["Updates"] = "\U0001F504", ["Data Protection"] = "\U0001F4BE",
-                ["Device Health"] = "\U0001F4BB", ["EDR & Advanced"] = "\U0001F52C", ["Access"] = "\U0001F511"
+                ["Device Health"] = "\U0001F4BB", ["EDR & Advanced"] = "\U0001F52C", ["Access"] = "\U0001F511",
+                ["Logging & Visibility"] = "\U0001F4CB", ["Endpoint Hardening"] = "\U0001F512",
+                ["Device Control"] = "\U0001F50C", ["Browser & User Risk"] = "\U0001F310",
+                ["Hardware Security"] = "\U0001F527", ["Privilege Escalation"] = "\u26A0"
             };
             foreach (var (cat, data) in catEntries)
             {
