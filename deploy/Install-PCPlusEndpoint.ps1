@@ -126,6 +126,25 @@ function Install-Endpoint {
     Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
     Remove-Item $zipPath -Force
 
+    # Stop processes again right before copying (they may have restarted during download)
+    Write-Log "Ensuring processes are stopped before file copy..."
+    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($svc -and $svc.Status -ne 'Stopped') {
+        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+    }
+    # Force-kill any remaining processes that lock the files
+    Get-Process -Name "PCPlusService" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+
+    # Delete old service registration if still present
+    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($svc) {
+        sc.exe delete $ServiceName 2>$null | Out-Null
+        Start-Sleep -Seconds 2
+    }
+
     # Copy Service binaries
     $svcSource = Get-ChildItem -Path $extractPath -Filter "PCPlusService.exe" -Recurse | Select-Object -First 1
     if ($svcSource) {

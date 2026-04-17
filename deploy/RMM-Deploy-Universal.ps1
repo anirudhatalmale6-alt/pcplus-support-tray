@@ -128,7 +128,12 @@ $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($svc) {
     Write-Log "Stopping existing service..."
     Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 2
+    # Force-kill the process if service stop didn't release the file lock
+    Get-Process -Name "PCPlusService" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # Delete service registration so recovery policy can't restart it
+    sc.exe delete $ServiceName 2>$null | Out-Null
+    Start-Sleep -Seconds 2
 }
 Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1
