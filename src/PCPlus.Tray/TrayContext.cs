@@ -1,6 +1,10 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Net.Sockets;
+using System.Text.Json;
 using System.Windows.Forms;
 using PCPlus.Core.IPC;
 using PCPlus.Core.Models;
@@ -18,12 +22,18 @@ namespace PCPlus.Tray
         private readonly IpcClient _ipc;
         private readonly LocalFallback _localFallback;
         private readonly System.Windows.Forms.Timer _reconnectTimer;
+        private readonly System.Windows.Forms.Timer _heartbeatTimer;
         private bool _serviceConnected;
         private bool _connecting;
+        private HttpClient? _dashboardHttp;
+        private bool _directHeartbeatActive;
 
         // Cached state from service
         private HealthSnapshot? _lastHealth;
         private ServiceStatusReport? _serviceStatus;
+
+        // Dashboard phone-home config
+        private const string DASHBOARD_URL = "https://dashboard.pcpluscomputing.com";
 
         public TrayContext()
         {
@@ -62,6 +72,15 @@ namespace PCPlus.Tray
                     await ConnectToServiceAsync();
             };
             _reconnectTimer.Start();
+
+            // Direct heartbeat timer - sends health data to dashboard when service isn't handling it
+            // Starts local monitoring immediately so heartbeats always have data
+            _localFallback.Start();
+            _heartbeatTimer = new System.Windows.Forms.Timer { Interval = 30000 }; // 30 seconds
+            _heartbeatTimer.Tick += async (s, e) => await SendDirectHeartbeatAsync();
+            _heartbeatTimer.Start();
+            // Send first heartbeat after 5 seconds (let local monitor collect initial data)
+            _ = Task.Delay(5000).ContinueWith(_ => SendDirectHeartbeatAsync());
         }
 
         private async Task ConnectToServiceAsync()
@@ -171,6 +190,151 @@ namespace PCPlus.Tray
             // For now, just update tooltip
             if (!_serviceConnected)
                 _trayIcon.Text = "PC Plus - Service not running";
+        }
+
+        /// <summary>
+        /// Sends a heartbeat directly to the dashboard when the PCPlus.Service isn't running.
+        /// This ensures the tray app always phones home regardless of service state.
+        /// </summary>
+        private async Task SendDirectHeartbeatAsync()
+        {
+            try
+            {
+                _dashboardHttp ??= new HttpClient
+                {
+                    BaseAddress = new Uri(DASHBOARD_URL),
+                    Timeout = TimeSpan.FromSeconds(10)
+                };
+
+                var health = _localFallback.CurrentHealth;
+                var deviceId = GetOrCreateDeviceId();
+
+                var heartbeat = new
+                {
+                    deviceId = deviceId,
+                    hostname = Environment.MachineName,
+                    osVersion = GetFriendlyOsVersion(),
+                    agentVersion = typeof(TrayContext).Assembly.GetName().Version?.ToString(3) ?? "4.8.0",
+                    licenseTier = "Free",
+                    localIp = GetLocalIpAddress(),
+                    cpuPercent = health.CpuPercent,
+                    ramPercent = health.RamPercent,
+                    diskPercent = health.Disks.FirstOrDefault()?.UsedPercent ?? 0f,
+                    cpuTempC = health.CpuTempC,
+                    gpuTempC = health.GpuTempC,
+                    securityScore = _localFallback.LastSecurityScan?.TotalScore ?? 0,
+                    securityGrade = _localFallback.LastSecurityScan?.Grade ?? "?",
+                    lockdownActive = false,
+                    activeAlerts = 0,
+                    runningModules = 0,
+                    modules = new List<object>(),
+                    securityChecks = _localFallback.LastSecurityScan?.Checks?.Select(c => (object)new
+                    {
+                        id = c.Id,
+                        name = c.Name,
+                        category = c.Category,
+                        passed = c.Passed,
+                        detail = c.Detail,
+                        recommendation = c.Recommendation,
+                        weight = c.Weight
+                    }).ToList() ?? new List<object>()
+                };
+
+                await _dashboardHttp.PostAsJsonAsync("/api/endpoint/heartbeat", heartbeat);
+                _directHeartbeatActive = true;
+            }
+            catch
+            {
+                _directHeartbeatActive = false;
+            }
+        }
+
+        private static string GetOrCreateDeviceId()
+        {
+            var configDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "PCPlusEndpoint");
+            var configFile = Path.Combine(configDir, "config.json");
+
+            // Try to read existing device ID from service config
+            try
+            {
+                if (File.Exists(configFile))
+                {
+                    var json = File.ReadAllText(configFile);
+                    var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("deviceId", out var idProp))
+                    {
+                        var id = idProp.GetString();
+                        if (!string.IsNullOrEmpty(id)) return id;
+                    }
+                }
+            }
+            catch { }
+
+            // Also check old SupportTray config
+            var oldConfigDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "PCPlusSupport");
+            var oldConfigFile = Path.Combine(oldConfigDir, "device_id.txt");
+            try
+            {
+                if (File.Exists(oldConfigFile))
+                {
+                    var id = File.ReadAllText(oldConfigFile).Trim();
+                    if (!string.IsNullOrEmpty(id)) return id;
+                }
+            }
+            catch { }
+
+            // Generate new device ID and persist it
+            var newId = $"{Environment.MachineName}-{Guid.NewGuid():N}"[..Math.Min(16, Environment.MachineName.Length + 17)].ToUpperInvariant();
+            try
+            {
+                Directory.CreateDirectory(configDir);
+                // Write to service config if it exists, otherwise create minimal config
+                var config = new Dictionary<string, string> { ["deviceId"] = newId };
+                if (File.Exists(configFile))
+                {
+                    try
+                    {
+                        var existing = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(configFile));
+                        if (existing != null)
+                        {
+                            existing["deviceId"] = newId;
+                            config = existing;
+                        }
+                    }
+                    catch { }
+                }
+                File.WriteAllText(configFile, JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true }));
+            }
+            catch { }
+
+            return newId;
+        }
+
+        private static string GetFriendlyOsVersion()
+        {
+            var ver = Environment.OSVersion.Version;
+            string name = ver.Major == 10 && ver.Build >= 22000 ? "Windows 11" :
+                ver.Major == 10 ? "Windows 10" : $"Windows {ver.Major}.{ver.Minor}";
+            return $"{name} (Build {ver.Build})";
+        }
+
+        private static string GetLocalIpAddress()
+        {
+            try
+            {
+                using var socket = new System.Net.Sockets.Socket(
+                    System.Net.Sockets.AddressFamily.InterNetwork,
+                    System.Net.Sockets.SocketType.Dgram, 0);
+                socket.Connect("8.8.8.8", 65530);
+                if (socket.LocalEndPoint is System.Net.IPEndPoint ep)
+                    return ep.Address.ToString();
+            }
+            catch { }
+            return "0.0.0.0";
         }
 
         private ContextMenuStrip CreateMenu()
@@ -447,6 +611,9 @@ namespace PCPlus.Tray
             {
                 _reconnectTimer.Stop();
                 _reconnectTimer.Dispose();
+                _heartbeatTimer.Stop();
+                _heartbeatTimer.Dispose();
+                _dashboardHttp?.Dispose();
                 _ipc.Dispose();
                 _localFallback.Dispose();
                 _trayIcon.Visible = false;
