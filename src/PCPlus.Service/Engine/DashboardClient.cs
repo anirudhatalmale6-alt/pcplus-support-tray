@@ -19,6 +19,7 @@ namespace PCPlus.Service.Engine
         private HttpClient? _http;
         private Timer? _heartbeatTimer;
         private bool _disposed;
+        private int _heartbeatCount;
 
         public bool IsConnected { get; private set; }
         public DateTime LastHeartbeat { get; private set; }
@@ -148,6 +149,18 @@ namespace PCPlus.Service.Engine
                 // Get public IP (cached, refreshed every 5 minutes)
                 var publicIp = await GetPublicIpAddress();
 
+                // Collect software inventory every 10th heartbeat (~5 minutes)
+                _heartbeatCount++;
+                var installedSoftware = new List<object>();
+                if (_heartbeatCount % 10 == 1)
+                {
+                    try
+                    {
+                        installedSoftware = CollectSoftwareInventory();
+                    }
+                    catch { }
+                }
+
                 var heartbeat = new
                 {
                     deviceId = _config.DeviceId,
@@ -169,7 +182,8 @@ namespace PCPlus.Service.Engine
                     activeAlerts = 0,
                     runningModules = runningCount,
                     modules = new List<object>(),
-                    securityChecks = securityChecks
+                    securityChecks = securityChecks,
+                    installedSoftware = installedSoftware.Count > 0 ? installedSoftware : null
                 };
 
                 var response = await _http.PostAsJsonAsync("/api/endpoint/heartbeat", heartbeat);
@@ -359,6 +373,46 @@ namespace PCPlus.Service.Engine
                 _cachedPublicIp ??= "";
             }
             return _cachedPublicIp;
+        }
+
+        private List<object> CollectSoftwareInventory()
+        {
+            var software = new List<object>();
+            foreach (var regPath in new[] {
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+            })
+            {
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(regPath);
+                if (key == null) continue;
+                foreach (var subKeyName in key.GetSubKeyNames())
+                {
+                    try
+                    {
+                        using var subKey = key.OpenSubKey(subKeyName);
+                        var name = subKey?.GetValue("DisplayName")?.ToString();
+                        if (string.IsNullOrEmpty(name)) continue;
+                        var version = subKey?.GetValue("DisplayVersion")?.ToString() ?? "";
+                        var publisher = subKey?.GetValue("Publisher")?.ToString() ?? "";
+                        var installDate = subKey?.GetValue("InstallDate")?.ToString() ?? "";
+
+                        // Skip system components and updates
+                        if (name.StartsWith("KB") || name.Contains("Update for") ||
+                            name.Contains("Security Update") || name.Contains("Hotfix"))
+                            continue;
+
+                        software.Add(new
+                        {
+                            name = name,
+                            version = version,
+                            publisher = publisher,
+                            installDate = installDate
+                        });
+                    }
+                    catch { }
+                }
+            }
+            return software.DistinctBy(s => ((dynamic)s).name.ToString()).OrderBy(s => ((dynamic)s).name.ToString()).ToList();
         }
 
         public void Dispose()

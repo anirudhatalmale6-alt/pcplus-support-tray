@@ -78,6 +78,10 @@ namespace PCPlus.Dashboard.Controllers
             if (request.SecurityChecks?.Count > 0)
                 device.SecurityChecksJson = JsonSerializer.Serialize(request.SecurityChecks);
 
+            // Store software inventory
+            if (request.InstalledSoftware?.Count > 0)
+                device.InstalledSoftwareJson = JsonSerializer.Serialize(request.InstalledSoftware);
+
             await _db.SaveChangesAsync();
 
             // Check for pending config pushes

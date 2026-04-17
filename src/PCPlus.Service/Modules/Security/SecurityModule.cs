@@ -126,6 +126,8 @@ namespace PCPlus.Service.Modules.Security
                 CheckLastWindowsUpdate(),
                 CheckWindowsVersion(),
                 CheckEndOfLifeSoftware(),
+                CheckOutdatedSoftware(),
+                CheckMissingCriticalUpdates(),
 
                 // === DATA PROTECTION ===
                 CheckBitLocker(),
@@ -566,6 +568,95 @@ namespace PCPlus.Service.Modules.Security
                 return (true, $"{totalModules} RAM module(s) healthy (Status: OK)", "");
             }
             catch { return (true, "Unable to query RAM health", ""); }
+        });
+
+        // === SOFTWARE & PATCHES ===
+
+        private SecurityCheck CheckOutdatedSoftware() => RunCheck("outdated_sw", "Outdated Software", "Updates", 5, () =>
+        {
+            try
+            {
+                // Known software with version thresholds (name pattern -> min safe version)
+                var softwareChecks = new Dictionary<string, (string pattern, System.Version minVersion, string latest)>
+                {
+                    {"Chrome", ("Google Chrome", new System.Version(120, 0), "120+")},
+                    {"Firefox", ("Mozilla Firefox", new System.Version(120, 0), "120+")},
+                    {"Edge", ("Microsoft Edge", new System.Version(120, 0), "120+")},
+                    {"Adobe Reader", ("Adobe Acrobat Reader", new System.Version(24, 0), "2024+")},
+                    {"7-Zip", ("7-Zip", new System.Version(23, 0), "23+")},
+                    {"Zoom", ("Zoom", new System.Version(5, 17), "5.17+")},
+                    {"VLC", ("VLC media player", new System.Version(3, 0, 20), "3.0.20+")},
+                    {"Notepad++", ("Notepad++", new System.Version(8, 5), "8.5+")},
+                    {"PuTTY", ("PuTTY", new System.Version(0, 80), "0.80+")},
+                    {"WinSCP", ("WinSCP", new System.Version(6, 1), "6.1+")},
+                    {"FileZilla", ("FileZilla", new System.Version(3, 66), "3.66+")},
+                };
+
+                var outdated = new List<string>();
+                var scanned = 0;
+
+                // Check via Uninstall registry keys (faster than Win32_Product)
+                foreach (var regPath in new[] {
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                    @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+                })
+                {
+                    using var key = Registry.LocalMachine.OpenSubKey(regPath);
+                    if (key == null) continue;
+                    foreach (var subKeyName in key.GetSubKeyNames())
+                    {
+                        try
+                        {
+                            using var subKey = key.OpenSubKey(subKeyName);
+                            var displayName = subKey?.GetValue("DisplayName")?.ToString() ?? "";
+                            var displayVersion = subKey?.GetValue("DisplayVersion")?.ToString() ?? "";
+                            if (string.IsNullOrEmpty(displayName) || string.IsNullOrEmpty(displayVersion)) continue;
+
+                            scanned++;
+                            foreach (var (_, (pattern, minVer, latest)) in softwareChecks)
+                            {
+                                if (displayName.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    if (System.Version.TryParse(displayVersion.Split('-')[0].Split(' ')[0], out var ver) && ver < minVer)
+                                        outdated.Add($"{displayName} v{displayVersion} (need {latest})");
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                if (outdated.Count > 0)
+                    return (false, $"{outdated.Count} outdated: {string.Join("; ", outdated.Take(5))}", "Update these applications to patch known security vulnerabilities");
+                return (true, $"All monitored software is up to date ({scanned} programs scanned)", "");
+            }
+            catch { return (true, "Unable to scan installed software versions", ""); }
+        });
+
+        private SecurityCheck CheckMissingCriticalUpdates() => RunCheck("critical_updates", "Critical Windows Updates", "Updates", 8, () =>
+        {
+            try
+            {
+                // Check via COM WUA (Windows Update Agent)
+                var startInfo = new ProcessStartInfo("powershell", "-NoProfile -Command \"(New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher().Search('IsInstalled=0 AND IsHidden=0 AND Type=\\'Software\\'').Updates.Count\"")
+                {
+                    RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true
+                };
+                using var proc = Process.Start(startInfo);
+                var output = proc?.StandardOutput.ReadToEnd()?.Trim() ?? "";
+                proc?.WaitForExit(30000); // 30 second timeout
+
+                if (int.TryParse(output, out var count))
+                {
+                    if (count == 0)
+                        return (true, "No pending Windows updates", "");
+                    if (count <= 3)
+                        return (true, $"{count} update(s) available", "Install pending updates when convenient");
+                    return (false, $"{count} updates pending installation", "Install critical updates - unpatched systems are primary ransomware targets");
+                }
+                return (true, "Unable to query Windows Update status", "");
+            }
+            catch { return (true, "Unable to check for pending updates", ""); }
         });
 
         // === IDENTITY & ACCESS CHECKS ===
