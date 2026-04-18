@@ -675,63 +675,177 @@ namespace PCPlus.Tray.Forms
 
         private async Task RunSpeedTestAsync()
         {
-            var progressForm = new Form
+            var form = new Form
             {
-                Text = "Speed Test", Size = new Size(400, 200),
+                Text = "Internet Speed Test", Size = new Size(460, 380),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false, MinimizeBox = false, BackColor = ContentBg
+                MaximizeBox = false, MinimizeBox = false, BackColor = Color.White
             };
-            var statusLabel = new Label
+
+            // Custom painted gauge panel
+            double pingMs = 0, downloadMbps = 0, uploadMbps = 0;
+            string phase = "Testing ping...";
+            bool done = false;
+
+            var gaugePanel = new Panel { Dock = DockStyle.Fill };
+            gaugePanel.Paint += (s, e) =>
             {
-                Text = "Testing download speed...", AutoSize = true,
-                Font = new Font("Segoe UI", 11), Location = new Point(20, 20)
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                // Title
+                using var titleFont = new Font("Segoe UI", 14, FontStyle.Bold);
+                using var titleBrush = new SolidBrush(TextDark);
+                g.DrawString("Internet Speed Test", titleFont, titleBrush, 20, 12);
+
+                // Gauge arc background
+                int gaugeX = (form.ClientSize.Width - 200) / 2;
+                int gaugeY = 50;
+                var gaugeRect = new Rectangle(gaugeX, gaugeY, 200, 200);
+
+                using var trackPen = new Pen(Color.FromArgb(230, 235, 240), 14);
+                trackPen.StartCap = LineCap.Round; trackPen.EndCap = LineCap.Round;
+                g.DrawArc(trackPen, gaugeRect, 180, 180);
+
+                // Gauge value arc (download speed, max ~500 Mbps)
+                double currentSpeed = done ? downloadMbps : (phase.Contains("download") ? downloadMbps : 0);
+                float speedPct = (float)Math.Min(currentSpeed / 500.0, 1.0);
+                float speedSweep = speedPct * 180f;
+                if (speedSweep > 0.5f)
+                {
+                    var arcColor = currentSpeed > 100 ? AccentGreen :
+                                   currentSpeed > 50 ? AccentBlue :
+                                   currentSpeed > 20 ? AccentOrange : AccentRed;
+                    using var speedPen = new Pen(arcColor, 14);
+                    speedPen.StartCap = LineCap.Round; speedPen.EndCap = LineCap.Round;
+                    g.DrawArc(speedPen, gaugeRect, 180, speedSweep);
+                }
+
+                // Center speed value
+                var speedStr = done ? $"{downloadMbps:F1}" : (downloadMbps > 0 ? $"{downloadMbps:F1}" : "--");
+                using var speedFont = new Font("Segoe UI", 32, FontStyle.Bold);
+                using var speedBrush = new SolidBrush(TextDark);
+                var speedSize = g.MeasureString(speedStr, speedFont);
+                g.DrawString(speedStr, speedFont, speedBrush,
+                    gaugeX + (200 - speedSize.Width) / 2, gaugeY + 55);
+
+                using var unitFont = new Font("Segoe UI", 11);
+                using var unitBrush = new SolidBrush(TextMuted);
+                var mbStr = "Mb/s";
+                var mbSize = g.MeasureString(mbStr, unitFont);
+                g.DrawString(mbStr, unitFont, unitBrush,
+                    gaugeX + (200 - mbSize.Width) / 2, gaugeY + 100);
+
+                // Scale labels on the arc
+                using var scaleFont = new Font("Segoe UI", 7);
+                g.DrawString("0", scaleFont, unitBrush, gaugeX - 5, gaugeY + 200);
+                g.DrawString("250", scaleFont, unitBrush, gaugeX + 90, gaugeY - 10);
+                g.DrawString("500", scaleFont, unitBrush, gaugeX + 195, gaugeY + 200);
+
+                // Status text
+                using var statusFont = new Font("Segoe UI", 10);
+                var statusStr = done ? "Test Complete" : phase;
+                var statusColor = done ? AccentGreen : AccentBlue;
+                using var statusBrush = new SolidBrush(statusColor);
+                var statusSize = g.MeasureString(statusStr, statusFont);
+                g.DrawString(statusStr, statusFont, statusBrush,
+                    (form.ClientSize.Width - statusSize.Width) / 2, gaugeY + 160);
+
+                // Bottom stats: Ping | Download | Upload
+                int statsY = gaugeY + 210;
+                int colW = form.ClientSize.Width / 3;
+
+                using var labelFont = new Font("Segoe UI", 9, FontStyle.Bold);
+                using var valueFont = new Font("Segoe UI", 16, FontStyle.Bold);
+                using var labelBrush2 = new SolidBrush(TextMuted);
+
+                // Ping
+                var pingStr = pingMs > 0 ? $"{pingMs:F0}" : "--";
+                var pingValSize = g.MeasureString(pingStr, valueFont);
+                g.DrawString(pingStr, valueFont, titleBrush, (colW - pingValSize.Width) / 2, statsY);
+                var pingLabel = "Ping (ms)";
+                var pingLabelSize = g.MeasureString(pingLabel, labelFont);
+                g.DrawString(pingLabel, labelFont, labelBrush2, (colW - pingLabelSize.Width) / 2, statsY + 30);
+
+                // Download
+                var dlStr = downloadMbps > 0 ? $"{downloadMbps:F1}" : "--";
+                var dlValSize = g.MeasureString(dlStr, valueFont);
+                g.DrawString(dlStr, valueFont, titleBrush, colW + (colW - dlValSize.Width) / 2, statsY);
+                var dlLabel = "Download (Mb/s)";
+                var dlLabelSize = g.MeasureString(dlLabel, labelFont);
+                g.DrawString(dlLabel, labelFont, labelBrush2, colW + (colW - dlLabelSize.Width) / 2, statsY + 30);
+
+                // Upload
+                var ulStr = uploadMbps > 0 ? $"{uploadMbps:F1}" : "--";
+                var ulValSize = g.MeasureString(ulStr, valueFont);
+                g.DrawString(ulStr, valueFont, titleBrush, colW * 2 + (colW - ulValSize.Width) / 2, statsY);
+                var ulLabel = "Upload (Mb/s)";
+                var ulLabelSize = g.MeasureString(ulLabel, labelFont);
+                g.DrawString(ulLabel, labelFont, labelBrush2, colW * 2 + (colW - ulLabelSize.Width) / 2, statsY + 30);
             };
-            var resultLabel = new Label
-            {
-                Text = "", AutoSize = true,
-                Font = new Font("Segoe UI", 10), Location = new Point(20, 60), ForeColor = TextMuted
-            };
-            progressForm.Controls.AddRange(new Control[] { statusLabel, resultLabel });
-            progressForm.Show(this);
+            form.Controls.Add(gaugePanel);
+            form.Show(this);
 
             try
             {
-                // Download speed test - download a known large file and measure
-                using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-                var testUrls = new[]
-                {
-                    "http://speedtest.tele2.net/10MB.zip",
-                    "http://proof.ovh.net/files/10Mb.dat"
-                };
+                using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(20) };
 
-                double downloadMbps = 0;
-                foreach (var url in testUrls)
+                // Ping test
+                phase = "Testing ping...";
+                gaugePanel.Invalidate();
+                try
+                {
+                    using var ping = new System.Net.NetworkInformation.Ping();
+                    var reply = await ping.SendPingAsync("8.8.8.8", 5000);
+                    if (reply.Status == System.Net.NetworkInformation.IPStatus.Success)
+                        pingMs = reply.RoundtripTime;
+                }
+                catch { pingMs = 0; }
+                gaugePanel.Invalidate();
+
+                // Download test
+                phase = "Testing download...";
+                gaugePanel.Invalidate();
+                var dlUrls = new[] { "http://speedtest.tele2.net/10MB.zip", "http://proof.ovh.net/files/10Mb.dat" };
+                foreach (var url in dlUrls)
                 {
                     try
                     {
                         var sw = System.Diagnostics.Stopwatch.StartNew();
                         var data = await http.GetByteArrayAsync(url);
                         sw.Stop();
-                        double sizeMb = data.Length / (1024.0 * 1024.0);
-                        double seconds = sw.Elapsed.TotalSeconds;
-                        downloadMbps = (sizeMb * 8) / seconds;
+                        downloadMbps = (data.Length / (1024.0 * 1024.0) * 8) / sw.Elapsed.TotalSeconds;
+                        gaugePanel.Invalidate();
                         break;
                     }
                     catch { continue; }
                 }
 
-                statusLabel.Text = "Speed Test Complete";
-                var rating = downloadMbps > 100 ? "Excellent" :
-                             downloadMbps > 50 ? "Good" :
-                             downloadMbps > 20 ? "Fair" : "Slow";
-                resultLabel.Text = $"Download: {downloadMbps:F1} Mbps ({rating})\n\n" +
-                    $"Note: Results may vary based on server load and network conditions.";
+                // Upload test
+                phase = "Testing upload...";
+                gaugePanel.Invalidate();
+                try
+                {
+                    var uploadData = new byte[2 * 1024 * 1024]; // 2MB
+                    new Random().NextBytes(uploadData);
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    using var content = new System.Net.Http.ByteArrayContent(uploadData);
+                    await http.PostAsync("http://speedtest.tele2.net/upload.php", content);
+                    sw.Stop();
+                    uploadMbps = (uploadData.Length / (1024.0 * 1024.0) * 8) / sw.Elapsed.TotalSeconds;
+                }
+                catch { uploadMbps = 0; }
+
+                done = true;
+                phase = "Test Complete";
+                gaugePanel.Invalidate();
             }
-            catch (Exception ex)
+            catch
             {
-                statusLabel.Text = "Speed Test Failed";
-                resultLabel.Text = $"Could not complete speed test:\n{ex.Message}";
+                phase = "Test Failed";
+                gaugePanel.Invalidate();
             }
         }
 
