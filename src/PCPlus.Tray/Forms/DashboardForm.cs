@@ -126,7 +126,7 @@ namespace PCPlus.Tray.Forms
             gaugeRow.Controls.AddRange(new Control[] { _cpuGauge, _ramGauge, _diskGauge, _cpuTempGauge });
 
             // Details section
-            _processPanel = CreateDetailPanel("Top Processes", new Point(16, 180), new Size(375, 200));
+            _processPanel = CreateDetailPanel("Top Processes", new Point(16, 180), new Size(375, 220));
             _diskDetailPanel = CreateDetailPanel("Disk Usage", new Point(407, 180), new Size(375, 95));
             _networkPanel = CreateDetailPanel("System Info", new Point(407, 285), new Size(375, 95));
 
@@ -248,19 +248,32 @@ namespace PCPlus.Tray.Forms
                 .Where(l => l != (Label)_processPanel.Tag!).ToList();
             foreach (var l in toRemove) { _processPanel.Controls.Remove(l); l.Dispose(); }
 
+            // Header row
             int y = 30;
+            var header = new Label
+            {
+                Text = "Name                   CPU     Memory",
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                ForeColor = TextSecondary,
+                BackColor = Color.Transparent,
+                Location = new Point(12, y), AutoSize = true
+            };
+            _processPanel.Controls.Add(header);
+            y += 18;
+
             foreach (var proc in _health.TopProcesses.Take(7))
             {
+                var name = proc.Name.Length > 20 ? proc.Name.Substring(0, 20) : proc.Name;
                 var line = new Label
                 {
-                    Text = $"{proc.Name,-25} CPU: {proc.CpuPercent,5:F1}%   Mem: {proc.MemoryMB,7:F0} MB",
-                    Font = new Font("Cascadia Mono", 8.5f),
+                    Text = $"{name,-22} {proc.CpuPercent,5:F1}%  {proc.MemoryMB,6:F0} MB",
+                    Font = new Font("Consolas", 8.5f),
                     ForeColor = proc.CpuPercent > 50 ? AccentRed : TextSecondary,
                     BackColor = Color.Transparent,
                     Location = new Point(12, y), AutoSize = true
                 };
                 _processPanel.Controls.Add(line);
-                y += 20;
+                y += 18;
             }
         }
 
