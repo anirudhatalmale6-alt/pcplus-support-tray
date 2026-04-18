@@ -322,8 +322,24 @@ if ($release) {
             if (Test-Path $trayExe) {
                 try {
                     Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "PCPlusEndpoint" -Value "`"$trayExe`""
-                    Start-Process -FilePath $trayExe -WindowStyle Hidden -ErrorAction SilentlyContinue
-                    Write-Log "Tray configured for auto-start."
+                    Write-Log "Tray configured for auto-start via registry."
+
+                    # Launch tray in the logged-in user's session (not SYSTEM)
+                    $loggedOnUser = (Get-CimInstance Win32_ComputerSystem).UserName
+                    if ($loggedOnUser) {
+                        # Use scheduled task to launch in user's session
+                        $taskName = "PCPlusTrayLaunch"
+                        try { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue } catch {}
+                        $trayAction = New-ScheduledTaskAction -Execute $trayExe
+                        $trayTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
+                        $trayPrincipal = New-ScheduledTaskPrincipal -UserId $loggedOnUser -LogonType Interactive -RunLevel Limited
+                        $traySettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DeleteExpiredTaskAfter (New-TimeSpan -Minutes 5)
+                        Register-ScheduledTask -TaskName $taskName -Action $trayAction -Trigger $trayTrigger -Principal $trayPrincipal -Settings $traySettings -Force | Out-Null
+                        Start-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+                        Write-Log "Tray launched in user session: $loggedOnUser"
+                    } else {
+                        Write-Log "No user logged in - tray will start on next login."
+                    }
                 } catch { Write-Log "Tray setup: $_" "WARN" }
             }
         }
