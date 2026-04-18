@@ -124,6 +124,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=4.9.0" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download Service
         uses: actions/download-artifact@v4
         with:
@@ -151,11 +161,24 @@ jobs:
       - name: Create dashboard package
         run: Compress-Archive -Path package\Dashboard\* -DestinationPath package\PCPlusDashboard.zip
 
-      - name: Upload Endpoint Installer
+      # Build EXE installer with Inno Setup
+      - name: Build EXE Installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DSourcePath="${{ github.workspace }}\package" /DAPP_VERSION=${{ steps.version.outputs.VERSION }} deploy\installer.iss
+        shell: pwsh
+
+      - name: Upload Endpoint Installer (ZIP)
         uses: actions/upload-artifact@v4
         with:
           name: PCPlusEndpoint-Installer
           path: package/PCPlusEndpoint-Installer.zip
+          retention-days: 90
+
+      - name: Upload Endpoint Installer (EXE)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCPlusEndpoint-Setup
+          path: deploy/Output/PCPlusEndpoint-Setup-*.exe
           retention-days: 90
 
       - name: Upload Dashboard Package
@@ -173,6 +196,7 @@ jobs:
           files: |
             package/PCPlusEndpoint-Installer.zip
             package/PCPlusDashboard.zip
+            deploy/Output/PCPlusEndpoint-Setup-*.exe
             deploy/Install-PCPlusEndpoint.ps1
-            deploy/Install-PCPlus.bat
+            deploy/RMM-Deploy-v3.ps1
           generate_release_notes: true
