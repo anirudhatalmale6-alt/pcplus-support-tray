@@ -16,7 +16,7 @@ namespace PCPlus.Tray
         private HealthSnapshot _current = new();
         private SecurityScanResult? _lastScanResult;
         private readonly object _lock = new();
-        private Timer? _pollTimer;
+        private System.Threading.Timer? _pollTimer;
         private bool _disposed;
 
         // Network tracking
@@ -40,7 +40,7 @@ namespace PCPlus.Tray
             }
             catch { _cpuCounter = null; }
 
-            _pollTimer = new Timer(Poll, null, 1000, 2000);
+            _pollTimer = new System.Threading.Timer(Poll, null, 1000, 2000);
         }
 
         private void Poll(object? state)
