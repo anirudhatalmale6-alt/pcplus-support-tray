@@ -335,13 +335,13 @@ if ($release) {
                         $taskName = "PCPlusTrayLaunch"
                         try { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue } catch {}
                         $trayAction = New-ScheduledTaskAction -Execute $trayExe
-                        $trayTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(10)
+                        $trayTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
                         $trayPrincipal = New-ScheduledTaskPrincipal -UserId $loggedOnUser -LogonType Interactive -RunLevel Limited
-                        $traySettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DeleteExpiredTaskAfter (New-TimeSpan -Minutes 10)
+                        $traySettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
                         Register-ScheduledTask -TaskName $taskName -Action $trayAction -Trigger $trayTrigger -Principal $trayPrincipal -Settings $traySettings -Force | Out-Null
                         Start-Sleep -Seconds 2
                         Start-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-                        Start-Sleep -Seconds 3
+                        Start-Sleep -Seconds 5
                         # Verify tray launched
                         $trayProc = Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue
                         if ($trayProc) {
