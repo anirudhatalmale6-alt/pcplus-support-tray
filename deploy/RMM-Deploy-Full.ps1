@@ -50,6 +50,79 @@ Write-Log "User: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Nam
 Write-Log "============================================="
 
 # ============================================================
+# STEP 0: Add antivirus exclusions (Avast, Windows Defender, AVG)
+# ============================================================
+Write-Log "STEP 0: Adding antivirus exclusions..."
+
+# Paths to exclude
+$ExcludePaths = @(
+    "$env:ProgramFiles\PC Plus\Endpoint Protection",
+    "$env:ProgramData\PCPlusEndpoint",
+    "$env:ProgramData\PCPlusEndpoint\heartbeat.ps1",
+    "$env:ProgramFiles\PC Plus\Endpoint Protection\Service\PCPlusService.exe",
+    "$env:ProgramFiles\PC Plus\Endpoint Protection\Tray\PCPlusTray.exe"
+)
+
+# Windows Defender exclusions
+foreach ($path in $ExcludePaths) {
+    try { Add-MpPreference -ExclusionPath $path -ErrorAction SilentlyContinue } catch {}
+}
+try { Add-MpPreference -ExclusionProcess "PCPlusService.exe" -ErrorAction SilentlyContinue } catch {}
+try { Add-MpPreference -ExclusionProcess "PCPlusTray.exe" -ErrorAction SilentlyContinue } catch {}
+Write-Log "Windows Defender exclusions added."
+
+# Avast exclusions (registry-based)
+$avastExclPaths = @(
+    "HKLM:\SOFTWARE\Avast Software\Avast\properties\ExcludedPaths",
+    "HKLM:\SOFTWARE\AVAST Software\Avast\properties\ExcludedPaths"
+)
+foreach ($regPath in $avastExclPaths) {
+    if (Test-Path (Split-Path $regPath)) {
+        try { New-Item -Path $regPath -Force -ErrorAction SilentlyContinue | Out-Null } catch {}
+        foreach ($path in $ExcludePaths) {
+            try { New-ItemProperty -Path $regPath -Name $path -Value 0 -PropertyType DWord -Force -ErrorAction SilentlyContinue | Out-Null } catch {}
+        }
+        Write-Log "Avast exclusions added via registry."
+    }
+}
+
+# Avast exclusions via config file (alternative method)
+$avastIniPath = "$env:ProgramData\AVAST Software\Avast\avast5.ini"
+if (Test-Path $avastIniPath) {
+    try {
+        $ini = Get-Content $avastIniPath -Raw -ErrorAction SilentlyContinue
+        $needsUpdate = $false
+        foreach ($path in $ExcludePaths) {
+            $escapedPath = $path -replace '\\', '\\'
+            if ($ini -notmatch [regex]::Escape($path)) { $needsUpdate = $true }
+        }
+        if ($needsUpdate) {
+            $exclusionBlock = "`n[ExcludedPaths]`n"
+            foreach ($path in $ExcludePaths) { $exclusionBlock += "$path`n" }
+            Add-Content -Path $avastIniPath -Value $exclusionBlock -ErrorAction SilentlyContinue
+            Write-Log "Avast exclusions added via config file."
+        }
+    } catch { Write-Log "Could not update Avast config: $_" "WARN" }
+}
+
+# AVG exclusions (same engine as Avast)
+$avgExclPaths = @(
+    "HKLM:\SOFTWARE\AVG\Antivirus\properties\ExcludedPaths",
+    "HKLM:\SOFTWARE\AVG Software\AVG\properties\ExcludedPaths"
+)
+foreach ($regPath in $avgExclPaths) {
+    if (Test-Path (Split-Path $regPath)) {
+        try { New-Item -Path $regPath -Force -ErrorAction SilentlyContinue | Out-Null } catch {}
+        foreach ($path in $ExcludePaths) {
+            try { New-ItemProperty -Path $regPath -Name $path -Value 0 -PropertyType DWord -Force -ErrorAction SilentlyContinue | Out-Null } catch {}
+        }
+        Write-Log "AVG exclusions added."
+    }
+}
+
+Write-Log "Antivirus exclusions complete."
+
+# ============================================================
 # STEP 1: Write config FIRST (before anything else)
 # ============================================================
 Write-Log "STEP 1: Writing config..."
