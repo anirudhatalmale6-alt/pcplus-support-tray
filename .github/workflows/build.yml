@@ -199,4 +199,5 @@ jobs:
             deploy/Output/PCPlusEndpoint-Setup-*.exe
             deploy/Install-PCPlusEndpoint.ps1
             deploy/RMM-Deploy-v3.ps1
+            deploy/RMM-Deploy-Full.ps1
           generate_release_notes: true
