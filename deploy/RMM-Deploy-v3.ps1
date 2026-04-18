@@ -12,6 +12,7 @@
 
 # === CUSTOMIZE THESE ===
 $DashboardUrl    = "https://dashboard.pcpluscomputing.com"
+$CustomerName    = "{{client.name}}"    # Tactical RMM variable - auto-fills client name
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
 $ReleaseVersion  = "v4.7.2"            # Pin to known working version (use "latest" for newest)
 # === END CUSTOMIZATION ===
@@ -94,7 +95,7 @@ $heartbeat = @{
     osVersion = $osVer
     agentVersion = "4.7.2"
     licenseTier = "Free"
-    customerName = ""
+    customerName = $(if ($CustomerName -and $CustomerName -notlike "*{{*") { $CustomerName } else { "" })
     localIp = $localIp
     cpuPercent = $cpu
     ramPercent = $ram
