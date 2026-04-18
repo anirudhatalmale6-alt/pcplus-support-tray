@@ -265,6 +265,7 @@ namespace PCPlus.Tray.Forms
         {
             int m = 16; // margin
             int contentW = _contentArea.Width - m * 2;
+            if (contentW < 200) contentW = 700; // fallback if panel not laid out yet
             int y = 10;
 
             // === HERO STATUS BAR ===
@@ -341,7 +342,15 @@ namespace PCPlus.Tray.Forms
             var tempCard = CreateGaugeCard("Temp", tempVal, "\u00B0C", AccentRed,
                 new Point(m + (gaugeW + gap) * 3, y), new Size(gaugeW, gaugeH), tempDetail);
 
-            _contentArea.Controls.AddRange(new Control[] { cpuCard, ramCard, diskCard, tempCard });
+            _contentArea.Controls.Add(cpuCard);
+            _contentArea.Controls.Add(ramCard);
+            _contentArea.Controls.Add(diskCard);
+            _contentArea.Controls.Add(tempCard);
+            // Bring gauge cards to front to ensure visibility
+            cpuCard.BringToFront();
+            ramCard.BringToFront();
+            diskCard.BringToFront();
+            tempCard.BringToFront();
             y += gaugeH + 8;
 
             // === MIDDLE ROW: Hardware Monitor + Quick Actions ===
