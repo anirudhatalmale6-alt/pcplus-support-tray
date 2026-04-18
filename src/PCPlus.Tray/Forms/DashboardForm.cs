@@ -7,8 +7,8 @@ using PCPlus.Core.Models;
 namespace PCPlus.Tray.Forms
 {
     /// <summary>
-    /// Health Dashboard - shows real-time system health with gauges and details.
-    /// Dark themed to match the web dashboard.
+    /// Health Dashboard - modern dark-themed UI with donut gauges, process list,
+    /// disk details, and grayed-out premium feature previews.
     /// </summary>
     public class DashboardForm : Form
     {
@@ -16,16 +16,18 @@ namespace PCPlus.Tray.Forms
         private readonly System.Windows.Forms.Timer _refreshTimer;
 
         // Colors
-        private static readonly Color BgDark = Color.FromArgb(18, 18, 24);
-        private static readonly Color BgCard = Color.FromArgb(28, 28, 40);
-        private static readonly Color BgCardHover = Color.FromArgb(35, 35, 50);
-        private static readonly Color TextPrimary = Color.FromArgb(230, 230, 240);
-        private static readonly Color TextSecondary = Color.FromArgb(140, 140, 160);
-        private static readonly Color AccentBlue = Color.FromArgb(60, 130, 246);
-        private static readonly Color AccentGreen = Color.FromArgb(34, 197, 94);
-        private static readonly Color AccentOrange = Color.FromArgb(245, 158, 11);
-        private static readonly Color AccentRed = Color.FromArgb(239, 68, 68);
-        private static readonly Color Border = Color.FromArgb(45, 45, 60);
+        private static readonly Color BgDark = Color.FromArgb(15, 15, 22);
+        private static readonly Color BgCard = Color.FromArgb(24, 24, 36);
+        private static readonly Color BgCardBorder = Color.FromArgb(38, 38, 55);
+        private static readonly Color TextPrimary = Color.FromArgb(235, 235, 245);
+        private static readonly Color TextSecondary = Color.FromArgb(130, 130, 155);
+        private static readonly Color TextMuted = Color.FromArgb(80, 80, 100);
+        private static readonly Color AccentBlue = Color.FromArgb(56, 132, 255);
+        private static readonly Color AccentGreen = Color.FromArgb(48, 209, 88);
+        private static readonly Color AccentOrange = Color.FromArgb(255, 159, 10);
+        private static readonly Color AccentRed = Color.FromArgb(255, 69, 58);
+        private static readonly Color AccentPurple = Color.FromArgb(175, 82, 222);
+        private static readonly Color PremiumOverlay = Color.FromArgb(180, 15, 15, 22);
 
         // Data
         private HealthSnapshot? _health;
@@ -35,18 +37,21 @@ namespace PCPlus.Tray.Forms
         private Panel _headerPanel = null!;
         private Panel _contentPanel = null!;
         private Label _statusLabel = null!;
+        private Label _statusDot = null!;
         private Label _uptimeLabel = null!;
+        private Label _scoreLabel = null!;
 
-        // Gauge panels
-        private GaugePanel _cpuGauge = null!;
-        private GaugePanel _ramGauge = null!;
-        private GaugePanel _diskGauge = null!;
-        private GaugePanel _cpuTempGauge = null!;
+        // Donut gauges
+        private DonutGauge _cpuDonut = null!;
+        private DonutGauge _ramDonut = null!;
+        private DonutGauge _diskDonut = null!;
+        private DonutGauge _tempDonut = null!;
 
-        // Info panels
+        // Detail panels
         private Panel _processPanel = null!;
-        private Panel _diskDetailPanel = null!;
+        private Panel _diskPanel = null!;
         private Panel _networkPanel = null!;
+        private Panel _premiumPanel = null!;
 
         public DashboardForm(IpcClient ipc)
         {
@@ -63,8 +68,8 @@ namespace PCPlus.Tray.Forms
 
         private void InitializeForm()
         {
-            Text = "PC Plus - Health Dashboard";
-            Size = new Size(820, 620);
+            Text = "PC Plus Endpoint Protection";
+            Size = new Size(900, 720);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = BgDark;
             ForeColor = TextPrimary;
@@ -76,87 +81,188 @@ namespace PCPlus.Tray.Forms
 
         private void BuildUI()
         {
-            // Header
+            // === HEADER ===
             _headerPanel = new Panel
             {
-                Dock = DockStyle.Top, Height = 60, BackColor = BgCard,
-                Padding = new Padding(16, 0, 16, 0)
+                Dock = DockStyle.Top, Height = 70, BackColor = BgCard
             };
+            _headerPanel.Paint += (s, e) =>
+            {
+                using var pen = new Pen(BgCardBorder);
+                e.Graphics.DrawLine(pen, 0, _headerPanel.Height - 1, _headerPanel.Width, _headerPanel.Height - 1);
+            };
+
+            _statusDot = new Label
+            {
+                Text = "\u25CF", AutoSize = true,
+                Font = new Font("Segoe UI", 11),
+                ForeColor = AccentOrange, Location = new Point(20, 14)
+            };
+
             var titleLabel = new Label
             {
-                Text = "Health Dashboard", AutoSize = true,
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                ForeColor = TextPrimary, Location = new Point(16, 8)
+                Text = "Device is protected", AutoSize = true,
+                Font = new Font("Segoe UI Semibold", 15, FontStyle.Bold),
+                ForeColor = TextPrimary, Location = new Point(42, 10)
             };
+
             _statusLabel = new Label
             {
-                Text = "Connecting...", AutoSize = true,
+                Text = "Connecting to service...", AutoSize = true,
                 Font = new Font("Segoe UI", 9),
-                ForeColor = AccentBlue, Location = new Point(16, 35)
+                ForeColor = TextSecondary, Location = new Point(44, 38)
             };
+
+            _scoreLabel = new Label
+            {
+                Text = "Score: --/100", AutoSize = true,
+                Font = new Font("Segoe UI Semibold", 10),
+                ForeColor = AccentBlue, Location = new Point(260, 38)
+            };
+
             _uptimeLabel = new Label
             {
                 Text = "", AutoSize = true,
                 Font = new Font("Segoe UI", 9),
-                ForeColor = TextSecondary, Anchor = AnchorStyles.Top | AnchorStyles.Right
+                ForeColor = TextSecondary,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Location = new Point(700, 26)
             };
-            _uptimeLabel.Location = new Point(_headerPanel.Width - 200, 20);
-            _headerPanel.Controls.AddRange(new Control[] { titleLabel, _statusLabel, _uptimeLabel });
 
-            // Content area with scroll
+            _headerPanel.Controls.AddRange(new Control[] { _statusDot, titleLabel, _statusLabel, _scoreLabel, _uptimeLabel });
+
+            // === CONTENT ===
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill, AutoScroll = true,
-                BackColor = BgDark, Padding = new Padding(16)
+                BackColor = BgDark, Padding = new Padding(20, 12, 20, 20)
             };
 
-            // Gauge row
-            var gaugeRow = new FlowLayoutPanel
+            // --- Donut Gauge Row ---
+            var gaugeRow = new Panel
             {
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false, AutoSize = true,
-                Location = new Point(16, 8), BackColor = Color.Transparent
+                Location = new Point(20, 8),
+                Size = new Size(844, 170),
+                BackColor = Color.Transparent
             };
 
-            _cpuGauge = new GaugePanel("CPU", "%", AccentBlue) { Size = new Size(180, 160) };
-            _ramGauge = new GaugePanel("RAM", "%", AccentGreen) { Size = new Size(180, 160) };
-            _diskGauge = new GaugePanel("Disk", "%", AccentOrange) { Size = new Size(180, 160) };
-            _cpuTempGauge = new GaugePanel("CPU Temp", "°C", AccentRed) { Size = new Size(180, 160) };
+            int gaugeW = 200, gap = 12;
+            _cpuDonut = new DonutGauge("CPU", "%", AccentBlue) { Location = new Point(0, 0), Size = new Size(gaugeW, 165) };
+            _ramDonut = new DonutGauge("Memory", "%", AccentGreen) { Location = new Point(gaugeW + gap, 0), Size = new Size(gaugeW, 165) };
+            _diskDonut = new DonutGauge("Disk", "%", AccentOrange) { Location = new Point((gaugeW + gap) * 2, 0), Size = new Size(gaugeW, 165) };
+            _tempDonut = new DonutGauge("Temp", "\u00B0C", AccentRed) { Location = new Point((gaugeW + gap) * 3, 0), Size = new Size(gaugeW, 165) };
 
-            gaugeRow.Controls.AddRange(new Control[] { _cpuGauge, _ramGauge, _diskGauge, _cpuTempGauge });
+            gaugeRow.Controls.AddRange(new Control[] { _cpuDonut, _ramDonut, _diskDonut, _tempDonut });
 
-            // Details section
-            _processPanel = CreateDetailPanel("Top Processes", new Point(16, 180), new Size(375, 220));
-            _diskDetailPanel = CreateDetailPanel("Disk Usage", new Point(407, 180), new Size(375, 95));
-            _networkPanel = CreateDetailPanel("System Info", new Point(407, 285), new Size(375, 95));
+            // --- Process List ---
+            _processPanel = CreateCard("Top Processes", new Point(20, 185), new Size(420, 210));
 
-            _contentPanel.Controls.AddRange(new Control[] { gaugeRow, _processPanel, _diskDetailPanel, _networkPanel });
+            // --- Disk & Network Info ---
+            _diskPanel = CreateCard("Storage", new Point(452, 185), new Size(412, 100));
+            _networkPanel = CreateCard("Network & System", new Point(452, 295), new Size(412, 100));
+
+            // --- Premium Features Preview ---
+            _premiumPanel = CreatePremiumPanel(new Point(20, 405), new Size(844, 170));
+
+            _contentPanel.Controls.AddRange(new Control[] { gaugeRow, _processPanel, _diskPanel, _networkPanel, _premiumPanel });
 
             Controls.Add(_contentPanel);
             Controls.Add(_headerPanel);
         }
 
-        private Panel CreateDetailPanel(string title, Point location, Size size)
+        private Panel CreateCard(string title, Point location, Size size)
         {
             var panel = new Panel
             {
                 Location = location, Size = size,
-                BackColor = BgCard, Padding = new Padding(12)
+                BackColor = BgCard
             };
             panel.Paint += (s, e) =>
             {
-                using var pen = new Pen(Border);
-                e.Graphics.DrawRectangle(pen, 0, 0, panel.Width - 1, panel.Height - 1);
+                using var pen = new Pen(BgCardBorder);
+                var r = new Rectangle(0, 0, panel.Width - 1, panel.Height - 1);
+                DrawRoundedRect(e.Graphics, pen, r, 6);
             };
 
-            var titleLabel = new Label
+            var lbl = new Label
             {
-                Text = title, AutoSize = true, Location = new Point(12, 8),
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Text = title, AutoSize = true, Location = new Point(14, 10),
+                Font = new Font("Segoe UI Semibold", 10, FontStyle.Bold),
                 ForeColor = TextPrimary, BackColor = Color.Transparent
             };
-            panel.Controls.Add(titleLabel);
-            panel.Tag = titleLabel; // We'll add content below the title
+            panel.Controls.Add(lbl);
+            panel.Tag = lbl;
+            return panel;
+        }
+
+        private Panel CreatePremiumPanel(Point location, Size size)
+        {
+            var panel = new Panel
+            {
+                Location = location, Size = size,
+                BackColor = BgCard
+            };
+            panel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                // Card border
+                using var borderPen = new Pen(BgCardBorder);
+                var r = new Rectangle(0, 0, panel.Width - 1, panel.Height - 1);
+                DrawRoundedRect(g, borderPen, r, 6);
+
+                // Title
+                using var titleFont = new Font("Segoe UI Semibold", 10, FontStyle.Bold);
+                using var titleBrush = new SolidBrush(TextPrimary);
+                g.DrawString("Advanced Protection", titleFont, titleBrush, 14, 10);
+
+                // Premium feature cards (grayed out)
+                var features = new[]
+                {
+                    ("Ransomware Shield", "Real-time file protection\nand rollback recovery", "\uD83D\uDEE1"),
+                    ("AI Threat Analysis", "Intelligent behavioral\nthreat detection", "\uD83E\uDDE0"),
+                    ("Remote Lockdown", "Instantly lock device\nfrom dashboard", "\uD83D\uDD12"),
+                    ("Backup & Recovery", "Automated cloud backup\nwith one-click restore", "\u2601")
+                };
+
+                int cardW = 195, cardH = 100, startX = 14, startY = 38, cardGap = 10;
+                using var cardBg = new SolidBrush(Color.FromArgb(20, 20, 32));
+                using var cardBorder = new Pen(Color.FromArgb(35, 35, 50));
+                using var featureFont = new Font("Segoe UI Semibold", 9.5f, FontStyle.Bold);
+                using var descFont = new Font("Segoe UI", 8f);
+                using var iconFont = new Font("Segoe UI", 20f);
+                using var grayText = new SolidBrush(Color.FromArgb(70, 70, 90));
+                using var grayIcon = new SolidBrush(Color.FromArgb(50, 50, 70));
+
+                for (int i = 0; i < features.Length; i++)
+                {
+                    var (name, desc, icon) = features[i];
+                    var cardRect = new Rectangle(startX + i * (cardW + cardGap), startY, cardW, cardH);
+                    g.FillRectangle(cardBg, cardRect);
+                    DrawRoundedRect(g, cardBorder, cardRect, 4);
+
+                    g.DrawString(icon, iconFont, grayIcon, cardRect.X + 10, cardRect.Y + 8);
+                    g.DrawString(name, featureFont, grayText, cardRect.X + 10, cardRect.Y + 42);
+                    g.DrawString(desc, descFont, grayText, cardRect.X + 10, cardRect.Y + 62);
+                }
+
+                // Overlay badge
+                using var badgeBg = new SolidBrush(Color.FromArgb(230, AccentPurple.R, AccentPurple.G, AccentPurple.B));
+                using var badgeFont = new Font("Segoe UI Semibold", 9f, FontStyle.Bold);
+                using var badgeText = new SolidBrush(Color.White);
+
+                string badge = " \u2B50 Upgrade to Premium ";
+                var badgeSize = g.MeasureString(badge, badgeFont);
+                var badgeRect = new RectangleF(
+                    panel.Width - badgeSize.Width - 20, 8,
+                    badgeSize.Width + 8, badgeSize.Height + 4);
+
+                var badgePath = GetRoundedRectPath(Rectangle.Round(badgeRect), 10);
+                g.FillPath(badgeBg, badgePath);
+                g.DrawString(badge, badgeFont, badgeText, badgeRect.X + 4, badgeRect.Y + 2);
+            };
+
             return panel;
         }
 
@@ -164,7 +270,6 @@ namespace PCPlus.Tray.Forms
         {
             try
             {
-                // Try to connect if not connected
                 if (!_ipc.IsConnected)
                 {
                     try { await Task.Run(() => _ipc.ConnectAsync(5000)); }
@@ -176,8 +281,8 @@ namespace PCPlus.Tray.Forms
                     if (InvokeRequired)
                         Invoke(new Action(() =>
                         {
-                            _statusLabel.Text = "Service not connected - retrying...";
-                            _statusLabel.ForeColor = AccentOrange;
+                            _statusLabel.Text = "Connecting to service...";
+                            _statusDot.ForeColor = AccentOrange;
                         }));
                     return;
                 }
@@ -187,117 +292,175 @@ namespace PCPlus.Tray.Forms
                 {
                     _health = healthResponse.GetData<HealthSnapshot>();
                     if (_health != null)
-                        UpdateGauges();
+                        UpdateAll();
                 }
                 else
                 {
                     if (InvokeRequired)
                         Invoke(new Action(() =>
                         {
-                            _statusLabel.Text = $"Connected - waiting for data ({healthResponse.Message})";
-                            _statusLabel.ForeColor = AccentBlue;
+                            _statusLabel.Text = $"Waiting for data...";
+                            _statusDot.ForeColor = AccentBlue;
                         }));
                 }
 
                 var statusResponse = await Task.Run(() => _ipc.GetServiceStatusAsync());
                 if (statusResponse.Success)
-                {
                     _serviceStatus = statusResponse.GetData<ServiceStatusReport>();
-                    UpdateStatus();
-                }
             }
             catch { }
         }
 
-        private void UpdateGauges()
+        private void UpdateAll()
         {
             if (_health == null) return;
-            if (InvokeRequired) { Invoke(new Action(UpdateGauges)); return; }
+            if (InvokeRequired) { Invoke(new Action(UpdateAll)); return; }
 
-            _cpuGauge.SetValue(_health.CpuPercent, 100);
-            _ramGauge.SetValue(_health.RamPercent, 100,
+            // Donuts
+            _cpuDonut.SetValue(_health.CpuPercent, 100, $"{_health.CpuPercent:F0}%");
+            _ramDonut.SetValue(_health.RamPercent, 100,
+                $"{_health.RamPercent:F0}%",
                 $"{_health.RamUsedGB:F1} / {_health.RamTotalGB:F1} GB");
+
             var disk = _health.Disks.FirstOrDefault();
-            _diskGauge.SetValue(disk?.UsedPercent ?? 0, 100,
-                disk != null ? $"{disk.TotalGB - disk.FreeGB:F0} / {disk.TotalGB:F0} GB" : "");
-            _cpuTempGauge.SetValue(_health.CpuTempC, 100,
+            float diskPct = disk?.UsedPercent ?? 0;
+            float diskUsed = disk != null ? disk.TotalGB - disk.FreeGB : 0;
+            float diskTotal = disk?.TotalGB ?? 0;
+            _diskDonut.SetValue(diskPct, 100,
+                $"{diskPct:F0}%",
+                disk != null ? $"{diskUsed:F0} / {diskTotal:F0} GB" : "");
+
+            _tempDonut.SetValue(_health.CpuTempC, 100,
+                _health.CpuTempC > 0 ? $"{_health.CpuTempC:F0}\u00B0" : "--",
                 _health.CpuTempC > 0 ? "" : "No sensor");
 
-            // Update uptime
+            // Uptime
             if (_health.Uptime.TotalMinutes > 0)
             {
                 var up = _health.Uptime;
                 _uptimeLabel.Text = $"Uptime: {(int)up.TotalDays}d {up.Hours}h {up.Minutes}m";
             }
 
-            // Update process list
-            UpdateProcessList();
-            UpdateDiskDetails();
-            UpdateNetworkInfo();
+            // Score
+            // Simple security score estimate: penalize high CPU, high disk, high temp
+            int score = 100;
+            if (_health.CpuPercent > 90) score -= 20;
+            else if (_health.CpuPercent > 70) score -= 10;
+            if (diskPct > 90) score -= 25;
+            else if (diskPct > 80) score -= 10;
+            if (_health.CpuTempC > 85) score -= 20;
+            else if (_health.CpuTempC > 75) score -= 10;
+            if (_health.RamPercent > 90) score -= 15;
+            else if (_health.RamPercent > 80) score -= 5;
+            score = Math.Max(0, Math.Min(100, score));
 
-            _statusLabel.Text = $"Connected - {_health.ProcessCount} processes";
-            _statusLabel.ForeColor = AccentGreen;
+            _scoreLabel.Text = $"Score: {score}/100";
+            _scoreLabel.ForeColor = score >= 80 ? AccentGreen : score >= 50 ? AccentOrange : AccentRed;
+
+            // Status
+            _statusLabel.Text = $"{_health.ProcessCount} processes running";
+            _statusDot.ForeColor = AccentGreen;
+
+            UpdateProcessList();
+            UpdateDiskInfo();
+            UpdateNetworkInfo();
         }
 
         private void UpdateProcessList()
         {
             if (_health?.TopProcesses == null) return;
 
-            // Clear old content labels (keep title)
-            var toRemove = _processPanel.Controls.OfType<Label>()
-                .Where(l => l != (Label)_processPanel.Tag!).ToList();
-            foreach (var l in toRemove) { _processPanel.Controls.Remove(l); l.Dispose(); }
+            var toRemove = _processPanel.Controls.OfType<Control>()
+                .Where(c => c != (Label)_processPanel.Tag!).ToList();
+            foreach (var c in toRemove) { _processPanel.Controls.Remove(c); c.Dispose(); }
 
-            // Header row
-            int y = 30;
-            var header = new Label
+            // Column headers
+            int y = 34;
+            var headerPanel = new Panel
             {
-                Text = "Name                   CPU     Memory",
-                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-                ForeColor = TextSecondary,
-                BackColor = Color.Transparent,
-                Location = new Point(12, y), AutoSize = true
+                Location = new Point(0, y), Size = new Size(_processPanel.Width, 22),
+                BackColor = Color.FromArgb(20, 20, 30)
             };
-            _processPanel.Controls.Add(header);
-            y += 18;
+            var hdrName = new Label { Text = "Process", Location = new Point(14, 3), AutoSize = true,
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold), ForeColor = TextSecondary, BackColor = Color.Transparent };
+            var hdrCpu = new Label { Text = "CPU", Location = new Point(250, 3), AutoSize = true,
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold), ForeColor = TextSecondary, BackColor = Color.Transparent };
+            var hdrMem = new Label { Text = "Memory", Location = new Point(320, 3), AutoSize = true,
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold), ForeColor = TextSecondary, BackColor = Color.Transparent };
+            headerPanel.Controls.AddRange(new Control[] { hdrName, hdrCpu, hdrMem });
+            _processPanel.Controls.Add(headerPanel);
+            y += 24;
 
-            foreach (var proc in _health.TopProcesses.Take(7))
+            int row = 0;
+            foreach (var proc in _health.TopProcesses.Take(8))
             {
-                var name = proc.Name.Length > 20 ? proc.Name.Substring(0, 20) : proc.Name;
-                var line = new Label
+                var rowBg = row % 2 == 0 ? Color.Transparent : Color.FromArgb(18, 18, 28);
+                var rowPanel = new Panel
                 {
-                    Text = $"{name,-22} {proc.CpuPercent,5:F1}%  {proc.MemoryMB,6:F0} MB",
-                    Font = new Font("Consolas", 8.5f),
-                    ForeColor = proc.CpuPercent > 50 ? AccentRed : TextSecondary,
-                    BackColor = Color.Transparent,
-                    Location = new Point(12, y), AutoSize = true
+                    Location = new Point(0, y), Size = new Size(_processPanel.Width, 18),
+                    BackColor = rowBg
                 };
-                _processPanel.Controls.Add(line);
-                y += 18;
+
+                var name = proc.Name.Length > 28 ? proc.Name.Substring(0, 28) : proc.Name;
+                var cpuColor = proc.CpuPercent > 50 ? AccentRed : proc.CpuPercent > 20 ? AccentOrange : TextSecondary;
+
+                var lblName = new Label { Text = name, Location = new Point(14, 1), AutoSize = true,
+                    Font = new Font("Segoe UI", 8.5f), ForeColor = TextPrimary, BackColor = Color.Transparent };
+                var lblCpu = new Label { Text = $"{proc.CpuPercent:F1}%", Location = new Point(250, 1), AutoSize = true,
+                    Font = new Font("Consolas", 8.5f), ForeColor = cpuColor, BackColor = Color.Transparent };
+                var lblMem = new Label { Text = $"{proc.MemoryMB:F0} MB", Location = new Point(320, 1), AutoSize = true,
+                    Font = new Font("Consolas", 8.5f), ForeColor = TextSecondary, BackColor = Color.Transparent };
+
+                rowPanel.Controls.AddRange(new Control[] { lblName, lblCpu, lblMem });
+                _processPanel.Controls.Add(rowPanel);
+                y += 19;
+                row++;
             }
         }
 
-        private void UpdateDiskDetails()
+        private void UpdateDiskInfo()
         {
             if (_health?.Disks == null) return;
 
-            var toRemove = _diskDetailPanel.Controls.OfType<Label>()
-                .Where(l => l != (Label)_diskDetailPanel.Tag!).ToList();
-            foreach (var l in toRemove) { _diskDetailPanel.Controls.Remove(l); l.Dispose(); }
+            var toRemove = _diskPanel.Controls.OfType<Control>()
+                .Where(c => c != (Label)_diskPanel.Tag!).ToList();
+            foreach (var c in toRemove) { _diskPanel.Controls.Remove(c); c.Dispose(); }
 
-            int y = 30;
+            int y = 34;
             foreach (var disk in _health.Disks.Take(3))
             {
-                var color = disk.UsedPercent > 90 ? AccentRed : disk.UsedPercent > 80 ? AccentOrange : TextSecondary;
-                var line = new Label
+                var pctColor = disk.UsedPercent > 90 ? AccentRed : disk.UsedPercent > 75 ? AccentOrange : AccentGreen;
+                var barColor = pctColor;
+
+                // Drive label
+                var lbl = new Label
                 {
-                    Text = $"{disk.Name} {disk.Label,-12} {disk.FreeGB:F0} GB free / {disk.TotalGB:F0} GB ({disk.UsedPercent:F0}%)",
-                    Font = new Font("Segoe UI", 9),
-                    ForeColor = color, BackColor = Color.Transparent,
-                    Location = new Point(12, y), AutoSize = true
+                    Text = $"{disk.Name}  {disk.Label}",
+                    Location = new Point(14, y), AutoSize = true,
+                    Font = new Font("Segoe UI", 8.5f), ForeColor = TextPrimary, BackColor = Color.Transparent
                 };
-                _diskDetailPanel.Controls.Add(line);
-                y += 20;
+                _diskPanel.Controls.Add(lbl);
+
+                // Usage text
+                var usageText = new Label
+                {
+                    Text = $"{disk.FreeGB:F0} GB free / {disk.TotalGB:F0} GB",
+                    Location = new Point(200, y), AutoSize = true,
+                    Font = new Font("Segoe UI", 8.5f), ForeColor = TextSecondary, BackColor = Color.Transparent
+                };
+                _diskPanel.Controls.Add(usageText);
+
+                // Progress bar
+                var barPanel = new Panel { Location = new Point(14, y + 18), Size = new Size(380, 6), BackColor = Color.FromArgb(35, 35, 50) };
+                barPanel.Paint += (s, e) =>
+                {
+                    var pct = disk.UsedPercent / 100f;
+                    var w = (int)(barPanel.Width * pct);
+                    using var brush = new SolidBrush(barColor);
+                    e.Graphics.FillRectangle(brush, 0, 0, w, barPanel.Height);
+                };
+                _diskPanel.Controls.Add(barPanel);
+                y += 30;
             }
         }
 
@@ -305,33 +468,51 @@ namespace PCPlus.Tray.Forms
         {
             if (_health == null) return;
 
-            var toRemove = _networkPanel.Controls.OfType<Label>()
-                .Where(l => l != (Label)_networkPanel.Tag!).ToList();
-            foreach (var l in toRemove) { _networkPanel.Controls.Remove(l); l.Dispose(); }
+            var toRemove = _networkPanel.Controls.OfType<Control>()
+                .Where(c => c != (Label)_networkPanel.Tag!).ToList();
+            foreach (var c in toRemove) { _networkPanel.Controls.Remove(c); c.Dispose(); }
 
-            int y = 30;
-            var lines = new[]
+            int y = 34;
+            var items = new[]
             {
-                $"Network: {_health.NetworkSentKBps:F0} KB/s up, {_health.NetworkRecvKBps:F0} KB/s down",
-                $"Processes: {_health.ProcessCount}     GPU Temp: {(_health.GpuTempC > 0 ? $"{_health.GpuTempC:F0}°C" : "N/A")}"
+                ($"\u2191 {_health.NetworkSentKBps:F0} KB/s", $"\u2193 {_health.NetworkRecvKBps:F0} KB/s",
+                 $"Processes: {_health.ProcessCount}",
+                 $"GPU: {(_health.GpuTempC > 0 ? $"{_health.GpuTempC:F0}\u00B0C" : "N/A")}")
             };
 
-            foreach (var text in lines)
+            foreach (var (up, down, procs, gpu) in items)
             {
-                var line = new Label
+                int x = 14;
+                foreach (var item in new[] { up, down, procs, gpu })
                 {
-                    Text = text, Font = new Font("Segoe UI", 9),
-                    ForeColor = TextSecondary, BackColor = Color.Transparent,
-                    Location = new Point(12, y), AutoSize = true
-                };
-                _networkPanel.Controls.Add(line);
+                    var lbl = new Label
+                    {
+                        Text = item, Location = new Point(x, y), AutoSize = true,
+                        Font = new Font("Segoe UI", 8.5f), ForeColor = TextSecondary, BackColor = Color.Transparent
+                    };
+                    _networkPanel.Controls.Add(lbl);
+                    x += 100;
+                }
                 y += 20;
             }
         }
 
-        private void UpdateStatus()
+        private static void DrawRoundedRect(Graphics g, Pen pen, Rectangle rect, int radius)
         {
-            // Already updated in UpdateGauges
+            using var path = GetRoundedRectPath(rect, radius);
+            g.DrawPath(pen, path);
+        }
+
+        private static GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
+        {
+            var path = new GraphicsPath();
+            int d = radius * 2;
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -342,33 +523,39 @@ namespace PCPlus.Tray.Forms
         }
     }
 
-    /// <summary>Circular gauge panel for displaying a metric.</summary>
-    internal class GaugePanel : Panel
+    /// <summary>Modern donut gauge with center value display and subtitle.</summary>
+    internal class DonutGauge : Panel
     {
         private float _value;
         private float _maxValue = 100;
         private string _label;
         private string _unit;
+        private string _displayValue = "--";
         private string _subText = "";
         private Color _accentColor;
-        private readonly Font _valueFont = new("Segoe UI", 18, FontStyle.Bold);
-        private readonly Font _labelFont = new("Segoe UI", 9);
-        private readonly Font _subFont = new("Segoe UI", 7.5f);
 
-        public GaugePanel(string label, string unit, Color accent)
+        private static readonly Color BgColor = Color.FromArgb(24, 24, 36);
+        private static readonly Color TrackColor = Color.FromArgb(35, 35, 50);
+        private static readonly Color TextColor = Color.FromArgb(235, 235, 245);
+        private static readonly Color SubTextColor = Color.FromArgb(130, 130, 155);
+
+        public DonutGauge(string label, string unit, Color accent)
         {
             _label = label;
             _unit = unit;
             _accentColor = accent;
-            BackColor = Color.FromArgb(28, 28, 40);
+            BackColor = BgColor;
             DoubleBuffered = true;
-            Margin = new Padding(6);
+            Margin = new Padding(4);
+
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
         }
 
-        public void SetValue(float value, float max, string? subText = null)
+        public void SetValue(float value, float max, string? displayValue = null, string? subText = null)
         {
-            _value = value;
+            _value = Math.Max(0, Math.Min(value, max));
             _maxValue = max;
+            if (displayValue != null) _displayValue = displayValue;
             if (subText != null) _subText = subText;
             Invalidate();
         }
@@ -379,60 +566,63 @@ namespace PCPlus.Tray.Forms
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // Background
-            using var bgBrush = new SolidBrush(BackColor);
+            // Card background with rounded corners
+            using var bgBrush = new SolidBrush(BgColor);
             g.FillRectangle(bgBrush, ClientRectangle);
+            using var borderPen = new Pen(Color.FromArgb(38, 38, 55));
+            var cardRect = new Rectangle(0, 0, Width - 1, Height - 1);
+            var path = new GraphicsPath();
+            int r = 8;
+            path.AddArc(cardRect.X, cardRect.Y, r*2, r*2, 180, 90);
+            path.AddArc(cardRect.Right - r*2, cardRect.Y, r*2, r*2, 270, 90);
+            path.AddArc(cardRect.Right - r*2, cardRect.Bottom - r*2, r*2, r*2, 0, 90);
+            path.AddArc(cardRect.X, cardRect.Bottom - r*2, r*2, r*2, 90, 90);
+            path.CloseFigure();
+            g.DrawPath(borderPen, path);
 
-            // Border
-            using var borderPen = new Pen(Color.FromArgb(45, 45, 60));
-            g.DrawRectangle(borderPen, 0, 0, Width - 1, Height - 1);
+            // Donut dimensions
+            int donutSize = 100;
+            int thickness = 10;
+            var donutRect = new Rectangle((Width - donutSize) / 2, 12, donutSize, donutSize);
 
-            // Arc gauge
-            var arcRect = new Rectangle(30, 15, 110, 110);
-            float startAngle = 135;
-            float sweepAngle = 270;
-            float valueSweep = _maxValue > 0 ? (_value / _maxValue) * sweepAngle : 0;
-
-            // Background arc
-            using var bgArcPen = new Pen(Color.FromArgb(40, 40, 55), 8);
-            g.DrawArc(bgArcPen, arcRect, startAngle, sweepAngle);
+            // Track (background circle)
+            using var trackPen = new Pen(TrackColor, thickness) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            g.DrawArc(trackPen, donutRect, 0, 360);
 
             // Value arc
-            if (valueSweep > 0)
+            float pct = _maxValue > 0 ? _value / _maxValue : 0;
+            float sweepAngle = pct * 360f;
+            if (sweepAngle > 0.5f)
             {
-                var arcColor = _value / _maxValue > 0.9f ? Color.FromArgb(239, 68, 68) :
-                    _value / _maxValue > 0.7f ? Color.FromArgb(245, 158, 11) : _accentColor;
-                using var valuePen = new Pen(arcColor, 8) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-                g.DrawArc(valuePen, arcRect, startAngle, valueSweep);
+                var arcColor = pct > 0.9f ? Color.FromArgb(255, 69, 58) :
+                    pct > 0.75f ? Color.FromArgb(255, 159, 10) : _accentColor;
+                using var valuePen = new Pen(arcColor, thickness) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                g.DrawArc(valuePen, donutRect, -90, sweepAngle);
             }
 
-            // Value text (center of arc)
-            var valueStr = _value > 0 ? $"{_value:F0}" : "-";
-            var valueSize = g.MeasureString(valueStr, _valueFont);
-            using var textBrush = new SolidBrush(Color.FromArgb(230, 230, 240));
-            g.DrawString(valueStr, _valueFont, textBrush,
-                arcRect.X + (arcRect.Width - valueSize.Width) / 2,
-                arcRect.Y + (arcRect.Height - valueSize.Height) / 2 - 2);
+            // Center value text
+            using var valueFont = new Font("Segoe UI Semibold", 16, FontStyle.Bold);
+            using var textBrush = new SolidBrush(TextColor);
+            var valSize = g.MeasureString(_displayValue, valueFont);
+            g.DrawString(_displayValue, valueFont, textBrush,
+                donutRect.X + (donutRect.Width - valSize.Width) / 2,
+                donutRect.Y + (donutRect.Height - valSize.Height) / 2);
 
-            // Unit text
-            var unitSize = g.MeasureString(_unit, _labelFont);
-            using var unitBrush = new SolidBrush(Color.FromArgb(140, 140, 160));
-            g.DrawString(_unit, _labelFont, unitBrush,
-                arcRect.X + (arcRect.Width - unitSize.Width) / 2,
-                arcRect.Y + arcRect.Height / 2 + valueSize.Height / 2 - 6);
+            // Label below donut
+            using var labelFont = new Font("Segoe UI Semibold", 9.5f);
+            var labelSize = g.MeasureString(_label, labelFont);
+            g.DrawString(_label, labelFont, textBrush, (Width - labelSize.Width) / 2, donutRect.Bottom + 8);
 
-            // Label (below gauge)
-            var labelSize = g.MeasureString(_label, _labelFont);
-            g.DrawString(_label, _labelFont, textBrush,
-                (Width - labelSize.Width) / 2, Height - 35);
-
-            // Sub-text
+            // Sub-text (e.g., "4.2 / 8.0 GB")
             if (!string.IsNullOrEmpty(_subText))
             {
-                var subSize = g.MeasureString(_subText, _subFont);
-                g.DrawString(_subText, _subFont, unitBrush,
-                    (Width - subSize.Width) / 2, Height - 18);
+                using var subFont = new Font("Segoe UI", 8f);
+                using var subBrush = new SolidBrush(SubTextColor);
+                var subSize = g.MeasureString(_subText, subFont);
+                g.DrawString(_subText, subFont, subBrush, (Width - subSize.Width) / 2, donutRect.Bottom + 26);
             }
+
+            path.Dispose();
         }
     }
 }
