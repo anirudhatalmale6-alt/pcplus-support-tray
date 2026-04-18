@@ -76,8 +76,12 @@ namespace PCPlus.Dashboard.Controllers
             device.DiskPercent = request.DiskPercent;
             device.CpuTempC = request.CpuTempC;
             device.GpuTempC = request.GpuTempC;
-            device.SecurityScore = request.SecurityScore;
-            device.SecurityGrade = request.SecurityGrade;
+            // Only update security score if non-zero (PS heartbeat sends 0; don't overwrite real score)
+            if (request.SecurityScore > 0)
+            {
+                device.SecurityScore = request.SecurityScore;
+                device.SecurityGrade = request.SecurityGrade;
+            }
             device.LockdownActive = request.LockdownActive;
             device.ActiveAlerts = request.ActiveAlerts;
             device.RunningModules = request.RunningModules;
