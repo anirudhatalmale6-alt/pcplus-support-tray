@@ -53,8 +53,8 @@ namespace PCPlus.Tray.Forms
             _ipc = ipc;
             _localFallback = new LocalFallback();
             InitializeForm();
-            BuildSidebar();
             BuildContentArea();
+            BuildSidebar();
 
             _refreshTimer = new System.Windows.Forms.Timer { Interval = 3000 };
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
