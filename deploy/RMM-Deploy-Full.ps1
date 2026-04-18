@@ -261,6 +261,10 @@ if ($release) {
                 Start-Sleep -Seconds 2
             }
 
+            # Kill any running tray before copying new files
+            Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+
             # Copy binaries
             Write-Log "Installing Endpoint binaries..."
             New-Item -Path "$InstallDir\Service" -ItemType Directory -Force | Out-Null
@@ -331,12 +335,20 @@ if ($release) {
                         $taskName = "PCPlusTrayLaunch"
                         try { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue } catch {}
                         $trayAction = New-ScheduledTaskAction -Execute $trayExe
-                        $trayTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
+                        $trayTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(10)
                         $trayPrincipal = New-ScheduledTaskPrincipal -UserId $loggedOnUser -LogonType Interactive -RunLevel Limited
-                        $traySettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DeleteExpiredTaskAfter (New-TimeSpan -Minutes 5)
+                        $traySettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DeleteExpiredTaskAfter (New-TimeSpan -Minutes 10)
                         Register-ScheduledTask -TaskName $taskName -Action $trayAction -Trigger $trayTrigger -Principal $trayPrincipal -Settings $traySettings -Force | Out-Null
+                        Start-Sleep -Seconds 2
                         Start-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-                        Write-Log "Tray launched in user session: $loggedOnUser"
+                        Start-Sleep -Seconds 3
+                        # Verify tray launched
+                        $trayProc = Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue
+                        if ($trayProc) {
+                            Write-Log "Tray launched in user session: $loggedOnUser (PID: $($trayProc.Id))"
+                        } else {
+                            Write-Log "Tray task started but process not yet visible - it may appear shortly" "WARN"
+                        }
                     } else {
                         Write-Log "No user logged in - tray will start on next login."
                     }
