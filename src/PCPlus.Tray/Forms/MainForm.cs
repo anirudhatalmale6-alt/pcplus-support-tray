@@ -267,7 +267,7 @@ namespace PCPlus.Tray.Forms
             _contentArea.Controls.Add(title);
 
             // Status hero card
-            var heroCard = CreateCard(new Point(24, 55), new Size(_contentArea.Width - 72, 110));
+            var heroCard = CreateCard(new Point(24, 55), new Size(_contentArea.Width - 72, 90));
             heroCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             heroCard.Paint += (s, e) =>
             {
@@ -279,83 +279,190 @@ namespace PCPlus.Tray.Forms
                 var statusColor = hasData ? AccentGreen : AccentOrange;
                 var statusText = hasData ? "Your device is protected" : "Connecting to service...";
 
-                // Large shield icon
+                // Shield icon
                 using var shieldBrush = new SolidBrush(statusColor);
-                g.FillEllipse(shieldBrush, 20, 25, 56, 56);
-                using var checkPen = new Pen(Color.White, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-                if (hasData)
-                {
-                    g.DrawLine(checkPen, 37, 53, 45, 61);
-                    g.DrawLine(checkPen, 45, 61, 59, 42);
-                }
-                else
-                {
-                    using var waitFont = new Font("Segoe UI", 20, FontStyle.Bold);
-                    using var waitBrush = new SolidBrush(Color.White);
-                    g.DrawString("...", waitFont, waitBrush, 30, 30);
-                }
+                g.FillEllipse(shieldBrush, 20, 18, 48, 48);
+                using var checkPen = new Pen(Color.White, 2.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                if (hasData) { g.DrawLine(checkPen, 34, 43, 41, 50); g.DrawLine(checkPen, 41, 50, 53, 34); }
 
-                // Status text
-                using var statusFont = new Font("Segoe UI", 18, FontStyle.Bold);
+                using var statusFont = new Font("Segoe UI", 16, FontStyle.Bold);
                 using var statusBrushText = new SolidBrush(TextDark);
-                g.DrawString(statusText, statusFont, statusBrushText, 90, 20);
+                g.DrawString(statusText, statusFont, statusBrushText, 78, 16);
 
-                // Subtitle
                 using var subFont = new Font("Segoe UI", 9.5f);
                 using var subBrush = new SolidBrush(TextMuted);
+                var score = _securityResult?.TotalScore ?? 0;
                 var sub = hasData
-                    ? $"Last scan: {_securityResult?.ScanTime.ToString("MMM d, h:mm tt") ?? "Never"}     Score: {_securityResult?.TotalScore ?? 0}/100"
+                    ? $"Score: {score}/100     Last scan: {_securityResult?.ScanTime.ToString("MMM d, h:mm tt") ?? "Never"}"
                     : "Waiting for data...";
-                g.DrawString(sub, subFont, subBrush, 92, 56);
+                g.DrawString(sub, subFont, subBrush, 80, 48);
 
-                // Uptime on right
                 if (_health != null)
                 {
                     var up = _health.Uptime;
                     var uptimeStr = $"Uptime: {(int)up.TotalDays}d {up.Hours}h {up.Minutes}m";
                     var uptimeSize = g.MeasureString(uptimeStr, subFont);
-                    g.DrawString(uptimeStr, subFont, subBrush, heroCard.Width - uptimeSize.Width - 20, 56);
+                    g.DrawString(uptimeStr, subFont, subBrush, heroCard.Width - uptimeSize.Width - 20, 48);
                 }
             };
             _contentArea.Controls.Add(heroCard);
 
-            // Stats cards row
-            int cardY = 180;
-            int cardW = (_contentArea.Width - 72 - 36) / 4; // 4 cards with spacing
-            var cpuCard = CreateStatCard("CPU", _health?.CpuPercent ?? 0, "%", AccentBlue,
-                new Point(24, cardY), new Size(cardW, 100));
-            cpuCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            // Donut gauge row
+            int gaugeY = 155;
+            int gaugeW = (_contentArea.Width - 72 - 36) / 4;
+            int gaugeH = 160;
 
-            var ramCard = CreateStatCard("Memory",
-                _health?.RamPercent ?? 0, "%", AccentTeal,
-                new Point(24 + cardW + 12, cardY), new Size(cardW, 100));
-            ramCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            float cpuVal = _health?.CpuPercent ?? 0;
+            float ramVal = _health?.RamPercent ?? 0;
+            float diskVal = _health?.Disks.FirstOrDefault()?.UsedPercent ?? 0;
+            float tempVal = _health?.CpuTempC ?? 0;
+            string ramSub = _health != null ? $"{_health.RamUsedGB:F1} / {_health.RamTotalGB:F1} GB" : "";
+            var disk = _health?.Disks.FirstOrDefault();
+            string diskSub = disk != null ? $"{disk.TotalGB - disk.FreeGB:F0} / {disk.TotalGB:F0} GB" : "";
+            string tempSub = tempVal > 0 ? "" : "No sensor";
 
-            var diskVal = _health?.Disks.FirstOrDefault()?.UsedPercent ?? 0;
-            var diskCard = CreateStatCard("Disk", diskVal, "%", AccentOrange,
-                new Point(24 + (cardW + 12) * 2, cardY), new Size(cardW, 100));
-            diskCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            var cpuDonut = CreateDonutCard("CPU", cpuVal, "%", AccentBlue, null,
+                new Point(24, gaugeY), new Size(gaugeW, gaugeH));
+            var ramDonut = CreateDonutCard("Memory", ramVal, "%", AccentTeal, ramSub,
+                new Point(24 + gaugeW + 12, gaugeY), new Size(gaugeW, gaugeH));
+            var diskDonut = CreateDonutCard("Disk", diskVal, "%", AccentOrange, diskSub,
+                new Point(24 + (gaugeW + 12) * 2, gaugeY), new Size(gaugeW, gaugeH));
+            var tempDonut = CreateDonutCard("Temp", tempVal, "\u00B0C", AccentRed, tempSub,
+                new Point(24 + (gaugeW + 12) * 3, gaugeY), new Size(gaugeW, gaugeH));
 
-            var tempVal = _health?.CpuTempC ?? 0;
-            var tempCard = CreateStatCard("Temp", tempVal, "C", AccentRed,
-                new Point(24 + (cardW + 12) * 3, cardY), new Size(cardW, 100));
-            tempCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-
-            _contentArea.Controls.AddRange(new Control[] { cpuCard, ramCard, diskCard, tempCard });
+            _contentArea.Controls.AddRange(new Control[] { cpuDonut, ramDonut, diskDonut, tempDonut });
 
             // Bottom row: Processes + Quick Actions
-            int bottomY = 295;
+            int bottomY = gaugeY + gaugeH + 12;
             int halfW = (_contentArea.Width - 72 - 12) / 2;
 
-            var processCard = CreateCard(new Point(24, bottomY), new Size(halfW, 260));
+            var processCard = CreateCard(new Point(24, bottomY), new Size(halfW, 230));
             processCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             AddProcessList(processCard);
             _contentArea.Controls.Add(processCard);
 
-            var quickCard = CreateCard(new Point(24 + halfW + 12, bottomY), new Size(halfW, 260));
+            var quickCard = CreateCard(new Point(24 + halfW + 12, bottomY), new Size(halfW, 230));
             quickCard.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             AddQuickActions(quickCard);
             _contentArea.Controls.Add(quickCard);
+
+            // Premium features preview
+            int premY = bottomY + 242;
+            var premCard = CreateCard(new Point(24, premY), new Size(_contentArea.Width - 72, 140));
+            premCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            premCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var titleFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var titleBrush = new SolidBrush(TextDark);
+                g.DrawString("Advanced Protection", titleFont, titleBrush, 16, 10);
+
+                // Premium badge
+                using var badgeBg = new SolidBrush(Color.FromArgb(140, 82, 210));
+                using var badgeFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+                using var badgeTextBrush = new SolidBrush(Color.White);
+                string badge = " \u2B50 Upgrade to Premium ";
+                var badgeSize = g.MeasureString(badge, badgeFont);
+                var badgeRect = new RectangleF(premCard.Width - badgeSize.Width - 24, 10, badgeSize.Width + 4, badgeSize.Height + 2);
+                using var badgePath = RoundedRect(Rectangle.Round(badgeRect), 8);
+                g.FillPath(badgeBg, badgePath);
+                g.DrawString(badge, badgeFont, badgeTextBrush, badgeRect.X + 2, badgeRect.Y + 1);
+
+                var features = new[]
+                {
+                    ("Ransomware Shield", "Real-time file protection & rollback"),
+                    ("AI Threat Analysis", "Intelligent behavioral detection"),
+                    ("Remote Lockdown", "Instantly lock device from dashboard"),
+                    ("Backup & Recovery", "Automated cloud backup & restore")
+                };
+
+                int fx = 16, fy = 38;
+                int fCardW = (premCard.Width - 52) / 4;
+                using var fBg = new SolidBrush(Color.FromArgb(248, 248, 252));
+                using var fBorder = new Pen(Color.FromArgb(230, 230, 240));
+                using var fNameFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+                using var fDescFont = new Font("Segoe UI", 7.5f);
+                using var fGrayText = new SolidBrush(Color.FromArgb(160, 165, 175));
+
+                for (int i = 0; i < features.Length; i++)
+                {
+                    var (name, desc) = features[i];
+                    var fRect = new Rectangle(fx + i * (fCardW + 8), fy, fCardW, 85);
+                    using var fPath = RoundedRect(fRect, 6);
+                    g.FillPath(fBg, fPath);
+                    g.DrawPath(fBorder, fPath);
+                    g.DrawString(name, fNameFont, fGrayText, fRect.X + 10, fRect.Y + 12);
+                    g.DrawString(desc, fDescFont, fGrayText, new RectangleF(fRect.X + 10, fRect.Y + 34, fRect.Width - 20, 45));
+                }
+            };
+            _contentArea.Controls.Add(premCard);
+        }
+
+        private Panel CreateDonutCard(string label, float value, string unit, Color color, string? subText, Point loc, Size size)
+        {
+            var card = CreateCard(loc, size);
+            card.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                // Donut ring
+                int donutSize = 90;
+                int thickness = 8;
+                var donutRect = new Rectangle((card.Width - donutSize) / 2, 12, donutSize, donutSize);
+
+                // Track
+                using var trackPen = new Pen(Color.FromArgb(230, 233, 237), thickness);
+                trackPen.StartCap = LineCap.Round; trackPen.EndCap = LineCap.Round;
+                g.DrawArc(trackPen, donutRect, 0, 360);
+
+                // Value arc
+                float maxVal = unit == "\u00B0C" ? 100 : 100;
+                float pct = maxVal > 0 ? Math.Min(value / maxVal, 1f) : 0;
+                float sweepAngle = pct * 360f;
+                if (sweepAngle > 0.5f)
+                {
+                    var arcColor = pct > 0.9f ? AccentRed : pct > 0.75f ? AccentOrange : color;
+                    using var valuePen = new Pen(arcColor, thickness);
+                    valuePen.StartCap = LineCap.Round; valuePen.EndCap = LineCap.Round;
+                    g.DrawArc(valuePen, donutRect, -90, sweepAngle);
+                }
+
+                // Center value
+                var displayVal = value > 0 ? $"{value:F0}" : "--";
+                using var valFont = new Font("Segoe UI", 18, FontStyle.Bold);
+                using var valBrush = new SolidBrush(TextDark);
+                var valSize = g.MeasureString(displayVal, valFont);
+                g.DrawString(displayVal, valFont, valBrush,
+                    donutRect.X + (donutRect.Width - valSize.Width) / 2,
+                    donutRect.Y + (donutRect.Height - valSize.Height) / 2 - 4);
+
+                // Unit below value
+                using var unitFont = new Font("Segoe UI", 8.5f);
+                using var unitBrush = new SolidBrush(TextMuted);
+                var unitSize = g.MeasureString(unit, unitFont);
+                g.DrawString(unit, unitFont, unitBrush,
+                    donutRect.X + (donutRect.Width - unitSize.Width) / 2,
+                    donutRect.Y + donutRect.Height / 2 + valSize.Height / 2 - 8);
+
+                // Label below donut
+                using var labelFont = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                var labelSize = g.MeasureString(label, labelFont);
+                g.DrawString(label, labelFont, valBrush, (card.Width - labelSize.Width) / 2, donutRect.Bottom + 6);
+
+                // Sub-text
+                if (!string.IsNullOrEmpty(subText))
+                {
+                    using var subFont = new Font("Segoe UI", 8f);
+                    var subSize = g.MeasureString(subText, subFont);
+                    g.DrawString(subText, subFont, unitBrush, (card.Width - subSize.Width) / 2, donutRect.Bottom + 24);
+                }
+            };
+            return card;
         }
 
         private Panel CreateStatCard(string label, float value, string unit, Color color, Point loc, Size size)
