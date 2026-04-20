@@ -790,62 +790,98 @@ namespace PCPlus.Tray.Forms
 
             try
             {
-                using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+                using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("PCPlus/4.11 SpeedTest");
 
-                // Ping test
+                // Ping test - average of 5 pings
                 phase = "Testing ping...";
                 gaugePanel.Invalidate();
                 try
                 {
                     using var ping = new System.Net.NetworkInformation.Ping();
-                    var reply = await ping.SendPingAsync("8.8.8.8", 5000);
-                    if (reply.Status == System.Net.NetworkInformation.IPStatus.Success)
-                        pingMs = reply.RoundtripTime;
+                    var pings = new List<long>();
+                    for (int i = 0; i < 5; i++)
+                    {
+                        var reply = await ping.SendPingAsync("8.8.8.8", 3000);
+                        if (reply.Status == System.Net.NetworkInformation.IPStatus.Success)
+                            pings.Add(reply.RoundtripTime);
+                        await Task.Delay(100);
+                    }
+                    if (pings.Count > 0)
+                        pingMs = pings.OrderBy(p => p).Take(3).Average(); // best 3 of 5
                 }
                 catch { pingMs = 0; }
                 gaugePanel.Invalidate();
 
-                // Download test
+                // Download test - streaming with live speed updates
                 phase = "Testing download...";
                 gaugePanel.Invalidate();
-                var dlUrls = new[] { "http://speedtest.tele2.net/10MB.zip", "http://proof.ovh.net/files/10Mb.dat" };
+                var dlUrls = new[]
+                {
+                    "http://speedtest.tele2.net/100MB.zip",
+                    "http://proof.ovh.net/files/100Mb.dat",
+                    "http://speedtest.tele2.net/10MB.zip"
+                };
                 foreach (var url in dlUrls)
                 {
                     try
                     {
+                        using var response = await http.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+                        response.EnsureSuccessStatusCode();
+                        using var stream = await response.Content.ReadAsStreamAsync();
+                        var buffer = new byte[65536];
+                        long totalBytes = 0;
                         var sw = System.Diagnostics.Stopwatch.StartNew();
-                        var data = await http.GetByteArrayAsync(url);
+                        var lastUpdate = sw.ElapsedMilliseconds;
+                        int bytesRead;
+                        // Download for at least 8 seconds or until stream ends
+                        while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                        {
+                            totalBytes += bytesRead;
+                            var elapsed = sw.ElapsedMilliseconds;
+                            if (elapsed - lastUpdate > 500) // update gauge every 500ms
+                            {
+                                downloadMbps = (totalBytes * 8.0) / (elapsed / 1000.0) / 1_000_000.0;
+                                lastUpdate = elapsed;
+                                form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
+                            }
+                            if (elapsed > 12000) break; // cap at 12 seconds
+                        }
                         sw.Stop();
-                        downloadMbps = (data.Length / (1024.0 * 1024.0) * 8) / sw.Elapsed.TotalSeconds;
-                        gaugePanel.Invalidate();
+                        if (sw.Elapsed.TotalSeconds > 0.5)
+                            downloadMbps = (totalBytes * 8.0) / sw.Elapsed.TotalSeconds / 1_000_000.0;
+                        form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
                         break;
                     }
                     catch { continue; }
                 }
 
-                // Upload test
+                // Upload test - 10MB with streaming measurement
                 phase = "Testing upload...";
-                gaugePanel.Invalidate();
+                form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
                 try
                 {
-                    var uploadData = new byte[2 * 1024 * 1024]; // 2MB
+                    var uploadSize = 10 * 1024 * 1024; // 10MB
+                    var uploadData = new byte[uploadSize];
                     new Random().NextBytes(uploadData);
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     using var content = new System.Net.Http.ByteArrayContent(uploadData);
+                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
                     await http.PostAsync("http://speedtest.tele2.net/upload.php", content);
                     sw.Stop();
-                    uploadMbps = (uploadData.Length / (1024.0 * 1024.0) * 8) / sw.Elapsed.TotalSeconds;
+                    if (sw.Elapsed.TotalSeconds > 0.1)
+                        uploadMbps = (uploadData.Length * 8.0) / sw.Elapsed.TotalSeconds / 1_000_000.0;
                 }
                 catch { uploadMbps = 0; }
 
                 done = true;
                 phase = "Test Complete";
-                gaugePanel.Invalidate();
+                form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
             }
             catch
             {
                 phase = "Test Failed";
-                gaugePanel.Invalidate();
+                form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
             }
         }
 

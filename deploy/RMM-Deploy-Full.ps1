@@ -321,36 +321,54 @@ if ($release) {
                 Write-Log "Service exe not found at $serviceExe" "ERROR"
             }
 
-            # Setup tray auto-start
+            # Setup tray auto-start (two methods for reliability)
             $trayExe = "$InstallDir\Tray\PCPlusTray.exe"
             if (Test-Path $trayExe) {
                 try {
-                    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "PCPlusEndpoint" -Value "`"$trayExe`""
+                    # Method 1: Registry Run key (starts on any user login)
+                    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "PCPlusEndpoint" -Value "`"$trayExe`"" -ErrorAction SilentlyContinue
                     Write-Log "Tray configured for auto-start via registry."
 
-                    # Launch tray in the logged-in user's session (not SYSTEM)
+                    # Method 2: Persistent logon-triggered scheduled task (backup for registry)
+                    $persistTask = "PCPlusTrayAutoStart"
+                    try { Unregister-ScheduledTask -TaskName $persistTask -Confirm:$false -ErrorAction SilentlyContinue } catch {}
+                    $persistAction = New-ScheduledTaskAction -Execute $trayExe
+                    $persistTrigger = New-ScheduledTaskTrigger -AtLogOn
+                    $persistPrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Limited
+                    $persistSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 0)
+                    Register-ScheduledTask -TaskName $persistTask -Action $persistAction -Trigger $persistTrigger -Principal $persistPrincipal -Settings $persistSettings -Force | Out-Null
+                    Write-Log "Persistent logon task '$persistTask' registered."
+
+                    # Launch tray NOW in the logged-in user's session
                     $loggedOnUser = (Get-CimInstance Win32_ComputerSystem).UserName
                     if ($loggedOnUser) {
-                        # Use scheduled task to launch in user's session
                         $taskName = "PCPlusTrayLaunch"
                         try { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue } catch {}
                         $trayAction = New-ScheduledTaskAction -Execute $trayExe
-                        $trayTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
+                        $trayTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(3)
                         $trayPrincipal = New-ScheduledTaskPrincipal -UserId $loggedOnUser -LogonType Interactive -RunLevel Limited
                         $traySettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
                         Register-ScheduledTask -TaskName $taskName -Action $trayAction -Trigger $trayTrigger -Principal $trayPrincipal -Settings $traySettings -Force | Out-Null
                         Start-Sleep -Seconds 2
                         Start-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
                         Start-Sleep -Seconds 5
-                        # Verify tray launched
+
+                        # Verify with retry
                         $trayProc = Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue
+                        if (-not $trayProc) {
+                            Write-Log "First launch attempt - retrying..." "WARN"
+                            Start-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+                            Start-Sleep -Seconds 5
+                            $trayProc = Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue
+                        }
+
                         if ($trayProc) {
                             Write-Log "Tray launched in user session: $loggedOnUser (PID: $($trayProc.Id))"
                         } else {
-                            Write-Log "Tray task started but process not yet visible - it may appear shortly" "WARN"
+                            Write-Log "Tray not visible yet - will appear on next login via auto-start task" "WARN"
                         }
                     } else {
-                        Write-Log "No user logged in - tray will start on next login."
+                        Write-Log "No user logged in - tray will start on next login via auto-start task."
                     }
                 } catch { Write-Log "Tray setup: $_" "WARN" }
             }
