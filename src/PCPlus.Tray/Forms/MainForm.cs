@@ -1238,7 +1238,6 @@ namespace PCPlus.Tray.Forms
             bool isLocked = false;
             string lockReason = "";
             string lockTime = "";
-            var lockdownInfo = new Dictionary<string, object>();
 
             // Try to get lockdown state from service
             if (_ipc.IsConnected && !_usingLocalFallback)
@@ -1247,13 +1246,14 @@ namespace PCPlus.Tray.Forms
                 {
                     var resp = _ipc.SendModuleCommandAsync("ransomware", "GetStatus",
                         new Dictionary<string, string>()).GetAwaiter().GetResult();
-                    if (resp.Success && resp.Data != null)
+                    if (resp.Success && !string.IsNullOrEmpty(resp.JsonData))
                     {
-                        if (resp.Data.TryGetValue("lockdown", out var ld) && ld is System.Text.Json.JsonElement je)
+                        using var doc = System.Text.Json.JsonDocument.Parse(resp.JsonData);
+                        if (doc.RootElement.TryGetProperty("lockdown", out var ld))
                         {
-                            isLocked = je.TryGetProperty("IsActive", out var ia) && ia.GetBoolean();
-                            if (je.TryGetProperty("Reason", out var r)) lockReason = r.GetString() ?? "";
-                            if (je.TryGetProperty("ActivatedAt", out var at))
+                            isLocked = ld.TryGetProperty("IsActive", out var ia) && ia.GetBoolean();
+                            if (ld.TryGetProperty("Reason", out var r)) lockReason = r.GetString() ?? "";
+                            if (ld.TryGetProperty("ActivatedAt", out var at))
                                 lockTime = at.GetDateTime().ToString("MMM d, h:mm tt");
                         }
                     }
