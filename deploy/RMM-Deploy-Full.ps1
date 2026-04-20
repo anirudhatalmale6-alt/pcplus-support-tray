@@ -15,7 +15,7 @@
 $DashboardUrl    = "https://dashboard.pcpluscomputing.com"
 $CustomerName    = "{{client.name}}"    # Tactical RMM variable - auto-fills client name
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
-$ReleaseVersion  = "v4.11.3"           # Pin to known working version (use "latest" for newest)
+$ReleaseVersion  = "v4.12.0"           # Pin to known working version (use "latest" for newest)
 $WazuhManager    = "184.68.146.18"
 $WazuhVersion    = "4.11.2"
 $WazuhAgentGroup = "default"
