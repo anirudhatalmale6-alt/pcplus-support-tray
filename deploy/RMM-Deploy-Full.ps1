@@ -139,10 +139,43 @@ if (Test-Path $ConfigFile) {
 }
 $config["deviceId"] = $deviceId
 $config["dashboardApiUrl"] = $DashboardUrl
-# Set customer name from TRMM variable (only if it resolved properly)
+# Set customer name - try multiple sources
 $resolvedName = ""
+# 1. From TRMM template variable (if it resolved)
 if ($CustomerName -and $CustomerName -notlike "*{{*") { $resolvedName = $CustomerName }
+# 2. Auto-detect from Tactical RMM agent config on this machine
+if (-not $resolvedName) {
+    try {
+        # TRMM agent stores client info in its local database/registry
+        $trmmReg = Get-ItemProperty -Path "HKLM:\SOFTWARE\TacticalRMM" -ErrorAction SilentlyContinue
+        if ($trmmReg -and $trmmReg.ClientName) { $resolvedName = $trmmReg.ClientName }
+    } catch {}
+}
+if (-not $resolvedName) {
+    try {
+        # Try reading from TRMM agent config file
+        $trmmConfig = "$env:ProgramFiles\TacticalAgent\agent.json"
+        if (Test-Path $trmmConfig) {
+            $trmmData = Get-Content $trmmConfig -Raw | ConvertFrom-Json
+            if ($trmmData.ClientName) { $resolvedName = $trmmData.ClientName }
+            elseif ($trmmData.client_name) { $resolvedName = $trmmData.client_name }
+        }
+    } catch {}
+}
+if (-not $resolvedName) {
+    try {
+        # Try TRMM agent API - query local agent for its client info
+        $trmmAgentUrl = "http://localhost:4235"
+        $agentInfo = Invoke-RestMethod -Uri "$trmmAgentUrl/winagentsvc/api/agent" -TimeoutSec 3 -ErrorAction SilentlyContinue
+        if ($agentInfo.client_name) { $resolvedName = $agentInfo.client_name }
+    } catch {}
+}
+# 3. Keep existing config value if already set
+if (-not $resolvedName -and $config["companyName"] -and $config["companyName"] -ne "PC Plus Computing") {
+    $resolvedName = $config["companyName"]
+}
 if ($resolvedName) { $config["companyName"] = $resolvedName }
+Write-Log "Customer name resolved: '$resolvedName'"
 if (-not $config.ContainsKey("ransomwareProtectionEnabled")) { $config["ransomwareProtectionEnabled"] = "true" }
 if (-not $config.ContainsKey("autoContainmentEnabled")) { $config["autoContainmentEnabled"] = "true" }
 if (-not $config.ContainsKey("showBalloonAlerts")) { $config["showBalloonAlerts"] = "true" }
