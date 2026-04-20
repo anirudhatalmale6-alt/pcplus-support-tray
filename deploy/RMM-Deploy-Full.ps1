@@ -21,7 +21,9 @@ param(
 
 # === CUSTOMIZE THESE ===
 $DashboardUrl    = "https://dashboard.pcpluscomputing.com"
-$CustomerName    = if ($CustomerNameArg) { $CustomerNameArg } else { "{{client.name}}" }
+$CustomerName    = if ($CustomerNameArg) { $CustomerNameArg } else { "{{site.name}}" }
+$TrmmApiKey      = "WDHX6IPCKJ9BISAFVOUJFFXVKKN5HMZV"
+$TrmmApiUrl      = "https://api.pcpluscomputing.com"
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
 $ReleaseVersion  = "v4.13.0"           # Pin to known working version (use "latest" for newest)
 $WazuhManager    = "184.68.146.18"
@@ -151,41 +153,19 @@ $config["dashboardApiUrl"] = $DashboardUrl
 $resolvedName = ""
 # 1. From TRMM template variable or script argument (if it resolved)
 if ($CustomerName -and $CustomerName -notlike "*{{*") { $resolvedName = $CustomerName }
-# 2. Auto-detect from Tactical RMM agent on this machine
-if (-not $resolvedName) {
+# 2. Query TRMM API to get site name for this machine by hostname
+if (-not $resolvedName -and $TrmmApiKey) {
     try {
-        # TRMM agent registry
-        $trmmReg = Get-ItemProperty -Path "HKLM:\SOFTWARE\TacticalRMM" -ErrorAction SilentlyContinue
-        if ($trmmReg -and $trmmReg.ClientName) { $resolvedName = $trmmReg.ClientName }
-    } catch {}
-}
-if (-not $resolvedName) {
-    try {
-        # TRMM Go agent v2 config (ProgramData location)
-        $trmmPaths = @(
-            "$env:ProgramData\TacticalRMM\agent.json",
-            "$env:ProgramData\TacticalRMM\tacticalagent.json",
-            "$env:ProgramFiles\TacticalAgent\agent.json",
-            "$env:ProgramFiles\TacticalAgent\tacticalrmm.json"
-        )
-        foreach ($trmmConfig in $trmmPaths) {
-            if (Test-Path $trmmConfig) {
-                $trmmData = Get-Content $trmmConfig -Raw | ConvertFrom-Json
-                $tryNames = @($trmmData.ClientName, $trmmData.client_name, $trmmData.clientname)
-                foreach ($n in $tryNames) {
-                    if ($n) { $resolvedName = $n; break }
-                }
-                if ($resolvedName) { break }
-            }
+        $headers = @{ "X-API-KEY" = $TrmmApiKey }
+        $agents = Invoke-RestMethod -Uri "$TrmmApiUrl/agents/" -Headers $headers -TimeoutSec 10 -ErrorAction SilentlyContinue
+        $thisAgent = $agents | Where-Object { $_.hostname -eq $env:COMPUTERNAME } | Select-Object -First 1
+        if ($thisAgent -and $thisAgent.site_name) {
+            $resolvedName = $thisAgent.site_name
+            Write-Log "Customer name from TRMM API: '$resolvedName' (site for $env:COMPUTERNAME)"
         }
-    } catch {}
-}
-if (-not $resolvedName) {
-    try {
-        # TRMM local agent API
-        $agentInfo = Invoke-RestMethod -Uri "http://localhost:4235/winagentsvc/api/agent" -TimeoutSec 3 -ErrorAction SilentlyContinue
-        if ($agentInfo.client_name) { $resolvedName = $agentInfo.client_name }
-    } catch {}
+    } catch {
+        Write-Log "TRMM API lookup failed: $_" "WARN"
+    }
 }
 # 3. Keep existing config value if already set
 if (-not $resolvedName -and $config["companyName"] -and $config["companyName"] -ne "PC Plus Computing") {
