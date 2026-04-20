@@ -254,6 +254,12 @@ namespace PCPlus.Dashboard.Models
         public Dictionary<string, string> Metadata { get; set; } = new();
     }
 
+    public class AlertAckRequest
+    {
+        public int AlertId { get; set; }
+        public string? AcknowledgedBy { get; set; }
+    }
+
     /// <summary>Dashboard overview statistics.</summary>
     public class DashboardOverview
     {

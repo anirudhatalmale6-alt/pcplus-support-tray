@@ -65,6 +65,38 @@ namespace PCPlus.Service
 
             _logger.LogInformation("PC Plus Endpoint Protection Service is running.");
 
+            // First Install Audit - auto-run security scan on first deployment
+            var firstRunFlag = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "PCPlusEndpoint", ".first_audit_done");
+            if (!File.Exists(firstRunFlag))
+            {
+                _logger.LogInformation("First install detected - running initial security audit...");
+                try
+                {
+                    await Task.Delay(10000, stoppingToken); // Wait 10s for modules to settle
+                    var secModule = _engine.GetModule("security");
+                    if (secModule != null)
+                    {
+                        var result = await secModule.HandleCommandAsync(new PCPlus.Core.Models.ModuleCommand
+                        {
+                            ModuleId = "security",
+                            Action = "RunSecurityScan",
+                            Parameters = new Dictionary<string, string> { ["source"] = "first_install_audit" },
+                            Timestamp = DateTime.UtcNow
+                        });
+                        _logger.LogInformation("First install audit complete: {Result}", result.Message);
+                    }
+                    // Mark as done so it doesn't re-run on service restart
+                    Directory.CreateDirectory(Path.GetDirectoryName(firstRunFlag)!);
+                    await File.WriteAllTextAsync(firstRunFlag, DateTime.UtcNow.ToString("o"), stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex, "First install audit failed - will retry on next start");
+                }
+            }
+
             // Periodic license validation (every 6 hours)
             var licenseValidationTimer = new PeriodicTimer(TimeSpan.FromHours(6));
             try

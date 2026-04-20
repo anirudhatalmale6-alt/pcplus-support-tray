@@ -191,6 +191,24 @@ namespace PCPlus.Dashboard.Controllers
         }
 
         /// <summary>
+        /// POST /api/endpoint/alert/ack
+        /// Acknowledge an alert by ID.
+        /// </summary>
+        [HttpPost("alert/ack")]
+        public async Task<ActionResult> AcknowledgeAlert([FromBody] AlertAckRequest ack)
+        {
+            var alert = await _db.Alerts.FindAsync(ack.AlertId);
+            if (alert == null) return NotFound("Alert not found");
+
+            alert.Acknowledged = true;
+            alert.AcknowledgedBy = ack.AcknowledgedBy ?? "user";
+            await _db.SaveChangesAsync();
+
+            _log.LogInformation("Alert {AlertId} acknowledged by {By}", ack.AlertId, ack.AcknowledgedBy);
+            return Ok(new { success = true });
+        }
+
+        /// <summary>
         /// POST /api/endpoint/register
         /// Explicit device registration with customer info.
         /// </summary>
