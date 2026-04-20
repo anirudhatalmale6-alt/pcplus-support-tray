@@ -194,6 +194,13 @@ namespace PCPlus.Core.IPC
                 Parameters = new() { ["count"] = count.ToString() }
             });
 
+        public Task<IpcResponse> AcknowledgeAlertAsync(string alertId) =>
+            SendRequestAsync(new IpcRequest
+            {
+                Type = IpcRequestType.AcknowledgeAlert,
+                Parameters = new() { ["alertId"] = alertId }
+            });
+
         public Task<IpcResponse> PingAsync() =>
             SendRequestAsync(new IpcRequest { Type = IpcRequestType.Ping }, 3000);
 

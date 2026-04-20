@@ -142,6 +142,7 @@ namespace PCPlus.Tray.Forms
             AddNavItem(navPanel, "scanner", "Scanner", "\u2714", ref y);
             AddNavItem(navPanel, "protection", "Real-Time Protection", "\u2616", ref y);
             AddNavItem(navPanel, "history", "Detection History", "\u2630", ref y);
+            AddNavItem(navPanel, "lockdown", "Lockdown Mode", "\u26A0", ref y);
             AddNavItem(navPanel, "advisor", "Trusted Advisor", "\u2605", ref y);
             y += 10; // spacer
             AddNavItem(navPanel, "system", "System Info", "\u2699", ref y);
@@ -236,6 +237,7 @@ namespace PCPlus.Tray.Forms
                 case "scanner": BuildScannerView(); break;
                 case "protection": BuildProtectionView(); break;
                 case "history": BuildHistoryView(); break;
+                case "lockdown": BuildLockdownView(); break;
                 case "advisor": BuildAdvisorView(); break;
                 case "system": BuildSystemView(); break;
             }
@@ -358,17 +360,17 @@ namespace PCPlus.Tray.Forms
             int rightW = contentW - leftW - gap;
 
             // Hardware Monitor (left)
-            var monitorCard = CreateCard(new Point(m, y), new Size(leftW, 240));
+            var monitorCard = CreateCard(new Point(m, y), new Size(leftW, 290));
             monitorCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             AddHardwareMonitor(monitorCard);
             _contentArea.Controls.Add(monitorCard);
 
             // Quick Actions (right)
-            var quickCard = CreateCard(new Point(m + leftW + gap, y), new Size(rightW, 240));
+            var quickCard = CreateCard(new Point(m + leftW + gap, y), new Size(rightW, 290));
             quickCard.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             AddQuickActions(quickCard);
             _contentArea.Controls.Add(quickCard);
-            y += 248;
+            y += 298;
 
             // === PREMIUM FEATURES BAR ===
             var premCard = CreateCard(new Point(m, y), new Size(contentW, 110));
@@ -593,8 +595,9 @@ namespace PCPlus.Tray.Forms
                 ("Fix My Computer", "Clear temp, flush DNS, reset network", AccentBlue, async () =>
                 {
                     var confirm = MessageBox.Show(
-                        "This will:\n- Clear temporary files\n- Flush DNS cache\n" +
-                        "- Reset Winsock catalog\n- Refresh icons\n- Restart Explorer\n\nContinue?",
+                        "This will:\n- Clear temporary & thumbnail caches\n- Flush DNS & ARP caches\n" +
+                        "- Reset Winsock & TCP/IP stack\n- Run System File Checker & DISM repair\n" +
+                        "- Reset Windows Store cache\n- Refresh icons & restart Explorer\n\nContinue?",
                         "Fix My Computer", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                     if (confirm != DialogResult.Yes) return;
 
@@ -619,6 +622,10 @@ namespace PCPlus.Tray.Forms
                 ("Speed Test", "Test internet connection speed", AccentOrange, async () =>
                 {
                     await RunSpeedTestAsync();
+                }),
+                ("Report Card", "Generate security report for this PC", Color.FromArgb(128, 90, 213), async () =>
+                {
+                    await GenerateReportCardAsync();
                 }),
                 ("Take Screenshot", "Save screenshot to Pictures", AccentGreen, async () =>
                 {
@@ -1108,7 +1115,7 @@ namespace PCPlus.Tray.Forms
             int y = 55;
             foreach (var alert in _alerts.Take(20))
             {
-                var alertCard = CreateCard(new Point(24, y), new Size(_contentArea.Width - 72, 60));
+                var alertCard = CreateCard(new Point(24, y), new Size(_contentArea.Width - 72, 72));
                 alertCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
                 var localAlert = alert;
                 alertCard.Paint += (s, e) =>
@@ -1124,30 +1131,280 @@ namespace PCPlus.Tray.Forms
                         _ => AccentBlue
                     };
 
+                    // Dim card if acknowledged
+                    if (localAlert.Acknowledged)
+                    {
+                        using var dimBrush = new SolidBrush(Color.FromArgb(245, 245, 245));
+                        g.FillRectangle(dimBrush, 0, 0, alertCard.Width, alertCard.Height);
+                    }
+
                     // Severity bar on left
-                    using var barBrush = new SolidBrush(sevColor);
+                    using var barBrush = new SolidBrush(localAlert.Acknowledged ? TextMuted : sevColor);
                     g.FillRectangle(barBrush, 0, 0, 4, alertCard.Height);
 
                     // Title
                     using var titleFont = new Font("Segoe UI", 10, FontStyle.Bold);
-                    using var titleBrush = new SolidBrush(TextDark);
+                    using var titleBrush = new SolidBrush(localAlert.Acknowledged ? TextMuted : TextDark);
                     g.DrawString(localAlert.Title, titleFont, titleBrush, 16, 8);
 
                     // Message
                     using var msgFont = new Font("Segoe UI", 8.5f);
                     using var msgBrush = new SolidBrush(TextMuted);
                     var msg = localAlert.Message.Length > 80 ? localAlert.Message[..80] + "..." : localAlert.Message;
-                    g.DrawString(msg, msgFont, msgBrush, 16, 32);
+                    g.DrawString(msg, msgFont, msgBrush, 16, 30);
 
                     // Timestamp
                     using var timeFont = new Font("Segoe UI", 7.5f);
                     var timeStr = localAlert.Timestamp.ToString("MMM d, h:mm tt");
                     var timeSize = g.MeasureString(timeStr, timeFont);
-                    g.DrawString(timeStr, timeFont, msgBrush, alertCard.Width - timeSize.Width - 16, 12);
+                    g.DrawString(timeStr, timeFont, msgBrush, alertCard.Width - timeSize.Width - 16, 10);
+
+                    // Dismiss / Dismissed badge
+                    if (localAlert.Acknowledged)
+                    {
+                        using var ackFont = new Font("Segoe UI", 7.5f, FontStyle.Italic);
+                        using var ackBrush = new SolidBrush(AccentGreen);
+                        g.DrawString("\u2713 Dismissed", ackFont, ackBrush, alertCard.Width - 90, 50);
+                    }
+                    else
+                    {
+                        // Draw dismiss button area
+                        var btnRect = new Rectangle(alertCard.Width - 90, 46, 74, 20);
+                        using var btnBrush = new SolidBrush(Color.FromArgb(230, 230, 230));
+                        using var btnPen = new Pen(Color.FromArgb(200, 200, 200));
+                        g.FillRectangle(btnBrush, btnRect);
+                        g.DrawRectangle(btnPen, btnRect);
+                        using var btnFont = new Font("Segoe UI", 7.5f);
+                        using var btnTextBrush = new SolidBrush(TextDark);
+                        var btnText = "Dismiss";
+                        var btnTextSize = g.MeasureString(btnText, btnFont);
+                        g.DrawString(btnText, btnFont, btnTextBrush,
+                            btnRect.X + (btnRect.Width - btnTextSize.Width) / 2,
+                            btnRect.Y + (btnRect.Height - btnTextSize.Height) / 2);
+                    }
                 };
+
+                // Click handler for dismiss button
+                if (!localAlert.Acknowledged)
+                {
+                    var capturedAlert = localAlert;
+                    alertCard.MouseClick += async (s, e) =>
+                    {
+                        // Check if click is in the dismiss button area
+                        var btnRect = new Rectangle(alertCard.Width - 90, 46, 74, 20);
+                        if (btnRect.Contains(e.Location))
+                        {
+                            try
+                            {
+                                if (_ipc.IsConnected && !_usingLocalFallback)
+                                    await Task.Run(() => _ipc.AcknowledgeAlertAsync(capturedAlert.Id));
+                                capturedAlert.Acknowledged = true;
+                                alertCard.Invalidate();
+                            }
+                            catch { /* Silently fail - next refresh will sync */ }
+                        }
+                    };
+                    // Cursor change on hover over dismiss button
+                    alertCard.MouseMove += (s, e) =>
+                    {
+                        var btnRect = new Rectangle(alertCard.Width - 90, 46, 74, 20);
+                        alertCard.Cursor = btnRect.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
+                    };
+                }
+
                 _contentArea.Controls.Add(alertCard);
-                y += 68;
+                y += 80;
             }
+        }
+
+        #endregion
+
+        #region Lockdown Mode View
+
+        private void BuildLockdownView()
+        {
+            var title = CreatePageTitle("Lockdown Mode");
+            _contentArea.Controls.Add(title);
+
+            int m = 16;
+            int contentW = _contentArea.Width - m * 2 - 24;
+            if (contentW < 200) contentW = 660;
+            int y = 55;
+
+            // Status card - shows current lockdown state
+            var statusCard = CreateCard(new Point(m + 12, y), new Size(contentW, 130));
+            statusCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+            bool isLocked = false;
+            string lockReason = "";
+            string lockTime = "";
+            var lockdownInfo = new Dictionary<string, object>();
+
+            // Try to get lockdown state from service
+            if (_ipc.IsConnected && !_usingLocalFallback)
+            {
+                try
+                {
+                    var resp = _ipc.SendModuleCommandAsync("ransomware", "GetStatus",
+                        new Dictionary<string, string>()).GetAwaiter().GetResult();
+                    if (resp.Success && resp.Data != null)
+                    {
+                        if (resp.Data.TryGetValue("lockdown", out var ld) && ld is System.Text.Json.JsonElement je)
+                        {
+                            isLocked = je.TryGetProperty("IsActive", out var ia) && ia.GetBoolean();
+                            if (je.TryGetProperty("Reason", out var r)) lockReason = r.GetString() ?? "";
+                            if (je.TryGetProperty("ActivatedAt", out var at))
+                                lockTime = at.GetDateTime().ToString("MMM d, h:mm tt");
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            var capturedLocked = isLocked;
+            var capturedReason = lockReason;
+            var capturedTime = lockTime;
+
+            statusCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                // Status icon
+                var iconColor = capturedLocked ? AccentRed : AccentGreen;
+                using var iconBrush = new SolidBrush(iconColor);
+                g.FillEllipse(iconBrush, 20, 20, 40, 40);
+                using var iconFont = new Font("Segoe UI", 18, FontStyle.Bold);
+                using var iconTextBrush = new SolidBrush(Color.White);
+                var iconChar = capturedLocked ? "\u26A0" : "\u2713";
+                var iconSize = g.MeasureString(iconChar, iconFont);
+                g.DrawString(iconChar, iconFont, iconTextBrush,
+                    20 + (40 - iconSize.Width) / 2, 20 + (40 - iconSize.Height) / 2);
+
+                // Status text
+                using var statusFont = new Font("Segoe UI", 16, FontStyle.Bold);
+                using var statusBrush = new SolidBrush(capturedLocked ? AccentRed : AccentGreen);
+                g.DrawString(capturedLocked ? "LOCKDOWN ACTIVE" : "System Normal",
+                    statusFont, statusBrush, 75, 18);
+
+                using var detailFont = new Font("Segoe UI", 9.5f);
+                using var detailBrush = new SolidBrush(TextMuted);
+                if (capturedLocked)
+                {
+                    g.DrawString($"Activated: {capturedTime}", detailFont, detailBrush, 75, 50);
+                    var reasonStr = capturedReason.Length > 70 ? capturedReason[..70] + "..." : capturedReason;
+                    g.DrawString($"Reason: {reasonStr}", detailFont, detailBrush, 75, 70);
+                }
+                else
+                {
+                    g.DrawString("No active threats. Lockdown will activate automatically if a severe threat is detected.",
+                        detailFont, detailBrush, 75, 50);
+                    g.DrawString("You can also activate lockdown manually using the button below.",
+                        detailFont, detailBrush, 75, 70);
+                }
+            };
+            _contentArea.Controls.Add(statusCard);
+            y += 142;
+
+            // Action button - toggle lockdown
+            var btnCard = CreateCard(new Point(m + 12, y), new Size(contentW, 55));
+            btnCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            btnCard.Cursor = Cursors.Hand;
+            var btnLocked = capturedLocked;
+            btnCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                var bgColor = btnLocked ? AccentGreen : AccentRed;
+                using var bgBrush = new SolidBrush(bgColor);
+                var rect = new Rectangle(20, 10, btnCard.Width - 40, 35);
+                using var path = new GraphicsPath();
+                int r = 6;
+                path.AddArc(rect.X, rect.Y, r * 2, r * 2, 180, 90);
+                path.AddArc(rect.Right - r * 2, rect.Y, r * 2, r * 2, 270, 90);
+                path.AddArc(rect.Right - r * 2, rect.Bottom - r * 2, r * 2, r * 2, 0, 90);
+                path.AddArc(rect.X, rect.Bottom - r * 2, r * 2, r * 2, 90, 90);
+                path.CloseFigure();
+                g.FillPath(bgBrush, path);
+
+                using var btnFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var btnBrush = new SolidBrush(Color.White);
+                var text = btnLocked ? "\u2713 Deactivate Lockdown" : "\u26A0 Activate Lockdown Now";
+                var textSize = g.MeasureString(text, btnFont);
+                g.DrawString(text, btnFont, btnBrush,
+                    rect.X + (rect.Width - textSize.Width) / 2,
+                    rect.Y + (rect.Height - textSize.Height) / 2);
+            };
+            btnCard.Click += async (s, e) =>
+            {
+                if (!_ipc.IsConnected || _usingLocalFallback)
+                {
+                    MessageBox.Show("Service not connected. Lockdown requires the PC Plus service.",
+                        "PC Plus", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var action = btnLocked ? "DeactivateLockdown" : "ActivateLockdown";
+                var confirmMsg = btnLocked
+                    ? "Deactivate lockdown? This will restore network and RDP access."
+                    : "Activate lockdown? This will:\n\n- Kill all suspicious processes\n- Disable network (if auto-containment enabled)\n- Disable Remote Desktop\n\nOnly do this if you suspect an active threat.";
+
+                if (MessageBox.Show(confirmMsg, "PC Plus Lockdown",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                    return;
+
+                try
+                {
+                    await Task.Run(() => _ipc.SendModuleCommandAsync("ransomware", action,
+                        new Dictionary<string, string>()));
+                    btnLocked = !btnLocked;
+                    ShowView("lockdown"); // Refresh entire view
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed: {ex.Message}", "PC Plus", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+            _contentArea.Controls.Add(btnCard);
+            y += 67;
+
+            // Info card - what lockdown does
+            var infoCard = CreateCard(new Point(m + 12, y), new Size(contentW, 180));
+            infoCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            infoCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var headerFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var headerBrush = new SolidBrush(TextDark);
+                g.DrawString("What does Lockdown Mode do?", headerFont, headerBrush, 20, 14);
+
+                using var itemFont = new Font("Segoe UI", 9.5f);
+                using var itemBrush = new SolidBrush(TextMuted);
+                using var bulletBrush = new SolidBrush(AccentTeal);
+
+                var items = new[]
+                {
+                    "Immediately kills all processes flagged by the behavior scoring engine",
+                    "Disables network adapters to prevent data exfiltration (if auto-containment enabled)",
+                    "Disables Remote Desktop to block remote access by attackers",
+                    "Sends an Emergency alert to the dashboard and all notification channels",
+                    "Remains active until manually deactivated by an administrator"
+                };
+
+                int iy = 42;
+                foreach (var item in items)
+                {
+                    g.FillEllipse(bulletBrush, 24, iy + 5, 6, 6);
+                    g.DrawString(item, itemFont, itemBrush, 40, iy);
+                    iy += 26;
+                }
+            };
+            _contentArea.Controls.Add(infoCard);
         }
 
         #endregion
@@ -1589,6 +1846,217 @@ namespace PCPlus.Tray.Forms
                 MessageBox.Show($"Screenshot failed: {ex.Message}", "Screenshot",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private async Task GenerateReportCardAsync()
+        {
+            await Task.CompletedTask;
+
+            var reportDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "PC Plus Reports");
+            Directory.CreateDirectory(reportDir);
+
+            var hostname = Environment.MachineName;
+            var reportDate = DateTime.Now;
+            var filename = $"PCPlus_Report_{hostname}_{reportDate:yyyy-MM-dd}.html";
+            var filepath = Path.Combine(reportDir, filename);
+
+            // Gather data
+            var secScore = _securityResult?.TotalScore ?? 0;
+            var secGrade = _securityResult?.Grade ?? "?";
+            var checks = _securityResult?.Checks ?? new List<PCPlus.Core.Models.SecurityCheck>();
+            var passedCount = checks.Count(c => c.Passed);
+            var failedCount = checks.Count(c => !c.Passed);
+            var totalChecks = checks.Count;
+
+            var cpu = _health?.CpuPercent ?? 0;
+            var ram = _health?.RamPercent ?? 0;
+            var ramUsed = _health?.RamUsedGB ?? 0;
+            var ramTotal = _health?.RamTotalGB ?? 0;
+            var cpuTemp = _health?.CpuTempC ?? 0;
+            var gpuTemp = _health?.GpuTempC ?? 0;
+            var uptime = _health?.Uptime ?? TimeSpan.Zero;
+            var osVersion = GetFriendlyOsVersion();
+
+            var gradeColor = secGrade switch
+            {
+                "A" => "#2eb85c",
+                "B" => "#39f",
+                "C" => "#f5a623",
+                "D" => "#e55",
+                "F" => "#dc3545",
+                _ => "#888"
+            };
+
+            // Build category summary for security checks
+            var categories = checks.GroupBy(c => c.Category)
+                .Select(g => new
+                {
+                    Name = g.Key,
+                    Total = g.Count(),
+                    Passed = g.Count(c => c.Passed),
+                    Failed = g.Count(c => !c.Passed)
+                }).OrderByDescending(c => c.Failed).ToList();
+
+            // Build failed checks HTML
+            var failedChecksHtml = "";
+            foreach (var check in checks.Where(c => !c.Passed).OrderBy(c => c.Category))
+            {
+                failedChecksHtml += $@"
+                <tr>
+                    <td style='padding:8px 12px;border-bottom:1px solid #eee;'>{System.Net.WebUtility.HtmlEncode(check.Category)}</td>
+                    <td style='padding:8px 12px;border-bottom:1px solid #eee;'>{System.Net.WebUtility.HtmlEncode(check.Name)}</td>
+                    <td style='padding:8px 12px;border-bottom:1px solid #eee;color:#888;'>{System.Net.WebUtility.HtmlEncode(check.Recommendation)}</td>
+                </tr>";
+            }
+
+            // Build disk info
+            var diskHtml = "";
+            if (_health?.Disks != null)
+            {
+                foreach (var disk in _health.Disks)
+                {
+                    var diskColor = disk.UsedPercent > 90 ? "#dc3545" : disk.UsedPercent > 75 ? "#f5a623" : "#2eb85c";
+                    diskHtml += $@"
+                    <div style='margin-bottom:8px;'>
+                        <div style='display:flex;justify-content:space-between;margin-bottom:4px;'>
+                            <span>{System.Net.WebUtility.HtmlEncode(disk.Name)} {System.Net.WebUtility.HtmlEncode(disk.Label)}</span>
+                            <span>{disk.FreeGB:F1} GB free of {disk.TotalGB:F1} GB</span>
+                        </div>
+                        <div style='background:#eee;border-radius:4px;height:8px;'>
+                            <div style='background:{diskColor};border-radius:4px;height:8px;width:{disk.UsedPercent:F0}%;'></div>
+                        </div>
+                    </div>";
+                }
+            }
+
+            // Active alerts summary
+            var alertsSummary = $"{_alerts.Count(a => !a.Acknowledged)} unacknowledged alerts";
+            var criticalAlerts = _alerts.Count(a => a.Severity >= PCPlus.Core.Models.AlertSeverity.Critical && !a.Acknowledged);
+
+            var html = $@"<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<title>PC Plus Security Report - {System.Net.WebUtility.HtmlEncode(hostname)}</title>
+<style>
+  body {{ font-family: 'Segoe UI', Arial, sans-serif; margin:0; padding:0; background:#f5f6fa; color:#333; }}
+  .container {{ max-width:800px; margin:0 auto; padding:20px; }}
+  .header {{ background:linear-gradient(135deg, #0078d7, #00a1f1); color:white; padding:30px; border-radius:12px 12px 0 0; }}
+  .header h1 {{ margin:0; font-size:24px; }}
+  .header p {{ margin:6px 0 0; opacity:0.9; }}
+  .body {{ background:white; padding:30px; border-radius:0 0 12px 12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); }}
+  .grade-circle {{ width:100px; height:100px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:48px; font-weight:bold; color:white; float:right; margin-top:-10px; }}
+  .section {{ margin-top:28px; }}
+  .section h2 {{ font-size:16px; color:#0078d7; border-bottom:2px solid #0078d7; padding-bottom:6px; margin-bottom:14px; }}
+  .metric-grid {{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px; }}
+  .metric {{ background:#f8f9fa; border-radius:8px; padding:14px; text-align:center; }}
+  .metric .value {{ font-size:24px; font-weight:bold; }}
+  .metric .label {{ font-size:11px; color:#888; margin-top:4px; }}
+  table {{ width:100%; border-collapse:collapse; }}
+  th {{ text-align:left; padding:8px 12px; background:#f8f9fa; border-bottom:2px solid #ddd; font-size:12px; text-transform:uppercase; color:#666; }}
+  .cat-bar {{ display:inline-block; height:6px; border-radius:3px; }}
+  .footer {{ text-align:center; margin-top:20px; color:#999; font-size:11px; }}
+</style>
+</head>
+<body>
+<div class='container'>
+  <div class='header'>
+    <div class='grade-circle' style='background:{gradeColor};'>{secGrade}</div>
+    <h1>PC Plus Endpoint Security Report</h1>
+    <p>{System.Net.WebUtility.HtmlEncode(hostname)} &mdash; {reportDate:MMMM d, yyyy h:mm tt}</p>
+  </div>
+  <div class='body'>
+    <div class='section'>
+      <h2>Security Score: {secScore}/100</h2>
+      <div style='background:#eee;border-radius:6px;height:14px;margin-bottom:12px;'>
+        <div style='background:{gradeColor};border-radius:6px;height:14px;width:{secScore}%;'></div>
+      </div>
+      <p>{passedCount} of {totalChecks} security checks passed. {failedCount} issues need attention.</p>
+    </div>
+
+    <div class='section'>
+      <h2>System Health</h2>
+      <div class='metric-grid'>
+        <div class='metric'>
+          <div class='value' style='color:{(cpu > 85 ? "#dc3545" : cpu > 60 ? "#f5a623" : "#2eb85c")};'>{cpu:F0}%</div>
+          <div class='label'>CPU Usage</div>
+        </div>
+        <div class='metric'>
+          <div class='value' style='color:{(ram > 85 ? "#dc3545" : ram > 60 ? "#f5a623" : "#2eb85c")};'>{ram:F0}%</div>
+          <div class='label'>RAM ({ramUsed:F1}/{ramTotal:F1} GB)</div>
+        </div>
+        <div class='metric'>
+          <div class='value'>{cpuTemp:F0}&deg;C</div>
+          <div class='label'>CPU Temperature</div>
+        </div>
+        <div class='metric'>
+          <div class='value'>{(int)uptime.TotalHours}h</div>
+          <div class='label'>Uptime</div>
+        </div>
+      </div>
+    </div>
+
+    <div class='section'>
+      <h2>Storage</h2>
+      {diskHtml}
+    </div>
+
+    <div class='section'>
+      <h2>Security by Category</h2>
+      <table>
+        <tr><th>Category</th><th>Passed</th><th>Failed</th><th>Score</th></tr>
+        {string.Join("", categories.Select(c =>
+        {
+            var pct = c.Total > 0 ? (int)(c.Passed * 100.0 / c.Total) : 0;
+            var barColor = pct >= 80 ? "#2eb85c" : pct >= 50 ? "#f5a623" : "#dc3545";
+            return $@"<tr>
+                <td style='padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;'>{System.Net.WebUtility.HtmlEncode(c.Name)}</td>
+                <td style='padding:8px 12px;border-bottom:1px solid #eee;color:#2eb85c;'>{c.Passed}</td>
+                <td style='padding:8px 12px;border-bottom:1px solid #eee;color:#dc3545;'>{c.Failed}</td>
+                <td style='padding:8px 12px;border-bottom:1px solid #eee;'>
+                    <span class='cat-bar' style='background:{barColor};width:{pct}px;'></span> {pct}%
+                </td>
+            </tr>";
+        }))}
+      </table>
+    </div>
+
+    {(failedCount > 0 ? $@"<div class='section'>
+      <h2>Issues Requiring Attention ({failedCount})</h2>
+      <table>
+        <tr><th>Category</th><th>Check</th><th>Recommendation</th></tr>
+        {failedChecksHtml}
+      </table>
+    </div>" : "<div class='section'><h2>All Clear!</h2><p>All security checks passed. Your system is well-protected.</p></div>")}
+
+    <div class='section'>
+      <h2>Alerts</h2>
+      <p>{alertsSummary}{(criticalAlerts > 0 ? $" ({criticalAlerts} critical)" : "")}</p>
+    </div>
+
+    <div class='section' style='background:#f8f9fa;padding:16px;border-radius:8px;'>
+      <strong>System:</strong> {System.Net.WebUtility.HtmlEncode(osVersion)} &bull;
+      <strong>Agent:</strong> v4.13.0 &bull;
+      <strong>Last Scan:</strong> {(_securityResult?.ScanTime.ToString("MMM d, h:mm tt") ?? "Never")}
+    </div>
+  </div>
+  <div class='footer'>
+    Generated by PC Plus Endpoint Protection &mdash; PC Plus Computing<br>
+    {reportDate:yyyy-MM-dd HH:mm:ss} UTC
+  </div>
+</div>
+</body>
+</html>";
+
+            await File.WriteAllTextAsync(filepath, html);
+
+            MessageBox.Show($"Report saved to:\n{filepath}", "Report Card Generated",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            { FileName = filepath, UseShellExecute = true });
         }
 
         private static string GetFriendlyOsVersion()

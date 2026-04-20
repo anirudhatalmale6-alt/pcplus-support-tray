@@ -103,23 +103,43 @@ namespace PCPlus.Service.Modules.Maintenance
             // 1. Clear temp files
             report.SpaceFreedMB += ClearTempFiles();
 
-            // 2. Flush DNS cache
+            // 2. Clear thumbnail cache
+            report.SpaceFreedMB += ClearThumbnailCache();
+            report.Actions.Add("Thumbnail cache cleared");
+
+            // 3. Flush DNS cache
             RunCmd("ipconfig", "/flushdns");
             report.Actions.Add("DNS cache flushed");
 
-            // 3. Reset Winsock
+            // 4. Clear ARP cache
+            RunCmd("netsh", "interface ip delete arpcache");
+            report.Actions.Add("ARP cache cleared");
+
+            // 5. Reset Winsock
             RunCmd("netsh", "winsock reset");
             report.Actions.Add("Winsock catalog reset");
 
-            // 4. Run SFC (System File Checker) in background
+            // 6. Reset TCP/IP stack
+            RunCmd("netsh", "int ip reset");
+            report.Actions.Add("TCP/IP stack reset");
+
+            // 7. Run SFC (System File Checker) in background
             RunCmd("sfc", "/scannow");
             report.Actions.Add("System File Checker initiated");
 
-            // 5. Clear Windows icon cache
+            // 8. Run DISM repair
+            RunCmd("DISM", "/Online /Cleanup-Image /RestoreHealth");
+            report.Actions.Add("DISM image repair initiated");
+
+            // 9. Reset Windows Store cache
+            RunCmd("wsreset.exe", "");
+            report.Actions.Add("Windows Store cache reset");
+
+            // 10. Clear Windows icon cache
             ClearIconCache();
             report.Actions.Add("Icon cache cleared");
 
-            // 6. Restart Windows Explorer (refreshes shell)
+            // 11. Restart Windows Explorer (refreshes shell)
             RestartExplorer();
             report.Actions.Add("Explorer restarted");
 
@@ -263,6 +283,32 @@ namespace PCPlus.Service.Modules.Maintenance
                         }
                     }
                     catch { }
+                }
+            }
+            catch { }
+            return freedMB;
+        }
+
+        private static float ClearThumbnailCache()
+        {
+            float freedMB = 0;
+            try
+            {
+                var thumbDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "Windows", "Explorer");
+                if (Directory.Exists(thumbDir))
+                {
+                    foreach (var file in Directory.EnumerateFiles(thumbDir, "thumbcache_*.db"))
+                    {
+                        try
+                        {
+                            var fi = new FileInfo(file);
+                            freedMB += fi.Length / (1024f * 1024f);
+                            fi.Delete();
+                        }
+                        catch { }
+                    }
                 }
             }
             catch { }
