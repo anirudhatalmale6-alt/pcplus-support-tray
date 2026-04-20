@@ -139,6 +139,10 @@ if (Test-Path $ConfigFile) {
 }
 $config["deviceId"] = $deviceId
 $config["dashboardApiUrl"] = $DashboardUrl
+# Set customer name from TRMM variable (only if it resolved properly)
+$resolvedName = ""
+if ($CustomerName -and $CustomerName -notlike "*{{*") { $resolvedName = $CustomerName }
+if ($resolvedName) { $config["companyName"] = $resolvedName }
 if (-not $config.ContainsKey("ransomwareProtectionEnabled")) { $config["ransomwareProtectionEnabled"] = "true" }
 if (-not $config.ContainsKey("autoContainmentEnabled")) { $config["autoContainmentEnabled"] = "true" }
 if (-not $config.ContainsKey("showBalloonAlerts")) { $config["showBalloonAlerts"] = "true" }
