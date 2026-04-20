@@ -1542,31 +1542,274 @@ namespace PCPlus.Tray.Forms
             copyBtn.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             _contentArea.Controls.Add(copyBtn);
 
-            // Collect system info
-            var items = new List<(string category, string key, string value)>();
-            items.Add(("System", "Computer Name", Environment.MachineName));
-            items.Add(("System", "User", $"{Environment.UserDomainName}\\{Environment.UserName}"));
-            items.Add(("System", "OS", GetFriendlyOsVersion()));
-            items.Add(("System", "Architecture", Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit"));
-            items.Add(("System", ".NET Runtime", System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription));
-            items.Add(("System", "Local IP", GetLocalIpAddress()));
-            items.Add(("System", "Public IP", _cachedPublicIp ?? "Loading..."));
+            // Collect all items for copy functionality
+            var allItems = new List<(string category, string key, string value)>();
 
+            int m = 16;
+            int contentW = _contentArea.Width - m * 2 - 24;
+            if (contentW < 200) contentW = 660;
+            int y = 55;
+            int gap = 12;
+
+            // === COMPUTER IDENTITY CARD ===
+            var identityCard = CreateCard(new Point(m + 12, y), new Size(contentW, 100));
+            identityCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            identityCard.Tag = "sysrow";
+            identityCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                // Computer icon circle
+                using var circleBrush = new SolidBrush(Color.FromArgb(230, 240, 255));
+                g.FillEllipse(circleBrush, 20, 20, 60, 60);
+                using var iconFont = new Font("Segoe UI", 24);
+                using var iconBrush = new SolidBrush(AccentTeal);
+                g.DrawString("\u2699", iconFont, iconBrush, 32, 32);
+
+                // Computer name large
+                using var nameFont = new Font("Segoe UI", 18, FontStyle.Bold);
+                using var nameBrush = new SolidBrush(TextDark);
+                g.DrawString(Environment.MachineName, nameFont, nameBrush, 95, 14);
+
+                // User and OS subtitle
+                using var subFont = new Font("Segoe UI", 9.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                var userStr = $"{Environment.UserDomainName}\\{Environment.UserName}";
+                g.DrawString(userStr, subFont, subBrush, 97, 48);
+                g.DrawString(GetFriendlyOsVersion() + " \u2022 " +
+                    (Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit"), subFont, subBrush, 97, 68);
+            };
+            _contentArea.Controls.Add(identityCard);
+            allItems.Add(("System", "Computer Name", Environment.MachineName));
+            allItems.Add(("System", "User", $"{Environment.UserDomainName}\\{Environment.UserName}"));
+            allItems.Add(("System", "OS", GetFriendlyOsVersion()));
+            allItems.Add(("System", "Architecture", Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit"));
+            y += 100 + gap;
+
+            // === HEALTH GAUGES ROW (4 mini cards) ===
             if (_health != null)
             {
-                items.Add(("Health", "CPU Usage", $"{_health.CpuPercent:F0}%"));
-                items.Add(("Health", "RAM Usage", $"{_health.RamUsedGB:F1} / {_health.RamTotalGB:F1} GB ({_health.RamPercent:F0}%)"));
-                items.Add(("Health", "CPU Temperature", _health.CpuTempC > 0 ? $"{_health.CpuTempC:F0} C" : "N/A"));
-                items.Add(("Health", "GPU Temperature", _health.GpuTempC > 0 ? $"{_health.GpuTempC:F0} C" : "N/A"));
-                items.Add(("Health", "Uptime", $"{(int)_health.Uptime.TotalDays}d {_health.Uptime.Hours}h {_health.Uptime.Minutes}m"));
-                items.Add(("Health", "Processes", _health.ProcessCount.ToString()));
-                items.Add(("Health", "Network", $"Up: {_health.NetworkSentKBps:F0} KB/s  Down: {_health.NetworkRecvKBps:F0} KB/s"));
+                int gaugeW = (contentW - gap * 3) / 4;
+                var gauges = new (string label, string value, float percent, Color color)[]
+                {
+                    ("CPU", $"{_health.CpuPercent:F0}%", _health.CpuPercent,
+                        _health.CpuPercent > 85 ? AccentRed : _health.CpuPercent > 60 ? AccentOrange : AccentGreen),
+                    ("Memory", $"{_health.RamUsedGB:F1}/{_health.RamTotalGB:F0} GB",
+                        _health.RamPercent, _health.RamPercent > 85 ? AccentRed : _health.RamPercent > 60 ? AccentOrange : AccentGreen),
+                    ("CPU Temp", _health.CpuTempC > 0 ? $"{_health.CpuTempC:F0}\u00B0C" : "N/A",
+                        Math.Min(_health.CpuTempC, 100),
+                        _health.CpuTempC > 80 ? AccentRed : _health.CpuTempC > 60 ? AccentOrange : AccentGreen),
+                    ("Uptime", $"{(int)_health.Uptime.TotalDays}d {_health.Uptime.Hours}h",
+                        Math.Min((float)_health.Uptime.TotalDays / 30f * 100f, 100f), AccentBlue)
+                };
 
-                foreach (var disk in _health.Disks)
-                    items.Add(("Disks", $"Drive {disk.Name}", $"{disk.FreeGB:F0} GB free / {disk.TotalGB:F0} GB ({disk.UsedPercent:F0}% used)"));
+                for (int i = 0; i < gauges.Length; i++)
+                {
+                    var g = gauges[i];
+                    var gaugeCard = CreateCard(new Point(m + 12 + i * (gaugeW + gap), y), new Size(gaugeW, 90));
+                    gaugeCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                    gaugeCard.Tag = "sysrow";
+                    var capturedGauge = g;
+                    gaugeCard.Paint += (s, e) =>
+                    {
+                        var gr = e.Graphics;
+                        gr.SmoothingMode = SmoothingMode.AntiAlias;
+                        gr.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                        // Label
+                        using var lblFont = new Font("Segoe UI", 8);
+                        using var lblBrush = new SolidBrush(TextMuted);
+                        gr.DrawString(capturedGauge.label, lblFont, lblBrush, 12, 10);
+
+                        // Value
+                        using var valFont = new Font("Segoe UI", 16, FontStyle.Bold);
+                        using var valBrush = new SolidBrush(capturedGauge.color);
+                        gr.DrawString(capturedGauge.value, valFont, valBrush, 12, 28);
+
+                        // Progress bar
+                        var barRect = new Rectangle(12, 68, gaugeCard.Width - 24, 8);
+                        using var bgBrush = new SolidBrush(Color.FromArgb(230, 235, 240));
+                        using var brPath = RoundedRect(barRect, 4);
+                        gr.FillPath(bgBrush, brPath);
+                        if (capturedGauge.percent > 0)
+                        {
+                            var fillW = Math.Max(8, (int)(barRect.Width * capturedGauge.percent / 100f));
+                            var fillRect = new Rectangle(barRect.X, barRect.Y, fillW, barRect.Height);
+                            using var fillBrush = new SolidBrush(capturedGauge.color);
+                            using var fillPath = RoundedRect(fillRect, 4);
+                            gr.FillPath(fillBrush, fillPath);
+                        }
+                    };
+                    _contentArea.Controls.Add(gaugeCard);
+                }
+                allItems.Add(("Health", "CPU Usage", $"{_health.CpuPercent:F0}%"));
+                allItems.Add(("Health", "RAM Usage", $"{_health.RamUsedGB:F1} / {_health.RamTotalGB:F1} GB ({_health.RamPercent:F0}%)"));
+                allItems.Add(("Health", "CPU Temperature", _health.CpuTempC > 0 ? $"{_health.CpuTempC:F0} C" : "N/A"));
+                allItems.Add(("Health", "Uptime", $"{(int)_health.Uptime.TotalDays}d {_health.Uptime.Hours}h {_health.Uptime.Minutes}m"));
+                y += 90 + gap;
             }
 
-            // Load WMI info and public IP async
+            // === NETWORK & PROCESSES ROW (2 cards side by side) ===
+            if (_health != null)
+            {
+                int halfW = (contentW - gap) / 2;
+
+                // Network card
+                var netCard = CreateCard(new Point(m + 12, y), new Size(halfW, 70));
+                netCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                netCard.Tag = "sysrow";
+                var networkUp = _health.NetworkSentKBps;
+                var networkDown = _health.NetworkRecvKBps;
+                var processCount = _health.ProcessCount;
+                netCard.Paint += (s, e) =>
+                {
+                    var g = e.Graphics;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                    using var hdrFont = new Font("Segoe UI", 8);
+                    using var hdrBrush = new SolidBrush(TextMuted);
+                    g.DrawString("NETWORK ACTIVITY", hdrFont, hdrBrush, 12, 10);
+
+                    using var valFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                    using var upBrush = new SolidBrush(AccentGreen);
+                    using var dnBrush = new SolidBrush(AccentBlue);
+                    g.DrawString($"\u2191 {networkUp:F0} KB/s", valFont, upBrush, 12, 34);
+                    g.DrawString($"\u2193 {networkDown:F0} KB/s", valFont, dnBrush, halfW / 2, 34);
+                };
+                _contentArea.Controls.Add(netCard);
+
+                // Processes card
+                var procCard = CreateCard(new Point(m + 12 + halfW + gap, y), new Size(halfW, 70));
+                procCard.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                procCard.Tag = "sysrow";
+                procCard.Paint += (s, e) =>
+                {
+                    var g = e.Graphics;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                    using var hdrFont = new Font("Segoe UI", 8);
+                    using var hdrBrush = new SolidBrush(TextMuted);
+                    g.DrawString("PROCESSES", hdrFont, hdrBrush, 12, 10);
+
+                    using var valFont = new Font("Segoe UI", 18, FontStyle.Bold);
+                    using var valBrush = new SolidBrush(TextDark);
+                    g.DrawString(processCount.ToString(), valFont, valBrush, 12, 28);
+
+                    using var unitFont = new Font("Segoe UI", 9);
+                    var numSize = g.MeasureString(processCount.ToString(), valFont);
+                    g.DrawString("running", unitFont, hdrBrush, 14 + numSize.Width, 40);
+                };
+                _contentArea.Controls.Add(procCard);
+
+                allItems.Add(("Health", "Network", $"Up: {networkUp:F0} KB/s  Down: {networkDown:F0} KB/s"));
+                allItems.Add(("Health", "Processes", processCount.ToString()));
+                y += 70 + gap;
+            }
+
+            // === STORAGE CARD ===
+            if (_health?.Disks != null && _health.Disks.Count > 0)
+            {
+                int diskCardH = 44 + _health.Disks.Count * 50;
+                var diskCard = CreateCard(new Point(m + 12, y), new Size(contentW, diskCardH));
+                diskCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+                diskCard.Tag = "sysrow";
+                var disks = _health.Disks.ToList();
+                diskCard.Paint += (s, e) =>
+                {
+                    var g = e.Graphics;
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                    using var hdrFont = new Font("Segoe UI", 10, FontStyle.Bold);
+                    using var hdrBrush = new SolidBrush(TextDark);
+                    g.DrawString("\u2588 Storage", hdrFont, hdrBrush, 12, 12);
+
+                    int dy = 42;
+                    foreach (var disk in disks)
+                    {
+                        var diskColor = disk.UsedPercent > 90 ? AccentRed :
+                            disk.UsedPercent > 75 ? AccentOrange : AccentGreen;
+
+                        using var nameFont = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                        using var nameBrush = new SolidBrush(TextDark);
+                        g.DrawString($"Drive {disk.Name} {disk.Label}", nameFont, nameBrush, 16, dy);
+
+                        using var detailFont = new Font("Segoe UI", 8);
+                        using var detailBrush = new SolidBrush(TextMuted);
+                        var detailStr = $"{disk.FreeGB:F0} GB free of {disk.TotalGB:F0} GB";
+                        var detailSize = g.MeasureString(detailStr, detailFont);
+                        g.DrawString(detailStr, detailFont, detailBrush, diskCard.Width - detailSize.Width - 16, dy);
+
+                        // Progress bar
+                        var barRect = new Rectangle(16, dy + 22, diskCard.Width - 32, 10);
+                        using var bgBrush = new SolidBrush(Color.FromArgb(230, 235, 240));
+                        using var bgPath = RoundedRect(barRect, 5);
+                        g.FillPath(bgBrush, bgPath);
+                        var fillW = Math.Max(10, (int)(barRect.Width * disk.UsedPercent / 100f));
+                        var fillRect = new Rectangle(barRect.X, barRect.Y, fillW, barRect.Height);
+                        using var fillBrush = new SolidBrush(diskColor);
+                        using var fillPath = RoundedRect(fillRect, 5);
+                        g.FillPath(fillBrush, fillPath);
+
+                        // Percentage label on bar
+                        using var pctFont = new Font("Segoe UI", 7, FontStyle.Bold);
+                        using var pctBrush = new SolidBrush(Color.White);
+                        if (fillW > 30)
+                            g.DrawString($"{disk.UsedPercent:F0}%", pctFont, pctBrush, barRect.X + 6, barRect.Y - 1);
+
+                        dy += 50;
+                    }
+                };
+                _contentArea.Controls.Add(diskCard);
+                foreach (var disk in _health.Disks)
+                    allItems.Add(("Disks", $"Drive {disk.Name}", $"{disk.FreeGB:F0} GB free / {disk.TotalGB:F0} GB ({disk.UsedPercent:F0}% used)"));
+                y += diskCardH + gap;
+            }
+
+            // === NETWORKING CARD ===
+            var netInfoCard = CreateCard(new Point(m + 12, y), new Size(contentW, 50));
+            netInfoCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            netInfoCard.Tag = "sysrow";
+            var localIp = GetLocalIpAddress();
+            var publicIp = _cachedPublicIp ?? "Loading...";
+            netInfoCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var hdrFont = new Font("Segoe UI", 10, FontStyle.Bold);
+                using var hdrBrush = new SolidBrush(TextDark);
+                g.DrawString("\u2302 Network", hdrFont, hdrBrush, 12, 14);
+
+                using var valFont = new Font("Segoe UI", 9);
+                using var keyBrush = new SolidBrush(TextMuted);
+                using var valBrush = new SolidBrush(TextDark);
+                g.DrawString("Local IP:", valFont, keyBrush, 140, 16);
+                g.DrawString(localIp, valFont, valBrush, 200, 16);
+                g.DrawString("Public IP:", valFont, keyBrush, 380, 16);
+                g.DrawString(publicIp, valFont, valBrush, 448, 16);
+            };
+            _contentArea.Controls.Add(netInfoCard);
+            allItems.Add(("Network", "Local IP", localIp));
+            allItems.Add(("Network", "Public IP", publicIp));
+            y += 50 + gap;
+
+            // === HARDWARE DETAILS CARD (loaded async with WMI) ===
+            var hwPlaceholder = CreateCard(new Point(m + 12, y), new Size(contentW, 40));
+            hwPlaceholder.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            hwPlaceholder.Tag = "sysrow";
+            hwPlaceholder.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                using var font = new Font("Segoe UI", 9);
+                using var brush = new SolidBrush(TextMuted);
+                g.DrawString("Loading hardware details...", font, brush, 12, 10);
+            };
+            _contentArea.Controls.Add(hwPlaceholder);
+            int hwStartY = y;
+
+            // Load WMI info and public IP async, then replace placeholder
             _ = Task.Run(async () =>
             {
                 var hwItems = GetHardwareInfo();
@@ -1574,94 +1817,73 @@ namespace PCPlus.Tray.Forms
                 if (InvokeRequired && !IsDisposed)
                     Invoke(new Action(() =>
                     {
-                        // Rebuild items with public IP resolved
-                        var updatedItems = new List<(string category, string key, string value)>();
-                        updatedItems.Add(("System", "Computer Name", Environment.MachineName));
-                        updatedItems.Add(("System", "User", $"{Environment.UserDomainName}\\{Environment.UserName}"));
-                        updatedItems.Add(("System", "OS", GetFriendlyOsVersion()));
-                        updatedItems.Add(("System", "Architecture", Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit"));
-                        updatedItems.Add(("System", ".NET Runtime", System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription));
-                        updatedItems.Add(("System", "Local IP", GetLocalIpAddress()));
-                        updatedItems.Add(("System", "Public IP", _cachedPublicIp ?? "N/A"));
-                        if (_health != null)
+                        // Remove placeholder
+                        if (hwPlaceholder != null && _contentArea.Controls.Contains(hwPlaceholder))
                         {
-                            updatedItems.Add(("Health", "CPU Usage", $"{_health.CpuPercent:F0}%"));
-                            updatedItems.Add(("Health", "RAM Usage", $"{_health.RamUsedGB:F1} / {_health.RamTotalGB:F1} GB ({_health.RamPercent:F0}%)"));
-                            updatedItems.Add(("Health", "CPU Temperature", _health.CpuTempC > 0 ? $"{_health.CpuTempC:F0} C" : "N/A"));
-                            updatedItems.Add(("Health", "GPU Temperature", _health.GpuTempC > 0 ? $"{_health.GpuTempC:F0} C" : "N/A"));
-                            updatedItems.Add(("Health", "Uptime", $"{(int)_health.Uptime.TotalDays}d {_health.Uptime.Hours}h {_health.Uptime.Minutes}m"));
-                            updatedItems.Add(("Health", "Processes", _health.ProcessCount.ToString()));
-                            updatedItems.Add(("Health", "Network", $"Up: {_health.NetworkSentKBps:F0} KB/s  Down: {_health.NetworkRecvKBps:F0} KB/s"));
-                            foreach (var disk in _health.Disks)
-                                updatedItems.Add(("Disks", $"Drive {disk.Name}", $"{disk.FreeGB:F0} GB free / {disk.TotalGB:F0} GB ({disk.UsedPercent:F0}% used)"));
+                            _contentArea.Controls.Remove(hwPlaceholder);
+                            hwPlaceholder.Dispose();
                         }
-                        AddSystemInfoRows(updatedItems.Concat(hwItems).ToList(), copyBtn);
+
+                        // Update public IP on net info card
+                        publicIp = _cachedPublicIp ?? "N/A";
+                        netInfoCard.Invalidate();
+
+                        // Build hardware + network adapter cards
+                        int hy = hwStartY;
+
+                        // Group by category
+                        var grouped = hwItems.GroupBy(i => i.category).ToList();
+                        foreach (var group in grouped)
+                        {
+                            int rowCount = group.Count();
+                            int cardH = 40 + rowCount * 28;
+                            var hwCard = CreateCard(new Point(m + 12, hy), new Size(contentW, cardH));
+                            hwCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+                            hwCard.Tag = "sysrow";
+                            var catName = group.Key;
+                            var rows = group.ToList();
+                            hwCard.Paint += (s2, e2) =>
+                            {
+                                var g2 = e2.Graphics;
+                                g2.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                                // Section header
+                                using var hdrFont2 = new Font("Segoe UI", 10, FontStyle.Bold);
+                                using var hdrBrush2 = new SolidBrush(TextDark);
+                                var icon = catName == "Hardware" ? "\u2616" : "\u2302";
+                                g2.DrawString($"{icon} {catName}", hdrFont2, hdrBrush2, 12, 10);
+
+                                int ry = 38;
+                                foreach (var (_, key, value) in rows)
+                                {
+                                    using var keyFont = new Font("Segoe UI", 9, FontStyle.Bold);
+                                    using var valFont = new Font("Segoe UI", 9);
+                                    using var keyBr = new SolidBrush(TextMuted);
+                                    using var valBr = new SolidBrush(TextDark);
+                                    g2.DrawString(key, keyFont, keyBr, 20, ry);
+                                    g2.DrawString(value, valFont, valBr, 220, ry);
+                                    ry += 28;
+                                }
+                            };
+                            _contentArea.Controls.Add(hwCard);
+                            hy += cardH + gap;
+
+                            foreach (var item in rows)
+                                allItems.Add(item);
+                        }
+
+                        // Update .NET Runtime info
+                        allItems.Add(("System", ".NET Runtime",
+                            System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription));
+
+                        // Re-wire copy button with full data
+                        _sysInfoItems = allItems;
                     }));
             });
 
-            // Show what we have immediately
-            AddSystemInfoRows(items, copyBtn);
-        }
-
-        private void AddSystemInfoRows(List<(string category, string key, string value)> items, Button copyBtn)
-        {
-            // Remove old rows (keep title and copy button)
-            var toRemove = _contentArea.Controls.OfType<Panel>()
-                .Where(p => p.Tag?.ToString() == "sysrow").ToList();
-            foreach (var p in toRemove) { _contentArea.Controls.Remove(p); p.Dispose(); }
-
-            int y = 55;
-            string lastCategory = "";
-
-            foreach (var (category, key, value) in items)
-            {
-                if (category != lastCategory)
-                {
-                    var catLabel = new Label
-                    {
-                        Text = category, Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                        ForeColor = AccentTeal, BackColor = Color.Transparent,
-                        Location = new Point(24, y), AutoSize = true
-                    };
-                    var catPanel = new Panel
-                    {
-                        Location = new Point(24, y), Size = new Size(_contentArea.Width - 72, 28),
-                        BackColor = Color.Transparent, Tag = "sysrow"
-                    };
-                    catPanel.Controls.Add(new Label
-                    {
-                        Text = category, Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                        ForeColor = AccentTeal, BackColor = Color.Transparent,
-                        Location = new Point(0, 4), AutoSize = true
-                    });
-                    _contentArea.Controls.Add(catPanel);
-                    lastCategory = category;
-                    y += 30;
-                }
-
-                var row = CreateCard(new Point(24, y), new Size(_contentArea.Width - 72, 30));
-                row.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-                row.Tag = "sysrow";
-                var localKey = key;
-                var localVal = value;
-                row.Paint += (s, e) =>
-                {
-                    var g = e.Graphics;
-                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-                    using var keyFont = new Font("Segoe UI", 9, FontStyle.Bold);
-                    using var valFont = new Font("Segoe UI", 9);
-                    using var keyBrush = new SolidBrush(TextDark);
-                    using var valBrush = new SolidBrush(TextMuted);
-                    g.DrawString(localKey, keyFont, keyBrush, 12, 5);
-                    g.DrawString(localVal, valFont, valBrush, 220, 5);
-                };
-                _contentArea.Controls.Add(row);
-                y += 34;
-            }
-
-            // Wire up copy button
+            // Wire up copy button with initial data
             copyBtn.Click -= CopyAllHandler;
-            _sysInfoItems = items;
+            _sysInfoItems = allItems;
             copyBtn.Click += CopyAllHandler;
         }
 
