@@ -1854,14 +1854,14 @@ namespace PCPlus.Tray.Forms
                                 g2.DrawString($"{icon} {catName}", hdrFont2, hdrBrush2, 12, 10);
 
                                 int ry = 38;
-                                foreach (var (_, key, value) in rows)
+                                foreach (var row in rows)
                                 {
                                     using var keyFont = new Font("Segoe UI", 9, FontStyle.Bold);
                                     using var valFont = new Font("Segoe UI", 9);
                                     using var keyBr = new SolidBrush(TextMuted);
                                     using var valBr = new SolidBrush(TextDark);
-                                    g2.DrawString(key, keyFont, keyBr, 20, ry);
-                                    g2.DrawString(value, valFont, valBr, 220, ry);
+                                    g2.DrawString(row.key, keyFont, keyBr, 20, ry);
+                                    g2.DrawString(row.value, valFont, valBr, 220, ry);
                                     ry += 28;
                                 }
                             };
@@ -2317,9 +2317,9 @@ namespace PCPlus.Tray.Forms
             catch { _cachedPublicIp = "N/A"; }
         }
 
-        private static List<(string, string, string)> GetHardwareInfo()
+        private static List<(string category, string key, string value)> GetHardwareInfo()
         {
-            var items = new List<(string, string, string)>();
+            var items = new List<(string category, string key, string value)>();
             try
             {
                 using var cpuSearch = new ManagementObjectSearcher("SELECT Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed FROM Win32_Processor");
