@@ -9,11 +9,19 @@
     - Shell Type: PowerShell
     - Timeout: 900 seconds
     - Run As User: unchecked (runs as SYSTEM)
+    - Script Arguments: Pass customer name as first argument
+      Example: In TRMM Script Arguments field, type: RLGF
+      Or: -CustomerNameArg "RLGF"
 #>
+
+# Accept customer name as script argument from TRMM
+param(
+    [string]$CustomerNameArg = ""
+)
 
 # === CUSTOMIZE THESE ===
 $DashboardUrl    = "https://dashboard.pcpluscomputing.com"
-$CustomerName    = "{{client.name}}"    # Tactical RMM variable - auto-fills client name
+$CustomerName    = if ($CustomerNameArg) { $CustomerNameArg } else { "{{client.name}}" }
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
 $ReleaseVersion  = "v4.13.0"           # Pin to known working version (use "latest" for newest)
 $WazuhManager    = "184.68.146.18"
@@ -141,32 +149,41 @@ $config["deviceId"] = $deviceId
 $config["dashboardApiUrl"] = $DashboardUrl
 # Set customer name - try multiple sources
 $resolvedName = ""
-# 1. From TRMM template variable (if it resolved)
+# 1. From TRMM template variable or script argument (if it resolved)
 if ($CustomerName -and $CustomerName -notlike "*{{*") { $resolvedName = $CustomerName }
-# 2. Auto-detect from Tactical RMM agent config on this machine
+# 2. Auto-detect from Tactical RMM agent on this machine
 if (-not $resolvedName) {
     try {
-        # TRMM agent stores client info in its local database/registry
+        # TRMM agent registry
         $trmmReg = Get-ItemProperty -Path "HKLM:\SOFTWARE\TacticalRMM" -ErrorAction SilentlyContinue
         if ($trmmReg -and $trmmReg.ClientName) { $resolvedName = $trmmReg.ClientName }
     } catch {}
 }
 if (-not $resolvedName) {
     try {
-        # Try reading from TRMM agent config file
-        $trmmConfig = "$env:ProgramFiles\TacticalAgent\agent.json"
-        if (Test-Path $trmmConfig) {
-            $trmmData = Get-Content $trmmConfig -Raw | ConvertFrom-Json
-            if ($trmmData.ClientName) { $resolvedName = $trmmData.ClientName }
-            elseif ($trmmData.client_name) { $resolvedName = $trmmData.client_name }
+        # TRMM Go agent v2 config (ProgramData location)
+        $trmmPaths = @(
+            "$env:ProgramData\TacticalRMM\agent.json",
+            "$env:ProgramData\TacticalRMM\tacticalagent.json",
+            "$env:ProgramFiles\TacticalAgent\agent.json",
+            "$env:ProgramFiles\TacticalAgent\tacticalrmm.json"
+        )
+        foreach ($trmmConfig in $trmmPaths) {
+            if (Test-Path $trmmConfig) {
+                $trmmData = Get-Content $trmmConfig -Raw | ConvertFrom-Json
+                $tryNames = @($trmmData.ClientName, $trmmData.client_name, $trmmData.clientname)
+                foreach ($n in $tryNames) {
+                    if ($n) { $resolvedName = $n; break }
+                }
+                if ($resolvedName) { break }
+            }
         }
     } catch {}
 }
 if (-not $resolvedName) {
     try {
-        # Try TRMM agent API - query local agent for its client info
-        $trmmAgentUrl = "http://localhost:4235"
-        $agentInfo = Invoke-RestMethod -Uri "$trmmAgentUrl/winagentsvc/api/agent" -TimeoutSec 3 -ErrorAction SilentlyContinue
+        # TRMM local agent API
+        $agentInfo = Invoke-RestMethod -Uri "http://localhost:4235/winagentsvc/api/agent" -TimeoutSec 3 -ErrorAction SilentlyContinue
         if ($agentInfo.client_name) { $resolvedName = $agentInfo.client_name }
     } catch {}
 }
