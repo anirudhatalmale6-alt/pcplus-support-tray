@@ -202,8 +202,7 @@ try {
 $localIp = "0.0.0.0"
 try { $localIp = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -ne "127.0.0.1" -and $_.PrefixOrigin -ne "WellKnown" } | Select-Object -First 1).IPAddress } catch {}
 
-$resolvedCustomer = ""
-if ($CustomerName -and $CustomerName -notlike "*{{*") { $resolvedCustomer = $CustomerName }
+$resolvedCustomer = if ($resolvedName) { $resolvedName } elseif ($CustomerName -and $CustomerName -notlike "*{{*") { $CustomerName } else { "" }
 
 $heartbeat = @{
     deviceId = $deviceId
@@ -451,12 +450,15 @@ try {
     $svcStatus = try { (Get-Service PCPlusEndpoint -ErrorAction SilentlyContinue).Status.ToString() } catch { "Unknown" }
     $wazuhStatus = try { (Get-Service WazuhSvc -ErrorAction SilentlyContinue).Status.ToString() } catch { "NotInstalled" }
 
+    $custName = if ($cfg.companyName) { $cfg.companyName } else { "" }
+
     $body = @{
         deviceId = $devId
         hostname = $env:COMPUTERNAME
         osVersion = $osVer
-        agentVersion = $(try { (Get-Item "$env:ProgramFiles\PCPlusEndpoint\PCPlusService.exe" -ErrorAction SilentlyContinue).VersionInfo.ProductVersion } catch { "4.15.0" })
+        agentVersion = $(try { (Get-Item "$env:ProgramFiles\PC Plus\Endpoint Protection\Service\PCPlusService.exe" -ErrorAction SilentlyContinue).VersionInfo.ProductVersion } catch { "4.15.0" })
         licenseTier = "Free"
+        customerName = $custName
         localIp = $localIp
         cpuPercent = $cpu
         ramPercent = $ram
