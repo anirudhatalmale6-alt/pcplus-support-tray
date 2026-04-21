@@ -455,7 +455,7 @@ try {
         deviceId = $devId
         hostname = $env:COMPUTERNAME
         osVersion = $osVer
-        agentVersion = "4.9.0"
+        agentVersion = $(try { (Get-Item "$env:ProgramFiles\PCPlusEndpoint\PCPlusService.exe" -ErrorAction SilentlyContinue).VersionInfo.ProductVersion } catch { "4.15.0" })
         licenseTier = "Free"
         localIp = $localIp
         cpuPercent = $cpu
