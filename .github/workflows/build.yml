@@ -29,7 +29,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           else
-            echo "VERSION=4.3.0" >> $GITHUB_OUTPUT
+            echo "VERSION=4.15.0" >> $GITHUB_OUTPUT
           fi
 
       - name: Publish Service
@@ -58,7 +58,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           else
-            echo "VERSION=4.3.0" >> $GITHUB_OUTPUT
+            echo "VERSION=4.15.0" >> $GITHUB_OUTPUT
           fi
 
       - name: Publish Tray
@@ -131,7 +131,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           else
-            echo "VERSION=4.9.0" >> $GITHUB_OUTPUT
+            echo "VERSION=4.15.0" >> $GITHUB_OUTPUT
           fi
 
       - name: Download Service
