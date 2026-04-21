@@ -98,6 +98,16 @@ namespace PCPlus.Dashboard.Controllers
             if (request.BitLockerRecoveryKeys?.Count > 0)
                 device.BitLockerKeysJson = JsonSerializer.Serialize(request.BitLockerRecoveryKeys);
 
+            // Policy engine data
+            device.PolicyActiveRules = request.PolicyActiveRules;
+            device.PolicyViolations24h = request.PolicyViolations24h;
+
+            // WiFi security data
+            device.WifiNetworks = request.WifiNetworks;
+            device.WifiUnsecure = request.WifiUnsecure;
+            if (!string.IsNullOrEmpty(request.WifiConnectedSsid))
+                device.WifiConnectedSsid = request.WifiConnectedSsid;
+
             await _db.SaveChangesAsync();
 
             // Check for pending config pushes

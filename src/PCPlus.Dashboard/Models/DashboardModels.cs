@@ -51,6 +51,15 @@ namespace PCPlus.Dashboard.Models
         public string MacAddress { get; set; } = "";
         public float NetworkUpMbps { get; set; }
         public float NetworkDownMbps { get; set; }
+
+        // Policy engine
+        public int PolicyActiveRules { get; set; }
+        public int PolicyViolations24h { get; set; }
+
+        // WiFi security
+        public int WifiNetworks { get; set; }
+        public int WifiUnsecure { get; set; }
+        public string WifiConnectedSsid { get; set; } = "";
     }
 
     /// <summary>Alert received from an endpoint.</summary>
@@ -187,6 +196,15 @@ namespace PCPlus.Dashboard.Models
         public List<SecurityCheckReport>? SecurityChecks { get; set; }
         public List<InstalledSoftwareReport>? InstalledSoftware { get; set; }
         public List<BitLockerKeyReport>? BitLockerRecoveryKeys { get; set; }
+
+        // Policy engine data
+        public int PolicyActiveRules { get; set; }
+        public int PolicyViolations24h { get; set; }
+
+        // WiFi security data
+        public int WifiNetworks { get; set; }
+        public int WifiUnsecure { get; set; }
+        public string WifiConnectedSsid { get; set; } = "";
     }
 
     public class BitLockerKeyReport

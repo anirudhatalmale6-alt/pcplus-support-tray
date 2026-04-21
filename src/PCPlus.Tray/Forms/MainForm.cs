@@ -144,6 +144,8 @@ namespace PCPlus.Tray.Forms
             AddNavItem(navPanel, "history", "Detection History", "\u2630", ref y);
             AddNavItem(navPanel, "lockdown", "Lockdown Mode", "\u26A0", ref y);
             AddNavItem(navPanel, "advisor", "Trusted Advisor", "\u2605", ref y);
+            AddNavItem(navPanel, "wifi", "WiFi Security", "\u2637", ref y);
+            AddNavItem(navPanel, "policies", "Policy Engine", "\u2692", ref y);
             y += 10; // spacer
             AddNavItem(navPanel, "system", "System Info", "\u2699", ref y);
 
@@ -239,6 +241,8 @@ namespace PCPlus.Tray.Forms
                 case "history": BuildHistoryView(); break;
                 case "lockdown": BuildLockdownView(); break;
                 case "advisor": BuildAdvisorView(); break;
+                case "wifi": BuildWifiView(); break;
+                case "policies": BuildPoliciesView(); break;
                 case "system": BuildSystemView(); break;
             }
         }
@@ -1531,6 +1535,401 @@ namespace PCPlus.Tray.Forms
 
         #endregion
 
+        #region WiFi Security View
+
+        private async void BuildWifiView()
+        {
+            var title = CreatePageTitle("WiFi Security Scanner");
+            _contentArea.Controls.Add(title);
+
+            // Scan button
+            var scanBtn = CreateActionButton("Scan Now", AccentTeal, new Point(_contentArea.Width - 140, 10), new Size(100, 32));
+            scanBtn.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            scanBtn.Click += (s, e) => ShowView("wifi");
+            _contentArea.Controls.Add(scanBtn);
+
+            int y = 60;
+
+            // Request WiFi scan from service
+            try
+            {
+                var resp = await _ipc.SendModuleCommandAsync("customervalue", "GetWifiNetworks");
+                if (resp.Success)
+                {
+                    var json = resp.JsonData ?? "{}";
+                    using var doc = System.Text.Json.JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+
+                    System.Text.Json.JsonElement resultEl;
+                    if (root.TryGetProperty("result", out resultEl))
+                    {
+                        // Connected network info card
+                        string connectedSsid = "";
+                        if (resultEl.TryGetProperty("connectedNetwork", out var connEl) && connEl.ValueKind == System.Text.Json.JsonValueKind.String)
+                            connectedSsid = connEl.GetString() ?? "";
+
+                        if (!string.IsNullOrEmpty(connectedSsid))
+                        {
+                            var connCard = new Panel
+                            {
+                                Location = new Point(0, y), Height = 56,
+                                Width = _contentArea.Width - 50, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
+                                BackColor = Color.FromArgb(24, 28, 36)
+                            };
+                            var localSsid = connectedSsid;
+                            connCard.Paint += (s, e) =>
+                            {
+                                var g = e.Graphics;
+                                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                                using var accentBrush = new SolidBrush(AccentGreen);
+                                g.FillRectangle(accentBrush, 0, 0, 4, connCard.Height);
+                                using var titleFont = new Font("Segoe UI", 10f, FontStyle.Bold);
+                                using var textBrush = new SolidBrush(TextDark);
+                                g.DrawString($"Connected: {localSsid}", titleFont, textBrush, 16, 8);
+                                using var subFont = new Font("Segoe UI", 8);
+                                using var subBrush = new SolidBrush(SidebarText);
+                                g.DrawString("Your current WiFi connection", subFont, subBrush, 16, 30);
+                            };
+                            _contentArea.Controls.Add(connCard);
+                            y += 66;
+                        }
+
+                        // Network list
+                        if (resultEl.TryGetProperty("networks", out var networksEl) && networksEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            int unsecure = 0;
+                            foreach (var net in networksEl.EnumerateArray())
+                            {
+                                var ssid = net.GetProperty("ssid").GetString() ?? "(Hidden)";
+                                var auth = net.TryGetProperty("authentication", out var authEl) ? authEl.GetString() ?? "" : "";
+                                var enc = net.TryGetProperty("encryption", out var encEl) ? encEl.GetString() ?? "" : "";
+                                var signal = net.TryGetProperty("signalStrength", out var sigEl) ? sigEl.GetInt32() : 0;
+                                var risk = net.TryGetProperty("securityRisk", out var riskEl) ? riskEl.GetString() ?? "Unknown" : "Unknown";
+                                var note = net.TryGetProperty("securityNote", out var noteEl) ? noteEl.GetString() ?? "" : "";
+                                var isConnected = ssid == connectedSsid;
+
+                                if (risk == "High" || risk == "Critical") unsecure++;
+
+                                var riskColor = risk switch
+                                {
+                                    "Low" => AccentGreen,
+                                    "Medium" => AccentOrange,
+                                    "High" => AccentRed,
+                                    "Critical" => Color.FromArgb(200, 30, 30),
+                                    _ => SidebarText
+                                };
+
+                                var card = new Panel
+                                {
+                                    Location = new Point(0, y), Height = 64,
+                                    Width = _contentArea.Width - 50, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
+                                    BackColor = Color.FromArgb(24, 28, 36)
+                                };
+                                var localSsid2 = ssid;
+                                var localAuth = auth;
+                                var localEnc = enc;
+                                var localSignal = signal;
+                                var localRisk = risk;
+                                var localNote = note;
+                                var localRiskColor = riskColor;
+                                var localIsConn = isConnected;
+
+                                card.Paint += (s, e) =>
+                                {
+                                    var g = e.Graphics;
+                                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                                    // Risk indicator bar
+                                    using var rBrush = new SolidBrush(localRiskColor);
+                                    g.FillRectangle(rBrush, 0, 0, 4, card.Height);
+
+                                    // SSID
+                                    using var nameFont = new Font("Segoe UI", 10f, localIsConn ? FontStyle.Bold : FontStyle.Regular);
+                                    using var nameBrush = new SolidBrush(TextDark);
+                                    var displayName = localIsConn ? $"{localSsid2} (Connected)" : localSsid2;
+                                    g.DrawString(displayName, nameFont, nameBrush, 16, 6);
+
+                                    // Auth/Encryption
+                                    using var detailFont = new Font("Segoe UI", 8);
+                                    using var detailBrush = new SolidBrush(SidebarText);
+                                    g.DrawString($"{localAuth} / {localEnc}  |  Signal: {localSignal}%", detailFont, detailBrush, 16, 26);
+
+                                    // Security note
+                                    using var noteBrush = new SolidBrush(localRiskColor);
+                                    var noteText = localNote.Length > 80 ? localNote[..80] + "..." : localNote;
+                                    g.DrawString(noteText, detailFont, noteBrush, 16, 44);
+
+                                    // Risk badge
+                                    var badgeX = card.Width - 80;
+                                    using var badgeFont = new Font("Segoe UI", 8f, FontStyle.Bold);
+                                    g.FillRoundedRectangle(rBrush, badgeX, 8, 60, 20, 4);
+                                    using var badgeTextBrush = new SolidBrush(Color.White);
+                                    var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                                    g.DrawString(localRisk, badgeFont, badgeTextBrush, new RectangleF(badgeX, 8, 60, 20), sf);
+                                };
+                                _contentArea.Controls.Add(card);
+                                y += 74;
+                            }
+
+                            // Summary
+                            if (unsecure > 0)
+                            {
+                                var warnCard = new Panel
+                                {
+                                    Location = new Point(0, y), Height = 40,
+                                    Width = _contentArea.Width - 50, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
+                                    BackColor = Color.FromArgb(40, 20, 20)
+                                };
+                                var localUnsecure = unsecure;
+                                warnCard.Paint += (s, e) =>
+                                {
+                                    var g = e.Graphics;
+                                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                                    using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
+                                    using var brush = new SolidBrush(AccentRed);
+                                    g.DrawString($"\u26A0 {localUnsecure} insecure network(s) detected nearby", font, brush, 16, 10);
+                                };
+                                _contentArea.Controls.Add(warnCard);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    var errLabel = new Label
+                    {
+                        Text = "WiFi scanner requires the PC Plus service. Make sure it's running.",
+                        Location = new Point(0, y), AutoSize = true,
+                        ForeColor = SidebarText, Font = new Font("Segoe UI", 9.5f)
+                    };
+                    _contentArea.Controls.Add(errLabel);
+                }
+            }
+            catch (Exception ex)
+            {
+                var errLabel = new Label
+                {
+                    Text = $"Error: {ex.Message}",
+                    Location = new Point(0, y), AutoSize = true,
+                    ForeColor = AccentRed, Font = new Font("Segoe UI", 9)
+                };
+                _contentArea.Controls.Add(errLabel);
+            }
+        }
+
+        #endregion
+
+        #region Policy Engine View
+
+        private async void BuildPoliciesView()
+        {
+            var title = CreatePageTitle("Policy Engine");
+            _contentArea.Controls.Add(title);
+
+            int y = 60;
+
+            try
+            {
+                var resp = await _ipc.SendModuleCommandAsync("policy", "GetPolicies");
+                if (resp.Success)
+                {
+                    var json = resp.JsonData ?? "{}";
+                    using var doc = System.Text.Json.JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+
+                    // Stats card
+                    if (root.TryGetProperty("stats", out var statsEl))
+                    {
+                        var totalRules = statsEl.TryGetProperty("totalRules", out var trEl) ? trEl.GetInt32() : 0;
+                        var activeRules = statsEl.TryGetProperty("activeRules", out var arEl) ? arEl.GetInt32() : 0;
+                        var totalViolations = statsEl.TryGetProperty("totalViolations", out var tvEl) ? tvEl.GetInt32() : 0;
+
+                        var statsCard = new Panel
+                        {
+                            Location = new Point(0, y), Height = 60,
+                            Width = _contentArea.Width - 50, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
+                            BackColor = Color.FromArgb(24, 28, 36)
+                        };
+                        var localActive = activeRules;
+                        var localTotal = totalRules;
+                        var localViolations = totalViolations;
+                        statsCard.Paint += (s, e) =>
+                        {
+                            var g = e.Graphics;
+                            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                            int cardW = statsCard.Width / 3;
+                            // Active Rules
+                            using var numFont = new Font("Segoe UI", 18f, FontStyle.Bold);
+                            using var numBrush = new SolidBrush(AccentTeal);
+                            g.DrawString(localActive.ToString(), numFont, numBrush, 20, 6);
+                            using var labelFont = new Font("Segoe UI", 8);
+                            using var labelBrush = new SolidBrush(SidebarText);
+                            g.DrawString("Active Rules", labelFont, labelBrush, 20, 36);
+
+                            // Total Rules
+                            using var numBrush2 = new SolidBrush(AccentBlue);
+                            g.DrawString(localTotal.ToString(), numFont, numBrush2, cardW + 20, 6);
+                            g.DrawString("Total Rules", labelFont, labelBrush, cardW + 20, 36);
+
+                            // Violations
+                            var vColor = localViolations > 0 ? AccentOrange : AccentGreen;
+                            using var numBrush3 = new SolidBrush(vColor);
+                            g.DrawString(localViolations.ToString(), numFont, numBrush3, cardW * 2 + 20, 6);
+                            g.DrawString("Violations", labelFont, labelBrush, cardW * 2 + 20, 36);
+                        };
+                        _contentArea.Controls.Add(statsCard);
+                        y += 72;
+                    }
+
+                    // Rules list
+                    if (root.TryGetProperty("rules", out var rulesEl) && rulesEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var sectionLabel = new Label
+                        {
+                            Text = "ACTIVE RULES", Location = new Point(0, y),
+                            AutoSize = true, ForeColor = SidebarText,
+                            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+                        };
+                        _contentArea.Controls.Add(sectionLabel);
+                        y += 24;
+
+                        foreach (var rule in rulesEl.EnumerateArray())
+                        {
+                            var name = rule.TryGetProperty("name", out var nEl) ? nEl.GetString() ?? "" : "";
+                            var category = rule.TryGetProperty("category", out var cEl) ? cEl.GetString() ?? "" : "";
+                            var action = rule.TryGetProperty("action", out var aEl) ? aEl.GetInt32() : 0;
+                            var enabled = rule.TryGetProperty("enabled", out var eEl) && eEl.GetBoolean();
+
+                            var actionStr = action switch { 0 => "Alert", 1 => "Block", 2 => "AutoFix", 3 => "Audit", _ => "?" };
+                            var actionColor = action switch { 1 => AccentRed, 2 => AccentOrange, 0 => AccentBlue, _ => SidebarText };
+
+                            var ruleCard = new Panel
+                            {
+                                Location = new Point(0, y), Height = 44,
+                                Width = _contentArea.Width - 50, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
+                                BackColor = Color.FromArgb(24, 28, 36)
+                            };
+                            var localName = name;
+                            var localCat = category;
+                            var localActionStr = actionStr;
+                            var localActionColor = actionColor;
+                            var localEnabled = enabled;
+
+                            ruleCard.Paint += (s, e) =>
+                            {
+                                var g = e.Graphics;
+                                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                                // Status dot
+                                using var dotBrush = new SolidBrush(localEnabled ? AccentGreen : SidebarText);
+                                g.FillEllipse(dotBrush, 12, 14, 10, 10);
+
+                                // Name
+                                using var nameFont = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                                using var nameBrush = new SolidBrush(localEnabled ? TextDark : SidebarText);
+                                g.DrawString(localName, nameFont, nameBrush, 30, 4);
+
+                                // Category
+                                using var catFont = new Font("Segoe UI", 8);
+                                using var catBrush = new SolidBrush(SidebarText);
+                                g.DrawString($"Category: {localCat}", catFont, catBrush, 30, 24);
+
+                                // Action badge
+                                var badgeX = ruleCard.Width - 80;
+                                using var badgeBrush = new SolidBrush(localActionColor);
+                                g.FillRoundedRectangle(badgeBrush, badgeX, 12, 60, 20, 4);
+                                using var badgeFont = new Font("Segoe UI", 8f, FontStyle.Bold);
+                                using var badgeTextBrush = new SolidBrush(Color.White);
+                                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                                g.DrawString(localActionStr, badgeFont, badgeTextBrush, new RectangleF(badgeX, 12, 60, 20), sf);
+                            };
+                            _contentArea.Controls.Add(ruleCard);
+                            y += 52;
+                        }
+                    }
+
+                    // Violations list
+                    if (root.TryGetProperty("violations", out var violationsEl) && violationsEl.ValueKind == System.Text.Json.JsonValueKind.Array && violationsEl.GetArrayLength() > 0)
+                    {
+                        y += 10;
+                        var violLabel = new Label
+                        {
+                            Text = "RECENT VIOLATIONS", Location = new Point(0, y),
+                            AutoSize = true, ForeColor = AccentOrange,
+                            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+                        };
+                        _contentArea.Controls.Add(violLabel);
+                        y += 24;
+
+                        foreach (var viol in violationsEl.EnumerateArray())
+                        {
+                            var ruleName = viol.TryGetProperty("ruleName", out var rnEl) ? rnEl.GetString() ?? "" : "";
+                            var detail = viol.TryGetProperty("detail", out var dEl) ? dEl.GetString() ?? "" : "";
+                            var timestamp = viol.TryGetProperty("timestamp", out var tsEl) ? tsEl.GetString() ?? "" : "";
+
+                            var violCard = new Panel
+                            {
+                                Location = new Point(0, y), Height = 44,
+                                Width = _contentArea.Width - 50, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
+                                BackColor = Color.FromArgb(35, 25, 25)
+                            };
+                            var localRuleName = ruleName;
+                            var localDetail = detail;
+                            var localTs = timestamp;
+
+                            violCard.Paint += (s, e) =>
+                            {
+                                var g = e.Graphics;
+                                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                                using var barBrush = new SolidBrush(AccentOrange);
+                                g.FillRectangle(barBrush, 0, 0, 4, violCard.Height);
+
+                                using var nameFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+                                using var nameBrush = new SolidBrush(AccentOrange);
+                                g.DrawString(localRuleName, nameFont, nameBrush, 16, 4);
+
+                                using var detFont = new Font("Segoe UI", 8);
+                                using var detBrush = new SolidBrush(SidebarText);
+                                var displayDetail = localDetail.Length > 80 ? localDetail[..80] + "..." : localDetail;
+                                g.DrawString(displayDetail, detFont, detBrush, 16, 24);
+
+                                // Time
+                                using var timeBrush = new SolidBrush(Color.FromArgb(100, 110, 130));
+                                var timeStr = DateTime.TryParse(localTs, out var dt) ? dt.ToLocalTime().ToString("HH:mm:ss") : localTs;
+                                var sz = g.MeasureString(timeStr, detFont);
+                                g.DrawString(timeStr, detFont, timeBrush, violCard.Width - sz.Width - 10, 4);
+                            };
+                            _contentArea.Controls.Add(violCard);
+                            y += 52;
+                        }
+                    }
+                }
+                else
+                {
+                    var errLabel = new Label
+                    {
+                        Text = "Policy Engine requires the PC Plus service (Premium tier).",
+                        Location = new Point(0, y), AutoSize = true,
+                        ForeColor = SidebarText, Font = new Font("Segoe UI", 9.5f)
+                    };
+                    _contentArea.Controls.Add(errLabel);
+                }
+            }
+            catch (Exception ex)
+            {
+                var errLabel = new Label
+                {
+                    Text = $"Error: {ex.Message}",
+                    Location = new Point(0, y), AutoSize = true,
+                    ForeColor = AccentRed, Font = new Font("Segoe UI", 9)
+                };
+                _contentArea.Controls.Add(errLabel);
+            }
+        }
+
+        #endregion
+
         #region System Info View
 
         private void BuildSystemView()
@@ -2366,6 +2765,21 @@ namespace PCPlus.Tray.Forms
             _refreshTimer.Dispose();
             _localFallback.Dispose();
             base.OnFormClosing(e);
+        }
+    }
+
+    /// <summary>Graphics extension for rounded rectangles.</summary>
+    internal static class GraphicsExtensions
+    {
+        public static void FillRoundedRectangle(this Graphics g, Brush brush, float x, float y, float w, float h, float r)
+        {
+            using var path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddArc(x, y, r * 2, r * 2, 180, 90);
+            path.AddArc(x + w - r * 2, y, r * 2, r * 2, 270, 90);
+            path.AddArc(x + w - r * 2, y + h - r * 2, r * 2, r * 2, 0, 90);
+            path.AddArc(x, y + h - r * 2, r * 2, r * 2, 90, 90);
+            path.CloseFigure();
+            g.FillPath(brush, path);
         }
     }
 }

@@ -7,6 +7,7 @@ using PCPlus.Service.Modules.Security;
 using PCPlus.Service.Modules.Ransomware;
 using PCPlus.Service.Modules.Maintenance;
 using PCPlus.Service.Modules.Policy;
+using PCPlus.Service.Modules.CustomerValue;
 
 namespace PCPlus.Service
 {
@@ -21,6 +22,7 @@ namespace PCPlus.Service
         private readonly ServiceConfig _config;
         private readonly ILogger<EndpointProtectionService> _logger;
         private DashboardClient? _dashboardClient;
+        private AutoUpdater? _autoUpdater;
 
         public EndpointProtectionService(
             ModuleEngine engine,
@@ -55,6 +57,7 @@ namespace PCPlus.Service
             _engine.RegisterModule(new RansomwareModule());
             _engine.RegisterModule(new MaintenanceModule());
             _engine.RegisterModule(new PolicyModule());
+            _engine.RegisterModule(new CustomerValueModule());
 
             // Start the engine (will start eligible modules based on license)
             await _engine.StartAsync(stoppingToken);
@@ -62,6 +65,10 @@ namespace PCPlus.Service
             // Start dashboard phone-home client
             _dashboardClient = new DashboardClient(_config, _engine);
             _dashboardClient.Start();
+
+            // Start auto-updater
+            _autoUpdater = new AutoUpdater(_config, _engine);
+            _autoUpdater.Start();
 
             _logger.LogInformation("PC Plus Endpoint Protection Service is running.");
 
@@ -114,6 +121,7 @@ namespace PCPlus.Service
             catch (OperationCanceledException) { }
 
             // Stopping
+            _autoUpdater?.Dispose();
             _dashboardClient?.Dispose();
             await _engine.StopAsync();
             _logger.LogInformation("PC Plus Endpoint Protection Service stopped.");

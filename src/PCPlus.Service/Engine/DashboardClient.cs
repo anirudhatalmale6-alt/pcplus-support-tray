@@ -140,6 +140,33 @@ namespace PCPlus.Service.Engine
                     catch { }
                 }
 
+                // Get policy enforcement status
+                var policyModule = _engine.GetModule("policy");
+                int activeRules = 0, policyViolations = 0;
+                if (policyModule?.IsRunning == true)
+                {
+                    var pStatus = policyModule.GetStatus();
+                    if (pStatus.Metrics.TryGetValue("activeRules", out var arObj))
+                        activeRules = Convert.ToInt32(arObj);
+                    if (pStatus.Metrics.TryGetValue("violations24h", out var pvObj))
+                        policyViolations = Convert.ToInt32(pvObj);
+                }
+
+                // Get customer value module status
+                var cvModule = _engine.GetModule("customervalue");
+                int wifiNetworks = 0, unsecureWifi = 0;
+                string connectedSsid = "";
+                if (cvModule?.IsRunning == true)
+                {
+                    var cvStatus = cvModule.GetStatus();
+                    if (cvStatus.Metrics.TryGetValue("wifiNetworks", out var wnObj))
+                        wifiNetworks = Convert.ToInt32(wnObj);
+                    if (cvStatus.Metrics.TryGetValue("unsecureNetworks", out var uwObj))
+                        unsecureWifi = Convert.ToInt32(uwObj);
+                    if (cvStatus.Metrics.TryGetValue("connectedSsid", out var ssidObj))
+                        connectedSsid = ssidObj?.ToString() ?? "";
+                }
+
                 // Count running modules
                 var runningCount = _engine.GetAllModules().Count(m => m.IsRunning);
 
@@ -182,7 +209,12 @@ namespace PCPlus.Service.Engine
                     modules = new List<object>(),
                     securityChecks = securityChecks,
                     installedSoftware = installedSoftware.Count > 0 ? installedSoftware : null,
-                    bitLockerRecoveryKeys = bitlockerKeys
+                    bitLockerRecoveryKeys = bitlockerKeys,
+                    policyActiveRules = activeRules,
+                    policyViolations24h = policyViolations,
+                    wifiNetworks = wifiNetworks,
+                    wifiUnsecure = unsecureWifi,
+                    wifiConnectedSsid = connectedSsid
                 };
 
                 var response = await _http.PostAsJsonAsync("/api/endpoint/heartbeat", heartbeat);
