@@ -7,7 +7,7 @@
     <AssemblyName>PCPlusService</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>4.16.0</Version>
+    <Version>4.17.0</Version>
     <Company>PC Plus Computing</Company>
     <Product>PC Plus Endpoint Protection Service</Product>
     <Description>PC Plus Endpoint Protection - Background Service</Description>
@@ -19,6 +19,7 @@
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
   </ItemGroup>
 
   <ItemGroup>
