@@ -7,7 +7,7 @@
     <AssemblyName>PCPlusService</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>4.15.0</Version>
+    <Version>4.16.0</Version>
     <Company>PC Plus Computing</Company>
     <Product>PC Plus Endpoint Protection Service</Product>
     <Description>PC Plus Endpoint Protection - Background Service</Description>
