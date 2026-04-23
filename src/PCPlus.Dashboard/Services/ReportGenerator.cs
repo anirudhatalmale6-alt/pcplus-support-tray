@@ -7,11 +7,6 @@ using PCPlus.Dashboard.Models;
 
 namespace PCPlus.Dashboard.Services
 {
-    /// <summary>
-    /// Generates self-contained HTML security reports for customers.
-    /// Extracted from ReportController so it can be reused by EmailReportService and other callers.
-    /// Uses IServiceScopeFactory to create its own DI scopes for DashboardDb access.
-    /// </summary>
     public class ReportGenerator
     {
         private readonly IServiceScopeFactory _scopeFactory;
@@ -21,11 +16,6 @@ namespace PCPlus.Dashboard.Services
             _scopeFactory = scopeFactory;
         }
 
-        /// <summary>
-        /// Generate full HTML report for a customer.
-        /// If forEmail=true, strips the action bar and script tags so the HTML is email-safe.
-        /// Returns null if no devices found for the customer.
-        /// </summary>
         public async Task<string?> GenerateCompanyReportHtml(string customerName, bool forEmail = false)
         {
             using var scope = _scopeFactory.CreateScope();
@@ -38,7 +28,6 @@ namespace PCPlus.Dashboard.Services
 
             if (devices.Count == 0) return null;
 
-            // Parse security checks for each device
             var deviceData = devices.Select(d =>
             {
                 var checks = new List<SecurityCheckReport>();
@@ -52,7 +41,6 @@ namespace PCPlus.Dashboard.Services
                 return new { Device = d, Checks = checks };
             }).ToList();
 
-            // Calculate stats
             int totalDevices = deviceData.Count;
             int online = deviceData.Count(d => d.Device.IsOnline);
             int offline = totalDevices - online;
@@ -68,7 +56,6 @@ namespace PCPlus.Dashboard.Services
             string gradeWord = avgScore >= 90 ? "Excellent" : avgScore >= 80 ? "Good" : avgScore >= 70 ? "Fair" : avgScore >= 60 ? "Needs Improvement" : "Critical Attention Required";
             string scoreColor = avgScore >= 80 ? "#16a34a" : avgScore >= 60 ? "#d97706" : "#dc2626";
 
-            // Top issues aggregated across all devices
             var issueMap = new Dictionary<string, (string Name, string Category, string Rec, int Weight, List<string> Devices)>();
             foreach (var dd in deviceData)
                 foreach (var c in dd.Checks.Where(c => !c.Passed))
@@ -79,7 +66,6 @@ namespace PCPlus.Dashboard.Services
                 }
             var topIssues = issueMap.Values.OrderByDescending(i => i.Devices.Count).ThenByDescending(i => i.Weight).ToList();
 
-            // Category breakdown
             var catMap = new Dictionary<string, (int Total, int Passed)>();
             foreach (var dd in deviceData)
                 foreach (var c in dd.Checks)
@@ -91,10 +77,20 @@ namespace PCPlus.Dashboard.Services
                 }
             var catEntries = catMap.OrderBy(kv => (double)kv.Value.Passed / kv.Value.Total).ToList();
 
+            var catIcons = new Dictionary<string, string>
+            {
+                ["Protection"] = "\U0001F6E1", ["Identity & Access"] = "\U0001F511", ["Network"] = "\U0001F310",
+                ["Ransomware Protection"] = "\U0001F6A8", ["Updates"] = "\U0001F504", ["Data Protection"] = "\U0001F4BE",
+                ["Device Health"] = "\U0001F4BB", ["EDR & Advanced"] = "\U0001F52C", ["Access"] = "\U0001F511",
+                ["Logging & Visibility"] = "\U0001F4CB", ["Endpoint Hardening"] = "\U0001F512",
+                ["Device Control"] = "\U0001F50C", ["Browser & User Risk"] = "\U0001F310",
+                ["Hardware Security"] = "\U0001F527", ["Privilege Escalation"] = "⚠",
+                ["RMM Stack"] = "\U0001F4E1"
+            };
+
             var now = DateTime.Now;
             var reportId = "CR-" + DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString("X");
 
-            // Build HTML
             var sb = new StringBuilder();
             sb.Append("<!DOCTYPE html><html lang=\"en\"><head>");
             sb.Append("<meta charset=\"UTF-8\">");
@@ -104,7 +100,6 @@ namespace PCPlus.Dashboard.Services
             sb.Append(GetCss());
             sb.Append("</style></head><body>");
 
-            // Action bar (hidden in print; omitted entirely for email)
             if (!forEmail)
             {
                 sb.Append(@"<div class=""action-bar no-print"">
@@ -131,14 +126,264 @@ namespace PCPlus.Dashboard.Services
                 </div>
             </div>");
 
-            // Page 1: Executive Summary
-            sb.Append(@"<div class=""cover"">");
+            // ==================================================================
+            // EXECUTIVE SUMMARY - Slide 1: At A Glance
+            // ==================================================================
+            string statusLabel = avgScore >= 80 ? "PROTECTED" : avgScore >= 60 ? "AT RISK" : "CRITICAL";
+            string statusBg = avgScore >= 80 ? "linear-gradient(135deg,#dcfce7,#f0fdf4)" : avgScore >= 60 ? "linear-gradient(135deg,#fef3c7,#fffbeb)" : "linear-gradient(135deg,#fee2e2,#fef2f2)";
+            string statusBorder = avgScore >= 80 ? "#16a34a" : avgScore >= 60 ? "#d97706" : "#dc2626";
+            string statusIcon = avgScore >= 80
+                ? @"<svg viewBox=""0 0 24 24"" width=""36"" height=""36"" fill=""none"" stroke=""#16a34a"" stroke-width=""2""><path d=""M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z""/><path d=""M9 12l2 2 4-4""/></svg>"
+                : avgScore >= 60
+                ? @"<svg viewBox=""0 0 24 24"" width=""36"" height=""36"" fill=""none"" stroke=""#d97706"" stroke-width=""2""><path d=""M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z""/><line x1=""12"" y1=""9"" x2=""12"" y2=""13""/><line x1=""12"" y1=""17"" x2=""12.01"" y2=""17""/></svg>"
+                : @"<svg viewBox=""0 0 24 24"" width=""36"" height=""36"" fill=""none"" stroke=""#dc2626"" stroke-width=""2""><polygon points=""7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2""/><line x1=""15"" y1=""9"" x2=""9"" y2=""15""/><line x1=""9"" y1=""9"" x2=""15"" y2=""15""/></svg>";
+
+            sb.Append(@"<div class=""exec-slide"">");
             sb.Append($@"<div class=""cover-header"">
                 <div class=""customer-name"">{Esc(customerName)}</div>
-                <div class=""report-type"">ENDPOINT SECURITY ASSESSMENT</div>
+                <div class=""report-type"">SECURITY POSTURE REPORT</div>
             </div>");
 
-            // Score hero with SVG donut
+            sb.Append($@"<div class=""exec-status-banner"" style=""background:{statusBg};border-color:{statusBorder}"">
+                <div class=""exec-status-left"">
+                    <div class=""exec-status-icon"">{statusIcon}</div>
+                    <div>
+                        <div class=""exec-status-label"" style=""color:{statusBorder}"">{statusLabel}</div>
+                        <div class=""exec-status-sub"">Overall Security Status</div>
+                    </div>
+                </div>
+                <div class=""exec-status-score"">
+                    {SvgDonut(avgScore, 100, scoreColor, "#e5e7eb", 120, $"{avgScore}%", $"Grade {grade}")}
+                </div>
+            </div>");
+
+            string gradeColorClass = avgScore >= 80 ? "green" : avgScore >= 60 ? "orange" : "red";
+            int highIssues = topIssues.Count(i => i.Weight >= 10);
+            int medIssues = topIssues.Count(i => i.Weight >= 5 && i.Weight < 10);
+
+            sb.Append($@"<div class=""exec-metrics"">
+                <div class=""exec-metric-card"">
+                    <div class=""exec-metric-icon"" style=""background:linear-gradient(135deg,#3b82f6,#1d4ed8)"">
+                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#fff"" stroke-width=""2"" width=""28"" height=""28""><rect x=""2"" y=""3"" width=""20"" height=""14"" rx=""2""/><line x1=""8"" y1=""21"" x2=""16"" y2=""21""/><line x1=""12"" y1=""17"" x2=""12"" y2=""21""/></svg>
+                    </div>
+                    <div class=""exec-metric-num blue"">{totalDevices}</div>
+                    <div class=""exec-metric-label"">Endpoints Managed</div>
+                    <div class=""exec-metric-detail"">{online} online, {offline} offline</div>
+                </div>
+                <div class=""exec-metric-card"">
+                    <div class=""exec-metric-icon"" style=""background:linear-gradient(135deg,#22c55e,#16a34a)"">
+                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#fff"" stroke-width=""2"" width=""28"" height=""28""><path d=""M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z""/><path d=""M9 12l2 2 4-4""/></svg>
+                    </div>
+                    <div class=""exec-metric-num green"">{totalPassed}</div>
+                    <div class=""exec-metric-label"">Checks Passed</div>
+                    <div class=""exec-metric-detail"">out of {totalChecks} total checks</div>
+                </div>
+                <div class=""exec-metric-card"">
+                    <div class=""exec-metric-icon"" style=""background:linear-gradient(135deg,#ef4444,#dc2626)"">
+                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#fff"" stroke-width=""2"" width=""28"" height=""28""><circle cx=""12"" cy=""12"" r=""10""/><line x1=""15"" y1=""9"" x2=""9"" y2=""15""/><line x1=""9"" y1=""9"" x2=""15"" y2=""15""/></svg>
+                    </div>
+                    <div class=""exec-metric-num red"">{totalFailed}</div>
+                    <div class=""exec-metric-label"">Issues Found</div>
+                    <div class=""exec-metric-detail"">{highIssues} high, {medIssues} medium priority</div>
+                </div>
+                <div class=""exec-metric-card"">
+                    <div class=""exec-metric-icon"" style=""background:linear-gradient(135deg,#8b5cf6,#7c3aed)"">
+                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#fff"" stroke-width=""2"" width=""28"" height=""28""><path d=""M22 12h-4l-3 9L9 3l-3 9H2""/></svg>
+                    </div>
+                    <div class=""exec-metric-num {gradeColorClass}"">{grade}</div>
+                    <div class=""exec-metric-label"">Security Grade</div>
+                    <div class=""exec-metric-detail"">{gradeWord}</div>
+                </div>
+            </div>");
+
+            var worstCats = catEntries.Where(kv => (double)kv.Value.Passed / kv.Value.Total < 0.6).Select(kv => kv.Key).Take(3).ToList();
+            var bestCats = catEntries.Where(kv => (double)kv.Value.Passed / kv.Value.Total >= 0.8).Select(kv => kv.Key).Take(3).ToList();
+
+            sb.Append(@"<div class=""exec-summary-box"">
+                <div class=""exec-summary-title"">Summary</div>
+                <div class=""exec-summary-bullets"">");
+            sb.Append($@"<div class=""exec-bullet"">
+                <span class=""exec-bullet-dot"" style=""background:#3b82f6""></span>
+                <span>We scanned <strong>{totalDevices} endpoint{(totalDevices != 1 ? "s" : "")}</strong> with <strong>120 security checks</strong> each, covering protection, updates, network security, ransomware defense, and more.</span>
+            </div>");
+            if (totalFailed > 0)
+                sb.Append($@"<div class=""exec-bullet"">
+                    <span class=""exec-bullet-dot"" style=""background:#dc2626""></span>
+                    <span><strong>{totalFailed} issue{(totalFailed != 1 ? "s" : "")} detected</strong> across your environment. {(highIssues > 0 ? $"<strong>{highIssues}</strong> are high priority and should be addressed promptly." : "Most are medium or low priority.")}</span>
+                </div>");
+            if (worstCats.Count > 0)
+                sb.Append($@"<div class=""exec-bullet"">
+                    <span class=""exec-bullet-dot"" style=""background:#d97706""></span>
+                    <span>Areas needing the most attention: <strong>{Esc(string.Join(", ", worstCats))}</strong></span>
+                </div>");
+            if (bestCats.Count > 0)
+                sb.Append($@"<div class=""exec-bullet"">
+                    <span class=""exec-bullet-dot"" style=""background:#16a34a""></span>
+                    <span>Strong performance in: <strong>{Esc(string.Join(", ", bestCats))}</strong></span>
+                </div>");
+            sb.Append("</div></div>");
+
+            sb.Append(@"<div class=""exec-footer"">Prepared by PC Plus Computing | Managed IT Services &amp; Endpoint Security | www.pcpluscomputing.com</div>");
+            sb.Append("</div>");
+
+            // ==================================================================
+            // EXECUTIVE SUMMARY - Slide 2: Key Findings & Risk Areas
+            // ==================================================================
+            sb.Append(@"<div class=""exec-slide page-break"">");
+            sb.Append(@"<div class=""exec-slide-title"">Key Findings</div>");
+
+            var passedHighWeight = deviceData.SelectMany(d => d.Checks).Where(c => c.Passed && c.Weight >= 5)
+                .GroupBy(c => c.Name).OrderByDescending(g => g.First().Weight).Take(5).ToList();
+            var failedHighWeight = topIssues.Where(i => i.Weight >= 5).Take(5).ToList();
+
+            sb.Append(@"<div class=""exec-findings-grid"">");
+            sb.Append(@"<div class=""exec-findings-col"">
+                <div class=""exec-findings-header"" style=""background:linear-gradient(135deg,#22c55e,#16a34a)"">
+                    <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#fff"" stroke-width=""2"" width=""20"" height=""20""><path d=""M22 11.08V12a10 10 0 11-5.93-9.14""/><polyline points=""22 4 12 14.01 9 11.01""/></svg>
+                    What's Working Well
+                </div>
+                <div class=""exec-findings-body"">");
+            if (passedHighWeight.Count > 0)
+                foreach (var g in passedHighWeight)
+                    sb.Append($@"<div class=""exec-finding-item"">
+                        <span class=""exec-finding-icon pass"">&#10003;</span>
+                        <div>
+                            <div class=""exec-finding-name"">{Esc(g.First().Name)}</div>
+                            <div class=""exec-finding-detail"">Passing on {g.Count()} of {totalDevices} device{(totalDevices != 1 ? "s" : "")}</div>
+                        </div>
+                    </div>");
+            else
+                sb.Append(@"<div style=""padding:16px;color:#666;text-align:center"">Run a scan to populate results</div>");
+            sb.Append("</div></div>");
+
+            sb.Append(@"<div class=""exec-findings-col"">
+                <div class=""exec-findings-header"" style=""background:linear-gradient(135deg,#ef4444,#dc2626)"">
+                    <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#fff"" stroke-width=""2"" width=""20"" height=""20""><circle cx=""12"" cy=""12"" r=""10""/><line x1=""15"" y1=""9"" x2=""9"" y2=""15""/><line x1=""9"" y1=""9"" x2=""15"" y2=""15""/></svg>
+                    What Needs Attention
+                </div>
+                <div class=""exec-findings-body"">");
+            if (failedHighWeight.Count > 0)
+                foreach (var issue in failedHighWeight)
+                {
+                    string prioColor = issue.Weight >= 10 ? "#dc2626" : "#d97706";
+                    string prioLabel = issue.Weight >= 10 ? "HIGH" : "MEDIUM";
+                    sb.Append($@"<div class=""exec-finding-item"">
+                        <span class=""exec-finding-icon fail"">&#10007;</span>
+                        <div>
+                            <div class=""exec-finding-name"">{Esc(issue.Name)} <span class=""exec-prio-tag"" style=""background:{prioColor}"">{prioLabel}</span></div>
+                            <div class=""exec-finding-detail"">Failing on {issue.Devices.Count} of {totalDevices} device{(totalDevices != 1 ? "s" : "")}</div>
+                        </div>
+                    </div>");
+                }
+            else
+                sb.Append(@"<div style=""padding:16px;color:#16a34a;text-align:center;font-weight:600"">No critical issues found!</div>");
+            sb.Append("</div></div>");
+            sb.Append("</div>");
+
+            sb.Append(@"<div class=""exec-cat-section"">
+                <div class=""exec-slide-title"" style=""margin-top:24px"">Security Health by Category</div>
+                <div class=""exec-cat-grid"">");
+            foreach (var (cat, data) in catEntries)
+            {
+                int pct = (int)Math.Round(100.0 * data.Passed / data.Total);
+                string color = pct >= 80 ? "#16a34a" : pct >= 60 ? "#d97706" : "#dc2626";
+                string icon = catIcons.GetValueOrDefault(cat, "⚙");
+                string statusTag = pct >= 80 ? "Good" : pct >= 60 ? "Fair" : "Needs Work";
+                sb.Append($@"<div class=""exec-cat-card"">
+                    <div class=""exec-cat-top"">
+                        <span class=""cat-icon"">{icon}</span>
+                        <span class=""exec-cat-name"">{Esc(cat)}</span>
+                        <span class=""exec-cat-tag"" style=""background:{color}"">{statusTag}</span>
+                    </div>
+                    <div class=""exec-cat-bar-wrap""><div class=""exec-cat-bar"" style=""width:{pct}%;background:{color}""></div></div>
+                    <div class=""exec-cat-stat"">{data.Passed}/{data.Total} checks passing</div>
+                </div>");
+            }
+            sb.Append("</div></div>");
+
+            sb.Append(@"<div class=""exec-footer"">Prepared by PC Plus Computing | Managed IT Services &amp; Endpoint Security | www.pcpluscomputing.com</div>");
+            sb.Append("</div>");
+
+            // ==================================================================
+            // EXECUTIVE SUMMARY - Slide 3: Recommended Actions
+            // ==================================================================
+            sb.Append(@"<div class=""exec-slide page-break"">");
+            sb.Append(@"<div class=""exec-slide-title"">Recommended Next Steps</div>");
+
+            var quickWins = topIssues.Where(i => i.Weight <= 5).Take(4).ToList();
+            var strategic = topIssues.Where(i => i.Weight >= 8).Take(4).ToList();
+
+            sb.Append(@"<div class=""exec-actions-grid"">");
+            sb.Append(@"<div class=""exec-action-col"">
+                <div class=""exec-action-header"" style=""background:linear-gradient(135deg,#22c55e,#16a34a)"">
+                    <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#fff"" stroke-width=""2"" width=""22"" height=""22""><path d=""M13 2L3 14h9l-1 8 10-12h-9l1-8z""/></svg>
+                    Quick Wins
+                </div>
+                <div class=""exec-action-desc"">Can be fixed remotely with minimal disruption</div>
+                <div class=""exec-action-list"">");
+            if (quickWins.Count > 0)
+            {
+                int qn = 0;
+                foreach (var qw in quickWins)
+                {
+                    qn++;
+                    sb.Append($@"<div class=""exec-action-item"">
+                        <div class=""exec-action-num"">{qn}</div>
+                        <div>
+                            <div class=""exec-action-name"">{Esc(qw.Name)}</div>
+                            <div class=""exec-action-impact"">{qw.Devices.Count} device{(qw.Devices.Count != 1 ? "s" : "")} affected</div>
+                        </div>
+                    </div>");
+                }
+            }
+            else
+                sb.Append(@"<div style=""padding:12px;color:#16a34a;font-weight:600"">All quick wins addressed!</div>");
+            sb.Append("</div></div>");
+
+            sb.Append(@"<div class=""exec-action-col"">
+                <div class=""exec-action-header"" style=""background:linear-gradient(135deg,#3b82f6,#1d4ed8)"">
+                    <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#fff"" stroke-width=""2"" width=""22"" height=""22""><circle cx=""12"" cy=""12"" r=""10""/><path d=""M12 6v6l4 2""/></svg>
+                    Strategic Improvements
+                </div>
+                <div class=""exec-action-desc"">High-impact changes for stronger security posture</div>
+                <div class=""exec-action-list"">");
+            if (strategic.Count > 0)
+            {
+                int sn = 0;
+                foreach (var si in strategic)
+                {
+                    sn++;
+                    sb.Append($@"<div class=""exec-action-item"">
+                        <div class=""exec-action-num"" style=""background:#1d4ed8"">{sn}</div>
+                        <div>
+                            <div class=""exec-action-name"">{Esc(si.Name)}</div>
+                            <div class=""exec-action-impact"">{si.Devices.Count} device{(si.Devices.Count != 1 ? "s" : "")} | {si.Weight} pts impact</div>
+                        </div>
+                    </div>");
+                }
+            }
+            else
+                sb.Append(@"<div style=""padding:12px;color:#16a34a;font-weight:600"">Excellent security posture!</div>");
+            sb.Append("</div></div>");
+            sb.Append("</div>");
+
+            sb.Append($@"<div class=""exec-cta"">
+                <div class=""exec-cta-title"">Let's Strengthen Your Security</div>
+                <div class=""exec-cta-text"">PC Plus Computing can address {(totalFailed > 10 ? "many of " : "")}these findings through our managed security services. Contact us to discuss a remediation plan tailored to your business.</div>
+                <div class=""exec-cta-contact"">www.pcpluscomputing.com</div>
+            </div>");
+
+            sb.Append(@"<div class=""exec-footer"">Prepared by PC Plus Computing | Managed IT Services &amp; Endpoint Security | www.pcpluscomputing.com</div>");
+            sb.Append("</div>");
+
+            // ==================================================================
+            // DETAILED REPORT - Original data pages
+            // ==================================================================
+
+            // Page 4: Donuts + top issues
+            sb.Append(@"<div class=""cover page-break"">");
+            sb.Append(@"<div class=""exec-title"" style=""font-size:22px;margin-bottom:20px"">Detailed Assessment Data</div>");
+
             sb.Append($@"<div class=""score-hero"">
                 <div class=""score-hero-left"">{SvgDonut(avgScore, 100, scoreColor, "#e5e7eb", 140, $"{avgScore}%", $"Grade {grade}")}</div>
                 <div class=""score-hero-right"">
@@ -147,7 +392,6 @@ namespace PCPlus.Dashboard.Services
                 </div>
             </div>");
 
-            // Three small donuts
             sb.Append(@"<div class=""donut-row"">");
             sb.Append($@"<div class=""donut-card"">
                 <div class=""label"">Device Status</div>
@@ -166,8 +410,6 @@ namespace PCPlus.Dashboard.Services
             </div>");
             sb.Append("</div>");
 
-            // Summary boxes
-            string gradeColorClass = avgScore >= 80 ? "green" : avgScore >= 60 ? "orange" : "red";
             sb.Append($@"<div class=""summary-row"">
                 <div class=""summary-box""><div class=""num blue"">{totalDevices}</div><div class=""lbl"">Endpoints</div></div>
                 <div class=""summary-box""><div class=""num green"">{totalPassed}</div><div class=""lbl"">Checks Passed</div></div>
@@ -175,22 +417,12 @@ namespace PCPlus.Dashboard.Services
                 <div class=""summary-box""><div class=""num {gradeColorClass}"">{grade}</div><div class=""lbl"">Security Grade</div></div>
             </div>");
 
-            // Category breakdown
             sb.Append(@"<div class=""section-wrap""><div class=""exec-title"">Security by Category</div><div class=""cat-grid"">");
-            var catIcons = new Dictionary<string, string>
-            {
-                ["Protection"] = "\U0001F6E1", ["Identity & Access"] = "\U0001F511", ["Network"] = "\U0001F310",
-                ["Ransomware Protection"] = "\U0001F6A8", ["Updates"] = "\U0001F504", ["Data Protection"] = "\U0001F4BE",
-                ["Device Health"] = "\U0001F4BB", ["EDR & Advanced"] = "\U0001F52C", ["Access"] = "\U0001F511",
-                ["Logging & Visibility"] = "\U0001F4CB", ["Endpoint Hardening"] = "\U0001F512",
-                ["Device Control"] = "\U0001F50C", ["Browser & User Risk"] = "\U0001F310",
-                ["Hardware Security"] = "\U0001F527", ["Privilege Escalation"] = "\u26A0"
-            };
             foreach (var (cat, data) in catEntries)
             {
                 int pct = (int)Math.Round(100.0 * data.Passed / data.Total);
                 string color = pct >= 80 ? "#16a34a" : pct >= 60 ? "#d97706" : "#dc2626";
-                string icon = catIcons.GetValueOrDefault(cat, "\u2699");
+                string icon = catIcons.GetValueOrDefault(cat, "⚙");
                 sb.Append($@"<div class=""cat-row"">
                     <span class=""cat-icon"">{icon}</span>
                     <span class=""cat-name"">{Esc(cat)}</span>
@@ -200,7 +432,6 @@ namespace PCPlus.Dashboard.Services
             }
             sb.Append("</div></div>");
 
-            // Top issues
             sb.Append(@"<div class=""section-wrap""><div class=""exec-title"">Top Issues Requiring Attention</div><div class=""top-issues-grid"">");
             if (topIssues.Count == 0)
                 sb.Append(@"<p class=""all-clear"">No critical issues found - great job!</p>");
@@ -212,12 +443,10 @@ namespace PCPlus.Dashboard.Services
                         <div class=""issue-rec"">{Esc(issue.Rec)}</div>
                     </div>");
             sb.Append("</div></div>");
-
-            // Footer for page 1
             sb.Append(@"<div class=""exec-footer"">Prepared by PC Plus Computing | Managed IT Services &amp; Endpoint Security | www.pcpluscomputing.com</div>");
-            sb.Append("</div>"); // end cover
+            sb.Append("</div>");
 
-            // Page 2: Device table + recommendations
+            // Device table + recommendations
             sb.Append(@"<div class=""detail-section page-break"">
                 <div class=""section-title"">Device Security Overview</div>
                 <div class=""table-wrap""><table class=""device-table""><thead><tr>
@@ -245,7 +474,6 @@ namespace PCPlus.Dashboard.Services
             }
             sb.Append("</tbody></table></div>");
 
-            // Priority recommendations
             sb.Append(@"<div class=""section-title"" style=""margin-top:30px"">Priority Recommendations</div>
                 <div class=""table-wrap""><table class=""device-table""><thead><tr>
                     <th style=""width:30px"">#</th><th>Issue</th><th>Affected Devices</th><th>Priority</th><th>Recommendation</th>
@@ -267,7 +495,7 @@ namespace PCPlus.Dashboard.Services
             }
             sb.Append("</tbody></table></div></div>");
 
-            // Page 3: Per-device breakdown
+            // Per-device breakdown
             sb.Append(@"<div class=""detail-section page-break""><div class=""section-title"">Per-Device Security Breakdown</div>");
             foreach (var dd in deviceData)
             {
@@ -297,14 +525,12 @@ namespace PCPlus.Dashboard.Services
             }
             sb.Append("</div>");
 
-            // Footer
             sb.Append(@"<div class=""footer"">
                 <p>Prepared by PC Plus Computing - Endpoint Protection Platform</p>
                 <p>This report reflects the state of all endpoints at the time of generation.</p>
                 <p style=""margin-top:6px;color:#bbb"">www.pcpluscomputing.com | Managed IT Services &amp; Security</p>
             </div>");
 
-            // Minimal JS for download button only (omitted for email)
             if (!forEmail)
             {
                 sb.Append(@"<script>
@@ -320,15 +546,11 @@ namespace PCPlus.Dashboard.Services
             }
 
             sb.Append("</body></html>");
-
             return sb.ToString();
         }
 
-        // --- Helpers ---
-
         private static string Esc(string? s) => WebUtility.HtmlEncode(s ?? "");
 
-        /// <summary>Generate an SVG donut chart (works in email clients).</summary>
         private static string SvgDonut(int value, int total, string fillColor, string bgColor, int size,
             string centerText, string? centerSub = null)
         {
@@ -344,12 +566,9 @@ namespace PCPlus.Dashboard.Services
 
             var sb = new StringBuilder();
             sb.Append($@"<svg width=""{size}"" height=""{size}"" viewBox=""0 0 {size} {size}"" xmlns=""http://www.w3.org/2000/svg"">");
-            // Background circle
             sb.Append($@"<circle cx=""{cx}"" cy=""{cy}"" r=""{r}"" fill=""none"" stroke=""{bgColor}"" stroke-width=""{strokeW}""/>");
-            // Fill arc (rotated -90deg to start from top)
             if (pct > 0)
                 sb.Append($@"<circle cx=""{cx}"" cy=""{cy}"" r=""{r}"" fill=""none"" stroke=""{fillColor}"" stroke-width=""{strokeW}"" stroke-dasharray=""{fillLen:F1} {gapLen:F1}"" transform=""rotate(-90 {cx} {cy})"" stroke-linecap=""butt""/>");
-            // Center text
             int textY = centerSub != null ? cy - 5 : cy + 2;
             sb.Append($@"<text x=""{cx}"" y=""{textY}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""Segoe UI,Tahoma,sans-serif"" font-weight=""700"" font-size=""{textSize}"" fill=""#1a1a2e"">{Esc(centerText)}</text>");
             if (centerSub != null)
@@ -377,6 +596,70 @@ namespace PCPlus.Dashboard.Services
             .brand-right .date { color:#94a3b8; font-size:12px; }
             .brand-right .report-id { color:#64748b; font-size:10px; margin-top:3px; }
 
+            /* EXECUTIVE SUMMARY STYLES */
+            .exec-slide { padding:36px 40px; }
+            .exec-slide-title { font-size:22px; color:#1a56db; font-weight:800; margin-bottom:18px; padding-bottom:8px; border-bottom:3px solid #1a56db; }
+
+            .exec-status-banner { display:flex; align-items:center; justify-content:space-between; padding:24px 30px; border-radius:16px; border:2px solid; margin:20px 0; flex-wrap:wrap; gap:16px; }
+            .exec-status-left { display:flex; align-items:center; gap:16px; }
+            .exec-status-icon { flex-shrink:0; }
+            .exec-status-label { font-size:28px; font-weight:800; letter-spacing:2px; }
+            .exec-status-sub { font-size:13px; color:#666; margin-top:2px; }
+            .exec-status-score { flex-shrink:0; }
+
+            .exec-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:24px 0; }
+            .exec-metric-card { text-align:center; padding:20px 12px 16px; background:#fff; border-radius:16px; border:1px solid #e5e7eb; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+            .exec-metric-icon { width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+            .exec-metric-num { font-size:36px; font-weight:800; line-height:1; }
+            .exec-metric-label { font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.5px; margin-top:6px; }
+            .exec-metric-detail { font-size:11px; color:#94a3b8; margin-top:4px; }
+
+            .exec-summary-box { margin:24px 0; padding:24px 28px; background:#f8fafc; border-radius:14px; border:1px solid #e2e8f0; }
+            .exec-summary-title { font-size:16px; font-weight:700; color:#1a56db; margin-bottom:14px; }
+            .exec-summary-bullets { display:flex; flex-direction:column; gap:12px; }
+            .exec-bullet { display:flex; align-items:flex-start; gap:12px; font-size:14px; line-height:1.6; color:#334155; }
+            .exec-bullet-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:6px; }
+
+            .exec-findings-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+            .exec-findings-col { border-radius:14px; overflow:hidden; border:1px solid #e5e7eb; background:#fff; }
+            .exec-findings-header { color:#fff; font-weight:700; font-size:14px; padding:14px 18px; display:flex; align-items:center; gap:10px; }
+            .exec-findings-body { padding:6px 0; }
+            .exec-finding-item { display:flex; align-items:flex-start; gap:12px; padding:10px 18px; border-bottom:1px solid #f1f5f9; }
+            .exec-finding-item:last-child { border-bottom:none; }
+            .exec-finding-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+            .exec-finding-icon.pass { color:#16a34a; }
+            .exec-finding-icon.fail { color:#dc2626; }
+            .exec-finding-name { font-size:13px; font-weight:600; color:#1a1a2e; }
+            .exec-finding-detail { font-size:11px; color:#94a3b8; margin-top:2px; }
+            .exec-prio-tag { font-size:9px; padding:1px 6px; border-radius:8px; color:#fff; font-weight:600; vertical-align:middle; }
+
+            .exec-cat-section { margin-top:8px; }
+            .exec-cat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+            .exec-cat-card { padding:12px 16px; background:#f8fafc; border-radius:10px; border:1px solid #e5e7eb; }
+            .exec-cat-top { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+            .exec-cat-name { font-size:12px; font-weight:600; color:#334155; flex:1; }
+            .exec-cat-tag { font-size:9px; padding:2px 8px; border-radius:10px; color:#fff; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; }
+            .exec-cat-bar-wrap { height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden; }
+            .exec-cat-bar { height:100%; border-radius:4px; transition:width 0.3s; }
+            .exec-cat-stat { font-size:10px; color:#94a3b8; margin-top:4px; }
+
+            .exec-actions-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+            .exec-action-col { border-radius:14px; overflow:hidden; border:1px solid #e5e7eb; background:#fff; }
+            .exec-action-header { color:#fff; font-weight:700; font-size:15px; padding:16px 20px; display:flex; align-items:center; gap:10px; }
+            .exec-action-desc { padding:10px 20px 0; font-size:12px; color:#94a3b8; }
+            .exec-action-list { padding:8px 12px 12px; }
+            .exec-action-item { display:flex; align-items:center; gap:12px; padding:10px 8px; border-bottom:1px solid #f1f5f9; }
+            .exec-action-item:last-child { border-bottom:none; }
+            .exec-action-num { width:28px; height:28px; border-radius:50%; background:#16a34a; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0; }
+            .exec-action-name { font-size:13px; font-weight:600; color:#1a1a2e; }
+            .exec-action-impact { font-size:11px; color:#94a3b8; margin-top:1px; }
+
+            .exec-cta { text-align:center; padding:30px 40px; margin:8px 0 20px; background:linear-gradient(135deg,#0f172a,#1e293b); border-radius:16px; color:#fff; }
+            .exec-cta-title { font-size:22px; font-weight:800; margin-bottom:10px; }
+            .exec-cta-text { font-size:14px; color:#cbd5e1; line-height:1.6; max-width:600px; margin:0 auto 14px; }
+            .exec-cta-contact { font-size:13px; color:#3b82f6; font-weight:600; }
+
+            /* ORIGINAL DETAIL STYLES */
             .cover { padding:36px 40px; }
             .customer-name { font-size:36px; font-weight:800; color:#1a1a2e; line-height:1.1; }
             .report-type { font-size:13px; color:#64748b; font-weight:600; margin-top:4px; text-transform:uppercase; letter-spacing:1.5px; }
@@ -442,12 +725,17 @@ namespace PCPlus.Dashboard.Services
 
             .footer { padding:24px 40px; text-align:center; color:#999; font-size:10px; border-top:2px solid #e5e7eb; }
 
-            /* MOBILE RESPONSIVE */
             @media (max-width:700px) {
                 .brand-bar { padding:16px 20px; flex-direction:column; align-items:flex-start; }
                 .brand-right { text-align:left; }
-                .cover { padding:24px 20px; }
+                .cover, .exec-slide { padding:24px 20px; }
                 .customer-name { font-size:26px; }
+                .exec-status-banner { flex-direction:column; text-align:center; }
+                .exec-status-label { font-size:22px; }
+                .exec-metrics { grid-template-columns:repeat(2,1fr); }
+                .exec-findings-grid { grid-template-columns:1fr; }
+                .exec-cat-grid { grid-template-columns:1fr; }
+                .exec-actions-grid { grid-template-columns:1fr; }
                 .score-hero { flex-direction:column; padding:20px; gap:16px; }
                 .score-hero-right { text-align:center; }
                 .headline { font-size:16px; }
@@ -462,10 +750,11 @@ namespace PCPlus.Dashboard.Services
 
             @media print {
                 .no-print { display:none !important; }
+                .exec-slide { page-break-after:always; }
                 .cover { min-height:auto; page-break-after:always; }
                 .page-break { page-break-before:always; }
                 body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-                .grade-badge,.summary-box,.device-table th,.device-block-header,.score-hero,.donut-card,.brand-bar { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+                .grade-badge,.summary-box,.device-table th,.device-block-header,.score-hero,.donut-card,.brand-bar,.exec-status-banner,.exec-metric-card,.exec-findings-header,.exec-action-header,.exec-cta,.exec-cat-tag,.exec-action-num,.exec-prio-tag { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             }
         ";
     }
