@@ -4,10 +4,10 @@
 #define MyAppName "PC Plus Endpoint Protection"
 #define MyAppPublisher "PC Plus Computing"
 #define MyAppURL "https://pcpluscomputing.com"
-#define MyAppVersion GetEnv('APP_VERSION')
-#if MyAppVersion == ""
-#define MyAppVersion "4.9.0"
+#ifndef APP_VERSION
+#define APP_VERSION "4.17.0"
 #endif
+#define MyAppVersion APP_VERSION
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -68,7 +68,7 @@ begin
   begin
     // Send immediate heartbeat via PowerShell
     Exec('powershell.exe',
-      '-NoProfile -Command "try{$cfg=Get-Content ''C:\ProgramData\PCPlusEndpoint\config.json'' -Raw|ConvertFrom-Json;$b=@{deviceId=$cfg.deviceId;hostname=$env:COMPUTERNAME;osVersion=''Windows'';agentVersion=''4.9.0'';licenseTier=''Free''}|ConvertTo-Json;[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;Invoke-RestMethod -Uri ''https://dashboard.pcpluscomputing.com/api/endpoint/heartbeat'' -Method POST -ContentType ''application/json'' -Body $b -TimeoutSec 10}catch{}"',
+      '-NoProfile -Command "try{$cfg=Get-Content ''C:\ProgramData\PCPlusEndpoint\config.json'' -Raw|ConvertFrom-Json;$v=try{(Get-Item '''+ExpandConstant('{app}')+'\Service\PCPlusService.exe'').VersionInfo.ProductVersion}catch{'''+'{#MyAppVersion}'+'''};$b=@{deviceId=$cfg.deviceId;hostname=$env:COMPUTERNAME;osVersion=''Windows'';agentVersion=$v;licenseTier=''Free''}|ConvertTo-Json;[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;Invoke-RestMethod -Uri ''https://dashboard.pcpluscomputing.com/api/endpoint/heartbeat'' -Method POST -ContentType ''application/json'' -Body $b -TimeoutSec 10}catch{}"',
       '', SW_HIDE, ewNoWait, ResultCode);
   end;
 end;
