@@ -19,6 +19,7 @@ namespace PCPlus.Core.Models
         public bool Passed { get; set; }
         public string Detail { get; set; } = "";
         public string Recommendation { get; set; } = "";
+        public DateTime LastChecked { get; set; } = DateTime.UtcNow;
     }
 
     /// <summary>Ransomware detection event.</summary>
