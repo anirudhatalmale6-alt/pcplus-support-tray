@@ -250,6 +250,61 @@ namespace PCPlus.Dashboard.Controllers
             return Ok();
         }
 
+        /// <summary>POST /api/dashboard/company/{customerName}/command - Send command to ALL devices under a customer.</summary>
+        [HttpPost("company/{customerName}/command")]
+        public async Task<ActionResult> SendCompanyCommand(string customerName, [FromBody] DeviceCommandRequest req)
+        {
+            customerName = System.Net.WebUtility.UrlDecode(customerName);
+            var devices = await _db.Devices.Where(d => d.CustomerName == customerName).ToListAsync();
+            if (devices.Count == 0) return NotFound(new { message = $"No devices found for '{customerName}'" });
+
+            foreach (var device in devices)
+            {
+                _db.ConfigPushes.Add(new ConfigPush
+                {
+                    DeviceId = device.DeviceId,
+                    Key = "_command",
+                    Value = req.Command,
+                    CreatedBy = "dashboard"
+                });
+            }
+
+            await _db.SaveChangesAsync();
+            _log.LogInformation("Command '{Command}' sent to {Count} devices for customer '{Customer}'", req.Command, devices.Count, customerName);
+            return Ok(new { queued = true, deviceCount = devices.Count, command = req.Command });
+        }
+
+        /// <summary>POST /api/dashboard/company/{customerName}/remediate - Fix a security check on ALL devices under a customer.</summary>
+        [HttpPost("company/{customerName}/remediate")]
+        public async Task<ActionResult> RemediateCompany(string customerName, [FromBody] RemediateRequest req)
+        {
+            customerName = System.Net.WebUtility.UrlDecode(customerName);
+            var devices = await _db.Devices.Where(d => d.CustomerName == customerName).ToListAsync();
+            if (devices.Count == 0) return NotFound(new { message = $"No devices found for '{customerName}'" });
+
+            foreach (var device in devices)
+            {
+                _db.ConfigPushes.Add(new ConfigPush
+                {
+                    DeviceId = device.DeviceId,
+                    Key = "_remediate",
+                    Value = req.CheckId,
+                    CreatedBy = "dashboard"
+                });
+                _db.ConfigPushes.Add(new ConfigPush
+                {
+                    DeviceId = device.DeviceId,
+                    Key = "_command",
+                    Value = "rescan",
+                    CreatedBy = "dashboard"
+                });
+            }
+
+            await _db.SaveChangesAsync();
+            _log.LogInformation("Remediation '{CheckId}' queued for {Count} devices under '{Customer}'", req.CheckId, devices.Count, customerName);
+            return Ok(new { queued = true, checkId = req.CheckId, deviceCount = devices.Count });
+        }
+
         /// <summary>GET /api/dashboard/policies - List all policy profiles.</summary>
         [HttpGet("policies")]
         public async Task<ActionResult<List<PolicyProfile>>> GetPolicies()

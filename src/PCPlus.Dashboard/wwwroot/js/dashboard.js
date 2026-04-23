@@ -2009,3 +2009,145 @@ async function sendDeviceCommand(deviceId, command) {
         }
     } catch (err) { alert('Failed to send command'); }
 }
+
+// === COMPANY-WIDE REMOTE COMMANDS ===
+function showCompanyCommands() {
+    if (!currentCustomer) return;
+    const modal = document.getElementById('device-modal');
+    const content = document.getElementById('device-modal-content');
+    content.innerHTML = `
+        <h3>Company Commands - ${esc(currentCustomer)}</h3>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Send a command to ALL devices under <strong>${esc(currentCustomer)}</strong>. Commands execute on the next heartbeat (within 30 seconds).</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="btn btn-primary" onclick="sendCompanyCommand('rescan')" style="padding:16px;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Run Security Scan (All)
+            </button>
+            <button class="btn btn-secondary" onclick="sendCompanyCommand('restart-service')" style="padding:16px;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Restart Service (All)
+            </button>
+            <button class="btn btn-secondary" onclick="sendCompanyCommand('update-agent')" style="padding:16px;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Update Agent (All)
+            </button>
+            <button class="btn btn-secondary" onclick="sendCompanyCommand('collect-inventory')" style="padding:16px;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Collect Inventory (All)
+            </button>
+            <button class="btn btn-secondary" onclick="sendCompanyCommand('collect-bitlocker')" style="padding:16px;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+                Get BitLocker Keys (All)
+            </button>
+            <button class="btn btn-danger" onclick="if(confirm('This will LOCKDOWN ALL devices under ${esc(currentCustomer)}. Are you sure?'))sendCompanyCommand('lockdown')" style="padding:16px;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Lockdown All Devices
+            </button>
+        </div>
+        <div style="margin-top:16px;text-align:right">
+            <button class="btn btn-secondary" onclick="document.getElementById('device-modal').classList.remove('active')">Close</button>
+        </div>`;
+    modal.classList.add('active');
+}
+
+async function sendCompanyCommand(command) {
+    if (!currentCustomer) return;
+    try {
+        const res = await apiFetch(API + '/company/' + encodeURIComponent(currentCustomer) + '/command', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ command: command })
+        });
+        if (res?.ok) {
+            const data = await res.json();
+            alert('Command "' + command + '" sent to ' + data.deviceCount + ' devices! Will execute on next heartbeat.');
+            document.getElementById('device-modal').classList.remove('active');
+        }
+    } catch (err) { alert('Failed to send company command'); }
+}
+
+// === REMEDIATION LIBRARY ===
+const REMEDIATION_LIBRARY = [
+    { id: 'cfa', name: 'Controlled Folder Access', category: 'Ransomware Protection', auto: true, desc: 'Enables Windows Controlled Folder Access to prevent unauthorized apps from modifying protected folders.' },
+    { id: 'defender_rt', name: 'Real-time Protection', category: 'Protection', auto: true, desc: 'Enables Windows Defender real-time monitoring to catch threats as they appear.' },
+    { id: 'firewall', name: 'Windows Firewall', category: 'Protection', auto: true, desc: 'Enables Windows Firewall on all network profiles (Domain, Private, Public).' },
+    { id: 'rdp', name: 'Disable Remote Desktop', category: 'Network', auto: true, desc: 'Disables Remote Desktop Protocol to reduce attack surface.' },
+    { id: 'rdp_exposure', name: 'RDP Network Level Auth', category: 'Network', auto: true, desc: 'Enables NLA (Network Level Authentication) for RDP to require authentication before session.' },
+    { id: 'smbv1', name: 'Disable SMBv1', category: 'Network', auto: true, desc: 'Disables the vulnerable SMBv1 protocol used by WannaCry and similar ransomware.' },
+    { id: 'uac', name: 'User Account Control', category: 'Protection', auto: true, desc: 'Enables UAC to prevent unauthorized system changes.' },
+    { id: 'ps_logging', name: 'PowerShell Logging', category: 'EDR & Advanced', auto: true, desc: 'Enables Script Block Logging, Module Logging, and Transcription for PowerShell attack detection.' },
+    { id: 'ps_exec_policy', name: 'Script Execution Policy', category: 'EDR & Advanced', auto: true, desc: 'Sets PowerShell execution policy to RemoteSigned to prevent running unsigned scripts.' },
+    { id: 'guest', name: 'Disable Guest Account', category: 'Identity & Access', auto: true, desc: 'Disables the built-in Guest account to prevent unauthorized access.' },
+    { id: 'autologin', name: 'Disable Auto-Login', category: 'Identity & Access', auto: true, desc: 'Removes stored auto-login credentials from the registry.' },
+    { id: 'shadow_copies', name: 'Enable Shadow Copies', category: 'Ransomware Protection', auto: true, desc: 'Enables System Restore and Volume Shadow Copy Service for file recovery.' },
+    { id: 'asr_rules', name: 'Attack Surface Reduction', category: 'EDR & Advanced', auto: true, desc: 'Enables 10 ASR rules to block common attack vectors (Office macros, scripts, credential theft).' },
+    { id: 'lsass_protect', name: 'LSASS Protection', category: 'Identity & Access', auto: true, desc: 'Enables Protected Process Light (PPL) for LSASS to prevent credential dumping.' },
+    { id: 'dns_security', name: 'Secure DNS', category: 'Network', auto: true, desc: 'Configures DNS to use Quad9 (9.9.9.9) secure resolvers with built-in threat blocking.' },
+    { id: 'account_lockout', name: 'Account Lockout Policy', category: 'Identity & Access', auto: true, desc: 'Sets account lockout after 5 failed attempts with 30-minute reset window.' },
+    { id: 'llmnr_netbios', name: 'Disable LLMNR/NetBIOS', category: 'Network', auto: true, desc: 'Disables LLMNR and NetBIOS name resolution to prevent relay attacks.' },
+    { id: 'smartscreen', name: 'Enable SmartScreen', category: 'Endpoint Hardening', auto: true, desc: 'Enables Windows SmartScreen to warn about unrecognized apps and websites.' },
+    { id: 'usb_storage', name: 'Block USB Storage', category: 'Device Control', auto: true, desc: 'Blocks USB mass storage devices to prevent data exfiltration.' },
+    { id: 'office_macros', name: 'Block Office Macros', category: 'Endpoint Hardening', auto: true, desc: 'Blocks macro execution in Office documents downloaded from the internet.' },
+    { id: 'tamper_protect', name: 'Tamper Protection', category: 'Protection', auto: false, desc: 'Must be enabled manually in Windows Security settings or via Intune/GPO.' },
+    { id: 'bitlocker', name: 'BitLocker Encryption', category: 'Data Protection', auto: false, desc: 'Requires manual setup - needs recovery key backup and TPM configuration.' },
+    { id: 'backup', name: 'Backup Configuration', category: 'Data Protection', auto: false, desc: 'Requires manual setup of backup solution (Windows Backup, third-party, or cloud).' },
+    { id: 'edr', name: 'EDR / Advanced Protection', category: 'EDR & Advanced', auto: false, desc: 'Requires manual installation of an EDR solution (CrowdStrike, SentinelOne, etc.).' },
+    { id: 'secure_boot', name: 'Secure Boot & TPM', category: 'Hardware Security', auto: false, desc: 'Requires BIOS/UEFI configuration - must be done physically on the machine.' }
+];
+
+function showRemediationLibrary() {
+    if (!currentCustomer) return;
+    const modal = document.getElementById('device-modal');
+    const content = document.getElementById('device-modal-content');
+
+    const categories = {};
+    REMEDIATION_LIBRARY.forEach(r => {
+        if (!categories[r.category]) categories[r.category] = [];
+        categories[r.category].push(r);
+    });
+
+    let html = `
+        <h3 style="margin-bottom:4px">Remediation Library</h3>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Fix security issues across ALL devices under <strong>${esc(currentCustomer)}</strong>. Auto-fix items run remotely within 30 seconds.</p>
+        <div style="max-height:70vh;overflow-y:auto;padding-right:8px">`;
+
+    Object.entries(categories).forEach(([cat, items]) => {
+        html += `<div style="margin-bottom:16px">
+            <div style="font-weight:700;font-size:13px;color:var(--text-primary);padding:8px 0 6px;border-bottom:1px solid var(--border)">${esc(cat)}</div>`;
+        items.forEach(r => {
+            html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,0.05)">
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${esc(r.name)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(r.desc)}</div>
+                </div>
+                ${r.auto
+                    ? `<button class="btn btn-sm" onclick="sendCompanyRemediation('${r.id}','${esc(r.name)}')" style="background:#16a34a;color:#fff;padding:4px 14px;font-size:11px;white-space:nowrap;flex-shrink:0">Fix All</button>`
+                    : `<span style="font-size:10px;color:var(--text-muted);padding:4px 10px;border:1px solid var(--border);border-radius:4px;white-space:nowrap;flex-shrink:0">Manual</span>`
+                }
+            </div>`;
+        });
+        html += `</div>`;
+    });
+
+    html += `</div>
+        <div style="margin-top:16px;text-align:right">
+            <button class="btn btn-secondary" onclick="document.getElementById('device-modal').classList.remove('active')">Close</button>
+        </div>`;
+
+    content.innerHTML = html;
+    modal.classList.add('active');
+}
+
+async function sendCompanyRemediation(checkId, checkName) {
+    if (!currentCustomer) return;
+    if (!confirm('Apply "' + checkName + '" fix to ALL devices under ' + currentCustomer + '?')) return;
+    try {
+        const res = await apiFetch(API + '/company/' + encodeURIComponent(currentCustomer) + '/remediate', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ checkId: checkId })
+        });
+        if (res?.ok) {
+            const data = await res.json();
+            alert('"' + checkName + '" fix queued for ' + data.deviceCount + ' devices! Will apply on next heartbeat and auto-rescan.');
+        }
+    } catch (err) { alert('Failed to queue remediation'); }
+}
