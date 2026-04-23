@@ -928,7 +928,8 @@ function loadDeviceDetail(d) {
                 passed: c.Passed != null ? c.Passed : c.passed,
                 detail: c.Detail || c.detail,
                 recommendation: c.Recommendation || c.recommendation,
-                weight: c.Weight || c.weight
+                weight: c.Weight || c.weight,
+                lastChecked: c.LastChecked || c.lastChecked
             }));
     } catch(e) {}
 
@@ -974,6 +975,7 @@ function loadDeviceDetail(d) {
                             <div style="flex:1;min-width:0">
                                 <div style="font-size:13px;font-weight:${c.passed ? '400' : '600'};color:${c.passed ? 'var(--text-primary)' : '#ef4444'}">${esc(c.name)}</div>
                                 <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(c.detail)}</div>
+                                ${c.lastChecked ? `<div style="font-size:10px;color:var(--text-muted);margin-top:1px;opacity:0.7">Validated: ${new Date(c.lastChecked).toLocaleString()}</div>` : ''}
                                 ${!c.passed && c.recommendation ? `<div style="font-size:11px;color:#f59e0b;margin-top:2px;font-style:italic">&#9888; ${esc(c.recommendation)}</div>` : ''}
                             </div>
                             ${!c.passed && remediable ? `<button onclick="remediateCheck('${c.id}','${esc(c.name)}')" style="flex-shrink:0;background:#16a34a;color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600" title="Auto-fix this issue">Fix</button>` : ''}

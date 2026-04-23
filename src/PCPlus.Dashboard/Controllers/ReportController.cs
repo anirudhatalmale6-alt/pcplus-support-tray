@@ -280,13 +280,14 @@ namespace PCPlus.Dashboard.Controllers
                     sb.Append($@"<div class=""device-all-pass"">All {dd.Checks.Count} security checks passed</div>");
                 else
                 {
-                    sb.Append(@"<table><tr><th>Check</th><th>Category</th><th>Details</th><th style=""width:50px"">Weight</th></tr>");
+                    sb.Append(@"<table><tr><th>Check</th><th>Category</th><th>Details</th><th style=""width:50px"">Weight</th><th style=""width:120px"">Last Validated</th></tr>");
                     foreach (var c in failed)
                         sb.Append($@"<tr>
                             <td class=""fail"" style=""font-weight:600"">{Esc(c.Name)}</td>
                             <td>{Esc(c.Category)}</td>
                             <td>{Esc(c.Detail)}</td>
                             <td style=""text-align:center;font-weight:600"">{c.Weight}</td>
+                            <td style=""font-size:11px;color:#888"">{(c.LastChecked.HasValue ? c.LastChecked.Value.ToString("yyyy-MM-dd HH:mm") : "-")}</td>
                         </tr>");
                     sb.Append("</table>");
                 }

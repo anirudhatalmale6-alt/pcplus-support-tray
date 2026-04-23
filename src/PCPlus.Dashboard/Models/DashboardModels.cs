@@ -223,6 +223,7 @@ namespace PCPlus.Dashboard.Models
         public string Detail { get; set; } = "";
         public string Recommendation { get; set; } = "";
         public int Weight { get; set; }
+        public DateTime? LastChecked { get; set; }
     }
 
     public class InstalledSoftwareReport
