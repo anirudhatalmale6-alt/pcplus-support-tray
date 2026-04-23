@@ -2012,9 +2012,10 @@ async function sendDeviceCommand(deviceId, command) {
 
 // === COMPANY-WIDE REMOTE COMMANDS ===
 function showCompanyCommands() {
-    if (!currentCustomer) return;
+    if (!currentCustomer) { alert('Please select a customer first.'); return; }
     const modal = document.getElementById('device-modal');
     const content = document.getElementById('device-modal-content');
+    content.classList.remove('modal-wide');
     content.innerHTML = `
         <h3>Company Commands - ${esc(currentCustomer)}</h3>
         <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Send a command to ALL devices under <strong>${esc(currentCustomer)}</strong>. Commands execute on the next heartbeat (within 30 seconds).</p>
@@ -2070,8 +2071,8 @@ const REMEDIATION_LIBRARY = [
     { id: 'cfa', name: 'Controlled Folder Access', category: 'Ransomware Protection', auto: true, desc: 'Enables Windows Controlled Folder Access to prevent unauthorized apps from modifying protected folders.' },
     { id: 'defender_rt', name: 'Real-time Protection', category: 'Protection', auto: true, desc: 'Enables Windows Defender real-time monitoring to catch threats as they appear.' },
     { id: 'firewall', name: 'Windows Firewall', category: 'Protection', auto: true, desc: 'Enables Windows Firewall on all network profiles (Domain, Private, Public).' },
-    { id: 'rdp', name: 'Disable Remote Desktop', category: 'Network', auto: true, desc: 'Disables Remote Desktop Protocol to reduce attack surface.' },
-    { id: 'rdp_exposure', name: 'RDP Network Level Auth', category: 'Network', auto: true, desc: 'Enables NLA (Network Level Authentication) for RDP to require authentication before session.' },
+    { id: 'rdp', name: 'Disable Remote Desktop', category: 'Network', auto: false, desc: 'Disables Remote Desktop Protocol. WARNING: Only apply if clients do NOT use RDP for remote access.' },
+    { id: 'rdp_exposure', name: 'RDP Network Level Auth', category: 'Network', auto: true, desc: 'Enables NLA (Network Level Authentication) for RDP - does NOT disable RDP, just adds authentication requirement.' },
     { id: 'smbv1', name: 'Disable SMBv1', category: 'Network', auto: true, desc: 'Disables the vulnerable SMBv1 protocol used by WannaCry and similar ransomware.' },
     { id: 'uac', name: 'User Account Control', category: 'Protection', auto: true, desc: 'Enables UAC to prevent unauthorized system changes.' },
     { id: 'ps_logging', name: 'PowerShell Logging', category: 'EDR & Advanced', auto: true, desc: 'Enables Script Block Logging, Module Logging, and Transcription for PowerShell attack detection.' },
@@ -2085,7 +2086,7 @@ const REMEDIATION_LIBRARY = [
     { id: 'account_lockout', name: 'Account Lockout Policy', category: 'Identity & Access', auto: true, desc: 'Sets account lockout after 5 failed attempts with 30-minute reset window.' },
     { id: 'llmnr_netbios', name: 'Disable LLMNR/NetBIOS', category: 'Network', auto: true, desc: 'Disables LLMNR and NetBIOS name resolution to prevent relay attacks.' },
     { id: 'smartscreen', name: 'Enable SmartScreen', category: 'Endpoint Hardening', auto: true, desc: 'Enables Windows SmartScreen to warn about unrecognized apps and websites.' },
-    { id: 'usb_storage', name: 'Block USB Storage', category: 'Device Control', auto: true, desc: 'Blocks USB mass storage devices to prevent data exfiltration.' },
+    { id: 'usb_storage', name: 'Block USB Storage', category: 'Device Control', auto: false, desc: 'Blocks USB mass storage devices. WARNING: Only apply if clients do NOT use USB drives.' },
     { id: 'office_macros', name: 'Block Office Macros', category: 'Endpoint Hardening', auto: true, desc: 'Blocks macro execution in Office documents downloaded from the internet.' },
     { id: 'tamper_protect', name: 'Tamper Protection', category: 'Protection', auto: false, desc: 'Must be enabled manually in Windows Security settings or via Intune/GPO.' },
     { id: 'bitlocker', name: 'BitLocker Encryption', category: 'Data Protection', auto: false, desc: 'Requires manual setup - needs recovery key backup and TPM configuration.' },
@@ -2095,9 +2096,10 @@ const REMEDIATION_LIBRARY = [
 ];
 
 function showRemediationLibrary() {
-    if (!currentCustomer) return;
+    if (!currentCustomer) { alert('Please select a customer first.'); return; }
     const modal = document.getElementById('device-modal');
     const content = document.getElementById('device-modal-content');
+    content.classList.add('modal-wide');
 
     const categories = {};
     REMEDIATION_LIBRARY.forEach(r => {

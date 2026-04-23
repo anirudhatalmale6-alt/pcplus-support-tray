@@ -364,8 +364,12 @@ tr:last-child td { border-bottom: none; }
     border-radius: var(--radius);
     padding: 24px;
     width: 480px;
-    max-height: 80vh;
+    max-width: 90vw;
+    max-height: 85vh;
     overflow-y: auto;
+}
+.modal.modal-wide {
+    width: 680px;
 }
 
 .modal h3 { margin-bottom: 16px; }

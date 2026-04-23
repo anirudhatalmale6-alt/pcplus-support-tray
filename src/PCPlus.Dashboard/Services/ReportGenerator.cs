@@ -142,6 +142,7 @@ namespace PCPlus.Dashboard.Services
             sb.Append($@"<div class=""cover-header"">
                 <div class=""customer-name"">{Esc(customerName)}</div>
                 <div class=""report-type"">SECURITY POSTURE REPORT</div>
+                <div class=""report-timestamp"">Generated: {now:MMMM d, yyyy} at {now:h:mm tt}</div>
             </div>");
 
             sb.Append($@"<div class=""exec-status-banner"" style=""background:{statusBg};border-color:{statusBorder}"">
@@ -663,6 +664,7 @@ namespace PCPlus.Dashboard.Services
             .cover { padding:36px 40px; }
             .customer-name { font-size:36px; font-weight:800; color:#1a1a2e; line-height:1.1; }
             .report-type { font-size:13px; color:#64748b; font-weight:600; margin-top:4px; text-transform:uppercase; letter-spacing:1.5px; }
+            .report-timestamp { font-size:12px; color:#94a3b8; margin-top:6px; font-weight:500; }
 
             .score-hero { display:flex; align-items:center; gap:30px; padding:24px 30px; background:linear-gradient(135deg,#f8faff,#eef2ff); border-radius:14px; margin:24px 0; flex-wrap:wrap; }
             .score-hero-left { text-align:center; flex-shrink:0; }
