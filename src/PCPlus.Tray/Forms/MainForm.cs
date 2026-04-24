@@ -801,8 +801,8 @@ namespace PCPlus.Tray.Forms
 
             try
             {
-                using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(60) };
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("PCPlus/4.11 SpeedTest");
+                using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("PCPlus/4.18 SpeedTest");
 
                 // Ping test - average of 5 pings
                 phase = "Testing ping...";
@@ -819,19 +819,20 @@ namespace PCPlus.Tray.Forms
                         await Task.Delay(100);
                     }
                     if (pings.Count > 0)
-                        pingMs = pings.OrderBy(p => p).Take(3).Average(); // best 3 of 5
+                        pingMs = pings.OrderBy(p => p).Take(3).Average();
                 }
                 catch { pingMs = 0; }
-                gaugePanel.Invalidate();
+                if (!form.IsDisposed) gaugePanel.Invalidate();
 
                 // Download test - streaming with live speed updates
                 phase = "Testing download...";
-                gaugePanel.Invalidate();
+                if (!form.IsDisposed) gaugePanel.Invalidate();
                 var dlUrls = new[]
                 {
-                    "http://speedtest.tele2.net/100MB.zip",
-                    "http://proof.ovh.net/files/100Mb.dat",
-                    "http://speedtest.tele2.net/10MB.zip"
+                    "https://speed.cloudflare.com/__down?bytes=25000000",
+                    "https://speed.hetzner.de/100MB.bin",
+                    "https://proof.ovh.net/files/100Mb.dat",
+                    "https://ash-speed.hetzner.com/100MB.bin"
                 };
                 foreach (var url in dlUrls)
                 {
@@ -845,54 +846,63 @@ namespace PCPlus.Tray.Forms
                         var sw = System.Diagnostics.Stopwatch.StartNew();
                         var lastUpdate = sw.ElapsedMilliseconds;
                         int bytesRead;
-                        // Download for at least 8 seconds or until stream ends
                         while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                         {
                             totalBytes += bytesRead;
                             var elapsed = sw.ElapsedMilliseconds;
-                            if (elapsed - lastUpdate > 500) // update gauge every 500ms
+                            if (elapsed - lastUpdate > 500 && elapsed > 0)
                             {
                                 downloadMbps = (totalBytes * 8.0) / (elapsed / 1000.0) / 1_000_000.0;
                                 lastUpdate = elapsed;
-                                form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
+                                if (!form.IsDisposed) form.BeginInvoke(new Action(() => { if (!form.IsDisposed) gaugePanel.Invalidate(); }));
                             }
-                            if (elapsed > 12000) break; // cap at 12 seconds
+                            if (elapsed > 12000) break;
                         }
                         sw.Stop();
                         if (sw.Elapsed.TotalSeconds > 0.5)
                             downloadMbps = (totalBytes * 8.0) / sw.Elapsed.TotalSeconds / 1_000_000.0;
-                        form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
+                        if (!form.IsDisposed) form.BeginInvoke(new Action(() => { if (!form.IsDisposed) gaugePanel.Invalidate(); }));
                         break;
                     }
                     catch { continue; }
                 }
 
-                // Upload test - 10MB with streaming measurement
+                // Upload test - 5MB payload with fallback servers
                 phase = "Testing upload...";
-                form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
-                try
+                if (!form.IsDisposed) form.BeginInvoke(new Action(() => { if (!form.IsDisposed) gaugePanel.Invalidate(); }));
+                var ulUrls = new[]
                 {
-                    var uploadSize = 10 * 1024 * 1024; // 10MB
-                    var uploadData = new byte[uploadSize];
-                    new Random().NextBytes(uploadData);
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    using var content = new System.Net.Http.ByteArrayContent(uploadData);
-                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-                    await http.PostAsync("http://speedtest.tele2.net/upload.php", content);
-                    sw.Stop();
-                    if (sw.Elapsed.TotalSeconds > 0.1)
-                        uploadMbps = (uploadData.Length * 8.0) / sw.Elapsed.TotalSeconds / 1_000_000.0;
+                    "https://speed.cloudflare.com/__up",
+                    "https://speed.hetzner.de/",
+                    "https://bouygues.testdebit.info/ul/"
+                };
+                foreach (var ulUrl in ulUrls)
+                {
+                    try
+                    {
+                        var uploadSize = 5 * 1024 * 1024;
+                        var uploadData = new byte[uploadSize];
+                        new Random().NextBytes(uploadData);
+                        var sw = System.Diagnostics.Stopwatch.StartNew();
+                        using var content = new System.Net.Http.ByteArrayContent(uploadData);
+                        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                        await http.PostAsync(ulUrl, content);
+                        sw.Stop();
+                        if (sw.Elapsed.TotalSeconds > 0.1)
+                            uploadMbps = (uploadData.Length * 8.0) / sw.Elapsed.TotalSeconds / 1_000_000.0;
+                        break;
+                    }
+                    catch { continue; }
                 }
-                catch { uploadMbps = 0; }
 
                 done = true;
                 phase = "Test Complete";
-                form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
+                if (!form.IsDisposed) form.BeginInvoke(new Action(() => { if (!form.IsDisposed) gaugePanel.Invalidate(); }));
             }
             catch
             {
-                phase = "Test Failed";
-                form.BeginInvoke(new Action(() => gaugePanel.Invalidate()));
+                phase = "Test Failed - Check connection";
+                if (!form.IsDisposed) form.BeginInvoke(new Action(() => { if (!form.IsDisposed) gaugePanel.Invalidate(); }));
             }
         }
 
