@@ -160,37 +160,36 @@ namespace PCPlus.Dashboard.Services
             </div>");
             sb.Append("</div>");
 
-            // PROTECT | DETECT | RESPOND | RECOVER framework
-            sb.Append(@"<div class=""p1-framework"">
-                <div class=""p1-fw-item"">
-                    <div class=""p1-fw-icon"" style=""border-color:#00e676"">
-                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#00e676"" stroke-width=""2"" width=""32"" height=""32""><path d=""M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z""/><path d=""M9 12l2 2 4-4""/></svg>
-                    </div>
-                    <div class=""p1-fw-label"">PROTECT</div>
-                    <div class=""p1-fw-desc"">Prevent threats with advanced security controls</div>
-                </div>
-                <div class=""p1-fw-item"">
-                    <div class=""p1-fw-icon"" style=""border-color:#42a5f5"">
-                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#42a5f5"" stroke-width=""2"" width=""32"" height=""32""><circle cx=""11"" cy=""11"" r=""8""/><path d=""M21 21l-4.35-4.35""/></svg>
-                    </div>
-                    <div class=""p1-fw-label"">DETECT</div>
-                    <div class=""p1-fw-desc"">AI-powered threat detection identifies suspicious activity</div>
-                </div>
-                <div class=""p1-fw-item"">
-                    <div class=""p1-fw-icon"" style=""border-color:#ffa726"">
-                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#ffa726"" stroke-width=""2"" width=""32"" height=""32""><path d=""M13 2L3 14h9l-1 8 10-12h-9l1-8z""/></svg>
-                    </div>
-                    <div class=""p1-fw-label"">RESPOND</div>
-                    <div class=""p1-fw-desc"">Rapid response stops threats and contains damage</div>
-                </div>
-                <div class=""p1-fw-item"">
-                    <div class=""p1-fw-icon"" style=""border-color:#ab47bc"">
-                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#ab47bc"" stroke-width=""2"" width=""32"" height=""32""><path d=""M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8""/><path d=""M21 3v5h-5""/><path d=""M21 12a9 9 0 01-9 9 9.75 9.75 0 01-6.74-2.74L3 16""/><path d=""M3 21v-5h5""/></svg>
-                    </div>
-                    <div class=""p1-fw-label"">RECOVER</div>
-                    <div class=""p1-fw-desc"">Quick recovery restores data and operations</div>
-                </div>
-            </div>");
+            // TOP 4 PRIORITIES - critical items that need fixing
+            var top4 = topIssues.Take(4).ToList();
+            if (top4.Count > 0)
+            {
+                string[] priorityColors = { "#ef5350", "#ff7043", "#ffa726", "#ffca28" };
+                string[] priorityIcons = {
+                    @"<svg viewBox=""0 0 24 24"" fill=""none"" stroke=""{0}"" stroke-width=""2"" width=""28"" height=""28""><path d=""M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z""/><line x1=""12"" y1=""9"" x2=""12"" y2=""13""/><line x1=""12"" y1=""17"" x2=""12.01"" y2=""17""/></svg>",
+                    @"<svg viewBox=""0 0 24 24"" fill=""none"" stroke=""{0}"" stroke-width=""2"" width=""28"" height=""28""><path d=""M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z""/><line x1=""12"" y1=""8"" x2=""12"" y2=""12""/><line x1=""12"" y1=""16"" x2=""12.01"" y2=""16""/></svg>",
+                    @"<svg viewBox=""0 0 24 24"" fill=""none"" stroke=""{0}"" stroke-width=""2"" width=""28"" height=""28""><circle cx=""12"" cy=""12"" r=""10""/><line x1=""12"" y1=""8"" x2=""12"" y2=""12""/><line x1=""12"" y1=""16"" x2=""12.01"" y2=""16""/></svg>",
+                    @"<svg viewBox=""0 0 24 24"" fill=""none"" stroke=""{0}"" stroke-width=""2"" width=""28"" height=""28""><path d=""M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z""/><path d=""M14 2v6h6""/><line x1=""12"" y1=""18"" x2=""12"" y2=""12""/><polyline points=""9 15 12 12 15 15""/></svg>"
+                };
+                sb.Append(@"<div class=""p1-priorities-title"">TOP PRIORITIES - IMMEDIATE ACTION REQUIRED</div>");
+                sb.Append(@"<div class=""p1-priorities"">");
+                for (int i = 0; i < top4.Count; i++)
+                {
+                    var issue = top4[i];
+                    string color = priorityColors[i];
+                    string icon = string.Format(priorityIcons[i], color);
+                    string severity = issue.Weight >= 10 ? "CRITICAL" : issue.Weight >= 5 ? "HIGH" : "MEDIUM";
+                    sb.Append($@"<div class=""p1-pri-item"" style=""border-left:4px solid {color}"">
+                        <div class=""p1-pri-icon"">{icon}</div>
+                        <div class=""p1-pri-content"">
+                            <div class=""p1-pri-name"">{Esc(issue.Name)}</div>
+                            <div class=""p1-pri-detail"">{Esc(issue.Rec)}</div>
+                        </div>
+                        <div class=""p1-pri-badge"" style=""background:{color}20;color:{color};border:1px solid {color}"">{severity}</div>
+                    </div>");
+                }
+                sb.Append("</div>");
+            }
 
             sb.Append(ExecFooter());
             sb.Append("</div>");
@@ -701,7 +700,7 @@ namespace PCPlus.Dashboard.Services
             .action-bar .btn-gray { background:#455a64; }
 
             /* EXECUTIVE PAGE - DARK THEME */
-            .exec-page { background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%); padding:0 0 20px; min-height:100vh; }
+            .exec-page { background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%); padding:0 0 20px; }
             .exec-header { display:flex; justify-content:space-between; align-items:center; padding:16px 36px; border-bottom:1px solid #1a2744; }
             .exec-header-left { display:flex; align-items:center; gap:10px; }
             .exec-logo { width:40px; height:40px; border:2px solid #42a5f5; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#42a5f510; }
@@ -746,11 +745,14 @@ namespace PCPlus.Dashboard.Services
             .p1-mini-num { font-size:28px; font-weight:900; }
             .p1-mini-label { color:#8899aa; font-size:11px; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
 
-            .p1-framework { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; padding:16px 36px 0; }
-            .p1-fw-item { text-align:center; background:#0d1f3c; border:1px solid #1a2744; border-radius:14px; padding:20px 12px; }
-            .p1-fw-icon { width:60px; height:60px; border:2px solid; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; background:#0a162810; }
-            .p1-fw-label { color:#fff; font-size:14px; font-weight:700; letter-spacing:1px; margin-bottom:6px; }
-            .p1-fw-desc { color:#5a7a9a; font-size:11px; line-height:1.4; }
+            .p1-priorities-title { color:#ef5350; font-size:14px; font-weight:800; letter-spacing:2px; text-align:center; padding:20px 36px 10px; }
+            .p1-priorities { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:0 36px 8px; }
+            .p1-pri-item { display:flex; align-items:center; gap:12px; background:#0d1f3c; border:1px solid #1a2744; border-radius:12px; padding:14px 16px; }
+            .p1-pri-icon { flex-shrink:0; width:36px; height:36px; display:flex; align-items:center; justify-content:center; }
+            .p1-pri-content { flex:1; min-width:0; }
+            .p1-pri-name { color:#fff; font-size:13px; font-weight:700; margin-bottom:3px; }
+            .p1-pri-detail { color:#5a7a9a; font-size:10px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+            .p1-pri-badge { font-size:9px; font-weight:700; letter-spacing:1px; padding:4px 10px; border-radius:10px; white-space:nowrap; flex-shrink:0; }
 
             /* Page 2 */
             .p2-layout { display:flex; gap:24px; padding:16px 36px; flex-wrap:wrap; }
@@ -875,7 +877,7 @@ namespace PCPlus.Dashboard.Services
                 .exec-header { flex-direction:column; align-items:flex-start; padding:12px 20px; }
                 .exec-page-title { font-size:16px; }
                 .p1-layout { flex-direction:column; padding:16px 20px; }
-                .p1-framework { grid-template-columns:repeat(2,1fr); padding:16px 20px; }
+                .p1-priorities { grid-template-columns:1fr; padding:8px 20px; }
                 .p1-stat-grid { grid-template-columns:1fr; }
                 .p2-layout { flex-direction:column; padding:16px 20px; }
                 .p3-bva-section { flex-direction:column; }
@@ -888,10 +890,10 @@ namespace PCPlus.Dashboard.Services
 
             @media print {
                 .no-print { display:none !important; }
-                .exec-page { page-break-after:always; min-height:auto; }
+                .exec-page { page-break-after:always; }
                 .page-break { page-break-before:always; }
                 body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-                .exec-page, .exec-header, .exec-footer-bar, .p1-score-section, .p1-stat-card, .p1-mini-stat, .p1-fw-item, .p2-cat-table, .p2-cat-table thead th, .p2-risk-dist, .p2-top-risks, .p3-bva-card, .p3-bva-stat, .p3-impact-item, .p3-action-item, .p3-step-icon, .p4-risk-table, .p4-risk-table thead th, .p4-roadmap-item, .p4-promise, .p4-risk-cell, .exec-logo, .p1-fw-icon, .p1-risk-badge, .p2-risk-tag, .p2-risk-pri, .p4-rm-badge, .p3-action-num, .grade-badge, .device-table th, .device-block-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+                .exec-page, .exec-header, .exec-footer-bar, .p1-score-section, .p1-mini-stat, .p1-pri-item, .p1-pri-badge, .p2-cat-table, .p2-cat-table thead th, .p2-risk-dist, .p2-top-risks, .p3-bva-card, .p3-bva-stat, .p3-impact-item, .p3-action-item, .p3-step-icon, .p4-risk-table, .p4-risk-table thead th, .p4-roadmap-item, .p4-promise, .p4-risk-cell, .exec-logo, .p1-risk-badge, .p1-grade-badge, .p2-risk-tag, .p2-risk-pri, .p4-rm-badge, .p3-action-num, .grade-badge, .device-table th, .device-block-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             }
         ";
     }
