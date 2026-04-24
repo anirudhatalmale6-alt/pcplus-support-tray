@@ -92,7 +92,7 @@ namespace PCPlus.Dashboard.Services
             sb.Append("<!DOCTYPE html><html lang=\"en\"><head>");
             sb.Append("<meta charset=\"UTF-8\">");
             sb.Append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
-            sb.Append($"<title>Security Report - {Esc(customerName)}</title>");
+            sb.Append($"<title>Endpoint Protection Audit - {Esc(customerName)}</title>");
             sb.Append("<style>");
             sb.Append(GetCss());
             sb.Append("</style></head><body>");
@@ -111,7 +111,7 @@ namespace PCPlus.Dashboard.Services
             // ==================================================================
             sb.Append(@"<div class=""exec-page"">");
             sb.Append(ExecHeader(customerName, now, reportId, "PAGE 1 OF 4"));
-            sb.Append(@"<div class=""exec-page-title"">ENDPOINT PROTECTION EXECUTIVE SUMMARY</div>");
+            sb.Append(@"<div class=""exec-page-title"">EXECUTIVE SUMMARY</div>");
 
             sb.Append(@"<div class=""p1-layout"">");
             // Left: Score donut
@@ -601,15 +601,18 @@ namespace PCPlus.Dashboard.Services
                         <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#42a5f5"" stroke-width=""2"" width=""28"" height=""28""><path d=""M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z""/><path d=""M9 12l2 2 4-4"" stroke-linecap=""round"" stroke-linejoin=""round""/></svg>
                     </div>
                     <div>
-                        <div class=""exec-brand"">PC Plus Computing</div>
-                        <div class=""exec-sub"">Endpoint Protection</div>
+                        <div class=""exec-brand"">PC PLUS COMPUTING</div>
+                        <div class=""exec-sub"">ENDPOINT PROTECTION AUDIT</div>
                     </div>
                 </div>
                 <div class=""exec-header-center"">
                     <div class=""exec-customer"">{Esc(customerName)}</div>
+                    <div class=""exec-slogan"">Protecting What Matters Most</div>
                 </div>
                 <div class=""exec-header-right"">
                     <div class=""exec-date"">{now:MMMM d, yyyy}</div>
+                    <div class=""exec-time"">Generated: {now:h:mm tt}</div>
+                    <div class=""exec-rid"">Report #{reportId}</div>
                     <div class=""exec-page-num"">{pageNum}</div>
                 </div>
             </div>";
@@ -691,12 +694,15 @@ namespace PCPlus.Dashboard.Services
             .exec-header { display:flex; justify-content:space-between; align-items:center; padding:16px 36px; border-bottom:1px solid #1a2744; }
             .exec-header-left { display:flex; align-items:center; gap:10px; }
             .exec-logo { width:40px; height:40px; border:2px solid #42a5f5; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#42a5f510; }
-            .exec-brand { color:#fff; font-size:16px; font-weight:700; }
-            .exec-sub { color:#5a7a9a; font-size:10px; text-transform:uppercase; letter-spacing:1px; }
+            .exec-brand { color:#fff; font-size:16px; font-weight:700; letter-spacing:1.5px; }
+            .exec-sub { color:#42a5f5; font-size:10px; text-transform:uppercase; letter-spacing:2px; font-weight:600; }
             .exec-header-center { text-align:center; }
             .exec-customer { color:#42a5f5; font-size:13px; font-weight:600; }
+            .exec-slogan { color:#5a7a9a; font-size:9px; text-transform:uppercase; letter-spacing:1.5px; margin-top:2px; font-style:italic; }
             .exec-header-right { text-align:right; }
             .exec-date { color:#8899aa; font-size:11px; }
+            .exec-time { color:#5a7a9a; font-size:9px; margin-top:1px; }
+            .exec-rid { color:#5a7a9a; font-size:9px; margin-top:1px; }
             .exec-page-num { color:#5a7a9a; font-size:10px; margin-top:2px; }
 
             .exec-page-title { text-align:center; font-size:20px; font-weight:800; color:#fff; padding:24px 36px 8px; letter-spacing:1px; }
