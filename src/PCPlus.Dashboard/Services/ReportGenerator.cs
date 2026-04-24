@@ -52,8 +52,8 @@ namespace PCPlus.Dashboard.Services
             int totalFailed = totalChecks - totalPassed;
             int protectedCount = deviceData.Count(d => d.Device.RunningModules > 0);
             int passRate = totalChecks > 0 ? (int)Math.Round(100.0 * totalPassed / totalChecks) : 0;
-            string grade = avgScore >= 90 ? "A" : avgScore >= 80 ? "B" : avgScore >= 70 ? "C" : avgScore >= 60 ? "D" : "F";
-            string gradeWord = avgScore >= 90 ? "Excellent" : avgScore >= 80 ? "Good" : avgScore >= 70 ? "Fair" : avgScore >= 60 ? "Needs Improvement" : "Critical Attention Required";
+            string grade = avgScore >= 90 ? "A" : avgScore >= 80 ? "B" : avgScore >= 70 ? "C" : avgScore >= 60 ? "D" : avgScore >= 50 ? "E" : "F";
+            string gradeWord = avgScore >= 90 ? "Excellent" : avgScore >= 80 ? "Good" : avgScore >= 70 ? "Fair" : avgScore >= 60 ? "Needs Improvement" : avgScore >= 50 ? "Poor" : "Critical";
             string scoreColor = avgScore >= 80 ? "#00e676" : avgScore >= 60 ? "#ffa726" : "#ef5350";
             string riskLevel = avgScore >= 80 ? "LOW" : avgScore >= 60 ? "MEDIUM" : "HIGH";
             string riskColor = avgScore >= 80 ? "#00e676" : avgScore >= 60 ? "#ffa726" : "#ef5350";
@@ -114,35 +114,46 @@ namespace PCPlus.Dashboard.Services
             sb.Append(@"<div class=""exec-page-title"">EXECUTIVE SUMMARY</div>");
 
             sb.Append(@"<div class=""p1-layout"">");
-            // Left: Score donut
+            // Left: Score donut + Grade
             sb.Append($@"<div class=""p1-score-section"">
-                <div class=""p1-score-label"">Overall Security Score</div>
-                {DarkDonut(avgScore, 100, scoreColor, 180, $"{avgScore}", "/100")}
+                <div class=""p1-score-label"">OVERALL SECURITY SCORE</div>
+                <div class=""p1-score-donut-wrap"">
+                    {DarkDonut(avgScore, 100, scoreColor, 200, $"{avgScore}", "/100")}
+                </div>
+                <div class=""p1-grade-row"">
+                    <div class=""p1-grade-badge"" style=""background:{scoreColor}18;border:2px solid {scoreColor};color:{scoreColor}"">{grade}</div>
+                    <div class=""p1-grade-word"" style=""color:{scoreColor}"">{gradeWord}</div>
+                </div>
                 <div class=""p1-risk-badge"" style=""background:{riskColor}20;border:2px solid {riskColor};color:{riskColor}"">
                     Risk Level: {riskLevel}
                 </div>
             </div>");
 
-            // Right: Stats
+            // Right: Total checks + breakdown cards
+            int needsAttention = medRisk + lowRisk;
             sb.Append($@"<div class=""p1-stats-section"">
-                <div class=""p1-stat-row"">
-                    <div class=""p1-stat-card"">
-                        <div class=""p1-stat-num"" style=""color:#42a5f5"">{totalChecks}</div>
-                        <div class=""p1-stat-label"">Total Checks</div>
-                        <div class=""p1-stat-sub"">Across {catEntries.Count} Critical Security Areas</div>
+                <div class=""p1-total-checks"">
+                    <div class=""p1-total-num"">{totalChecks}</div>
+                    <div class=""p1-total-label"">TOTAL CHECKS</div>
+                    <div class=""p1-total-sub"">Across {catEntries.Count} Critical Security Areas</div>
+                </div>
+                <div class=""p1-stat-grid"">
+                    <div class=""p1-mini-stat passed"">
+                        <div class=""p1-mini-num"">{totalPassed}</div>
+                        <div class=""p1-mini-label"">Passed ({passRate}%)</div>
+                    </div>
+                    <div class=""p1-mini-stat failed"">
+                        <div class=""p1-mini-num"">{totalFailed}</div>
+                        <div class=""p1-mini-label"">Failed</div>
                     </div>
                 </div>
                 <div class=""p1-stat-grid"">
-                    <div class=""p1-mini-stat"" style=""border-color:#00e676"">
-                        <div class=""p1-mini-num"" style=""color:#00e676"">{totalPassed}</div>
-                        <div class=""p1-mini-label"">Passed ({passRate}%)</div>
-                    </div>
-                    <div class=""p1-mini-stat"" style=""border-color:#ffa726"">
-                        <div class=""p1-mini-num"" style=""color:#ffa726"">{medRisk}</div>
+                    <div class=""p1-mini-stat attention"">
+                        <div class=""p1-mini-num"">{needsAttention}</div>
                         <div class=""p1-mini-label"">Needs Attention</div>
                     </div>
-                    <div class=""p1-mini-stat"" style=""border-color:#ef5350"">
-                        <div class=""p1-mini-num"" style=""color:#ef5350"">{highRisk}</div>
+                    <div class=""p1-mini-stat highrisk"">
+                        <div class=""p1-mini-num"">{highRisk}</div>
                         <div class=""p1-mini-label"">High Risk</div>
                     </div>
                 </div>
@@ -708,21 +719,32 @@ namespace PCPlus.Dashboard.Services
             .exec-page-title { text-align:center; font-size:20px; font-weight:800; color:#fff; padding:24px 36px 8px; letter-spacing:1px; }
 
             /* Page 1 */
-            .p1-layout { display:flex; gap:30px; padding:20px 36px; align-items:flex-start; flex-wrap:wrap; }
-            .p1-score-section { flex:1; min-width:200px; text-align:center; background:#0d1f3c; border:1px solid #1a2744; border-radius:16px; padding:24px; }
-            .p1-score-label { color:#8899aa; font-size:12px; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
-            .p1-risk-badge { display:inline-block; padding:6px 20px; border-radius:20px; font-size:13px; font-weight:700; letter-spacing:1px; margin-top:12px; }
+            .p1-layout { display:flex; gap:30px; padding:20px 36px; align-items:stretch; flex-wrap:wrap; }
+            .p1-score-section { flex:0 0 340px; text-align:center; background:#0d1f3c; border:1px solid #1a2744; border-radius:16px; padding:28px 24px; display:flex; flex-direction:column; align-items:center; }
+            .p1-score-label { color:#8899aa; font-size:13px; text-transform:uppercase; letter-spacing:2px; margin-bottom:12px; font-weight:600; }
+            .p1-score-donut-wrap { margin:8px 0; }
+            .p1-grade-row { display:flex; align-items:center; gap:12px; margin-top:14px; }
+            .p1-grade-badge { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; letter-spacing:1px; }
+            .p1-grade-word { font-size:16px; font-weight:700; letter-spacing:0.5px; }
+            .p1-risk-badge { display:inline-block; padding:8px 24px; border-radius:20px; font-size:13px; font-weight:700; letter-spacing:1px; margin-top:16px; }
 
-            .p1-stats-section { flex:1; min-width:250px; }
-            .p1-stat-row { margin-bottom:16px; }
-            .p1-stat-card { background:#0d1f3c; border:1px solid #1a2744; border-radius:14px; padding:20px; text-align:center; }
-            .p1-stat-num { font-size:42px; font-weight:800; }
-            .p1-stat-label { color:#8899aa; font-size:12px; text-transform:uppercase; letter-spacing:1px; margin-top:4px; }
-            .p1-stat-sub { color:#5a7a9a; font-size:11px; margin-top:4px; }
-            .p1-stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-            .p1-mini-stat { background:#0d1f3c; border:1px solid; border-radius:12px; padding:14px 8px; text-align:center; }
-            .p1-mini-num { font-size:24px; font-weight:800; }
-            .p1-mini-label { color:#8899aa; font-size:10px; margin-top:4px; }
+            .p1-stats-section { flex:1; min-width:280px; display:flex; flex-direction:column; gap:16px; }
+            .p1-total-checks { background:#0d1f3c; border:1px solid #1a2744; border-radius:14px; padding:24px; text-align:center; }
+            .p1-total-num { font-size:52px; font-weight:900; color:#42a5f5; line-height:1; }
+            .p1-total-label { color:#8899aa; font-size:13px; text-transform:uppercase; letter-spacing:2px; margin-top:6px; font-weight:600; }
+            .p1-total-sub { color:#5a7a9a; font-size:11px; margin-top:4px; }
+            .p1-stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+            .p1-mini-stat { background:#0d1f3c; border:2px solid #1a2744; border-radius:12px; padding:18px 12px; text-align:center; }
+            .p1-mini-stat.passed { border-color:#00e676; }
+            .p1-mini-stat.passed .p1-mini-num { color:#00e676; }
+            .p1-mini-stat.failed { border-color:#ef5350; }
+            .p1-mini-stat.failed .p1-mini-num { color:#ef5350; }
+            .p1-mini-stat.attention { border-color:#ffa726; }
+            .p1-mini-stat.attention .p1-mini-num { color:#ffa726; }
+            .p1-mini-stat.highrisk { border-color:#ef5350; }
+            .p1-mini-stat.highrisk .p1-mini-num { color:#ef5350; }
+            .p1-mini-num { font-size:28px; font-weight:900; }
+            .p1-mini-label { color:#8899aa; font-size:11px; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
 
             .p1-framework { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; padding:16px 36px 0; }
             .p1-fw-item { text-align:center; background:#0d1f3c; border:1px solid #1a2744; border-radius:14px; padding:20px 12px; }
@@ -836,7 +858,7 @@ namespace PCPlus.Dashboard.Services
             .pass { color:#16a34a; font-weight:600; } .fail { color:#dc2626; font-weight:600; }
 
             .grade-badge { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; color:#fff; font-weight:700; font-size:12px; }
-            .grade-a { background:#16a34a; } .grade-b { background:#2563eb; } .grade-c { background:#d97706; } .grade-d { background:#ea580c; } .grade-f { background:#dc2626; }
+            .grade-a { background:#16a34a; } .grade-b { background:#2563eb; } .grade-c { background:#d97706; } .grade-d { background:#ea580c; } .grade-e { background:#dc2626; } .grade-f { background:#dc2626; }
 
             .device-block { margin-bottom:20px; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
             .device-block-header { padding:10px 14px; background:#1e293b; color:#fff; font-weight:600; font-size:13px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; }
