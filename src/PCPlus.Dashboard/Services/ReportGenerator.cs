@@ -191,6 +191,31 @@ namespace PCPlus.Dashboard.Services
                 sb.Append("</div>");
             }
 
+            // COVERAGE STATUS - Firewall, Backup, DR
+            sb.Append(@"<div class=""p1-coverage"">
+                <div class=""p1-cov-item"">
+                    <div class=""p1-cov-icon"" style=""border-color:#42a5f5"">
+                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#42a5f5"" stroke-width=""2"" width=""30"" height=""30""><rect x=""3"" y=""3"" width=""18"" height=""18"" rx=""2""/><path d=""M3 9h18""/><path d=""M9 21V9""/></svg>
+                    </div>
+                    <div class=""p1-cov-label"">FIREWALL</div>
+                    <div class=""p1-cov-desc"">External threats covered with perimeter firewall protection</div>
+                </div>
+                <div class=""p1-cov-item"">
+                    <div class=""p1-cov-icon"" style=""border-color:#00e676"">
+                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#00e676"" stroke-width=""2"" width=""30"" height=""30""><path d=""M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4""/><polyline points=""17 8 12 3 7 8""/><line x1=""12"" y1=""3"" x2=""12"" y2=""15""/></svg>
+                    </div>
+                    <div class=""p1-cov-label"">BACKUP 3-2-1</div>
+                    <div class=""p1-cov-desc"">Data protected with 3 copies, 2 media types, 1 offsite</div>
+                </div>
+                <div class=""p1-cov-item"">
+                    <div class=""p1-cov-icon"" style=""border-color:#ab47bc"">
+                        <svg viewBox=""0 0 24 24"" fill=""none"" stroke=""#ab47bc"" stroke-width=""2"" width=""30"" height=""30""><path d=""M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8""/><path d=""M21 3v5h-5""/><path d=""M21 12a9 9 0 01-9 9 9.75 9.75 0 01-6.74-2.74L3 16""/><path d=""M3 21v-5h5""/></svg>
+                    </div>
+                    <div class=""p1-cov-label"">DISASTER RECOVERY</div>
+                    <div class=""p1-cov-desc"">Rapid VM spinup and bare metal recovery for business continuity</div>
+                </div>
+            </div>");
+
             sb.Append(ExecFooter());
             sb.Append("</div>");
 
@@ -754,6 +779,12 @@ namespace PCPlus.Dashboard.Services
             .p1-pri-detail { color:#5a7a9a; font-size:10px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
             .p1-pri-badge { font-size:9px; font-weight:700; letter-spacing:1px; padding:4px 10px; border-radius:10px; white-space:nowrap; flex-shrink:0; }
 
+            .p1-coverage { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; padding:12px 36px 0; }
+            .p1-cov-item { text-align:center; background:#0d1f3c; border:1px solid #1a2744; border-radius:14px; padding:18px 12px; }
+            .p1-cov-icon { width:56px; height:56px; border:2px solid; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; background:#0a162810; }
+            .p1-cov-label { color:#fff; font-size:13px; font-weight:700; letter-spacing:1.5px; margin-bottom:5px; }
+            .p1-cov-desc { color:#5a7a9a; font-size:10px; line-height:1.4; }
+
             /* Page 2 */
             .p2-layout { display:flex; gap:24px; padding:16px 36px; flex-wrap:wrap; }
             .p2-table-section { flex:2; min-width:300px; }
@@ -878,6 +909,7 @@ namespace PCPlus.Dashboard.Services
                 .exec-page-title { font-size:16px; }
                 .p1-layout { flex-direction:column; padding:16px 20px; }
                 .p1-priorities { grid-template-columns:1fr; padding:8px 20px; }
+                .p1-coverage { grid-template-columns:1fr; padding:8px 20px; }
                 .p1-stat-grid { grid-template-columns:1fr; }
                 .p2-layout { flex-direction:column; padding:16px 20px; }
                 .p3-bva-section { flex-direction:column; }
@@ -893,7 +925,7 @@ namespace PCPlus.Dashboard.Services
                 .exec-page { page-break-after:always; }
                 .page-break { page-break-before:always; }
                 body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-                .exec-page, .exec-header, .exec-footer-bar, .p1-score-section, .p1-mini-stat, .p1-pri-item, .p1-pri-badge, .p2-cat-table, .p2-cat-table thead th, .p2-risk-dist, .p2-top-risks, .p3-bva-card, .p3-bva-stat, .p3-impact-item, .p3-action-item, .p3-step-icon, .p4-risk-table, .p4-risk-table thead th, .p4-roadmap-item, .p4-promise, .p4-risk-cell, .exec-logo, .p1-risk-badge, .p1-grade-badge, .p2-risk-tag, .p2-risk-pri, .p4-rm-badge, .p3-action-num, .grade-badge, .device-table th, .device-block-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+                .exec-page, .exec-header, .exec-footer-bar, .p1-score-section, .p1-mini-stat, .p1-pri-item, .p1-pri-badge, .p1-cov-item, .p1-cov-icon, .p2-cat-table, .p2-cat-table thead th, .p2-risk-dist, .p2-top-risks, .p3-bva-card, .p3-bva-stat, .p3-impact-item, .p3-action-item, .p3-step-icon, .p4-risk-table, .p4-risk-table thead th, .p4-roadmap-item, .p4-promise, .p4-risk-cell, .exec-logo, .p1-risk-badge, .p1-grade-badge, .p2-risk-tag, .p2-risk-pri, .p4-rm-badge, .p3-action-num, .grade-badge, .device-table th, .device-block-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             }
         ";
     }
