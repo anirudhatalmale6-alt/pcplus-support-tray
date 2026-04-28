@@ -555,8 +555,9 @@ function renderDevices(devices) {
             <td><span class="badge info">${esc(d.licenseTier)}</span></td>
             <td>${d.runningModules}</td>
             <td style="font-size:12px;color:var(--text-muted)">${timeAgo(d.lastSeen)}</td>
-            <td>
-                <button class="btn btn-sm btn-secondary" onclick="showDeviceDetail('${d.deviceId}')">Detail</button>
+            <td style="white-space:nowrap">
+                <button class="btn btn-sm btn-secondary" onclick="reassignDevice('${d.deviceId}','${esc(d.customerName||'')}')" style="font-size:11px;padding:2px 8px" title="Move to different customer">Move</button>
+                <button class="btn btn-sm btn-secondary" onclick="showDeviceDetail('${d.deviceId}')" style="font-size:11px;padding:2px 8px">Detail</button>
             </td>
         </tr>`;
     }).join('');
@@ -1020,17 +1021,35 @@ function generateCompanyReport(mode) {
     }
 }
 
-async function reassignDevice(deviceId, currentCustomer) {
-    // Get list of existing customers from loaded devices
+function reassignDevice(deviceId, currentCustomer) {
     const customers = [...new Set(allDevices.map(d => d.customerName).filter(Boolean))].sort();
-    const newCustomer = prompt(
-        'Move device to which customer?\n\nExisting customers:\n' +
-        customers.map(c => '  - ' + c).join('\n') +
-        '\n\nEnter customer name (or type a new one):',
-        currentCustomer
-    );
-    if (!newCustomer || newCustomer === currentCustomer) return;
+    const hostname = (allDevices.find(d => d.deviceId === deviceId) || {}).hostname || deviceId;
+    const modal = document.getElementById('device-modal');
+    const content = document.getElementById('device-modal-content');
+    content.innerHTML = `
+        <h3>Move Device</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Moving <strong>${esc(hostname)}</strong> from <strong>${esc(currentCustomer || 'Unassigned')}</strong></p>
+        <div class="form-group">
+            <label>Select Existing Customer</label>
+            <select id="move-customer-select" class="input" onchange="document.getElementById('move-customer-new').value=this.value">
+                <option value="">-- Select --</option>
+                ${customers.map(c => `<option value="${esc(c)}" ${c===currentCustomer?'selected':''}>${esc(c)}</option>`).join('')}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Or Type New Customer Name</label>
+            <input id="move-customer-new" class="input" value="${esc(currentCustomer || '')}" placeholder="Enter customer name">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-primary" onclick="submitReassign('${deviceId}')">Move Device</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('device-modal').classList.remove('active')">Cancel</button>
+        </div>`;
+    modal.classList.add('active');
+}
 
+async function submitReassign(deviceId) {
+    const newCustomer = document.getElementById('move-customer-new').value.trim();
+    if (!newCustomer) { alert('Please select or enter a customer name'); return; }
     try {
         const res = await fetch(API + '/devices/' + encodeURIComponent(deviceId) + '/customer', {
             method: 'PUT',
@@ -1038,12 +1057,12 @@ async function reassignDevice(deviceId, currentCustomer) {
             body: JSON.stringify({ customerName: newCustomer })
         });
         if (res.ok) {
-            alert('Device moved to "' + newCustomer + '" successfully!\nThe agent will also update its config on next heartbeat.');
-            document.getElementById('dev-customer-label').textContent = newCustomer;
-            // Refresh data
+            document.getElementById('device-modal').classList.remove('active');
+            const devLabel = document.getElementById('dev-customer-label');
+            if (devLabel) devLabel.textContent = newCustomer;
             refreshCurrentPage();
         } else {
-            alert('Failed to reassign device: ' + res.statusText);
+            alert('Failed to move device: ' + res.statusText);
         }
     } catch(e) {
         alert('Error: ' + e.message);
