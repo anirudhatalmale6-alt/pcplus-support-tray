@@ -117,6 +117,10 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { ok = false, error = "Username and password are required" });
 
+        var pwErr = ValidatePasswordComplexity(request.Password);
+        if (pwErr != null)
+            return BadRequest(new { ok = false, error = pwErr });
+
         var exists = await _db.Users.AnyAsync(u => u.Username == request.Username);
         if (exists)
             return Conflict(new { ok = false, error = "Username already exists" });
@@ -165,6 +169,9 @@ public class AuthController : ControllerBase
 
         if (request.DisplayName is not null)
             user.DisplayName = request.DisplayName;
+
+        if (request.CustomerName is not null)
+            user.CustomerName = request.CustomerName;
 
         await _db.SaveChangesAsync();
 
@@ -223,6 +230,10 @@ public class AuthController : ControllerBase
         if (user.PasswordHash != currentHash)
             return BadRequest(new { ok = false, error = "Current password is incorrect" });
 
+        var err = ValidatePasswordComplexity(request.NewPassword);
+        if (err != null)
+            return BadRequest(new { ok = false, error = err });
+
         var newHash = Convert.ToHexString(
             SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(request.NewPassword))
         ).ToLowerInvariant();
@@ -231,6 +242,43 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { ok = true });
+    }
+
+    [Authorize(Roles = "admin")]
+    [HttpPost("users/{id}/reset-password")]
+    public async Task<IActionResult> AdminResetPassword(int id, [FromBody] ResetPasswordRequest request)
+    {
+        var user = await _db.Users.FindAsync(id);
+        if (user is null)
+            return NotFound(new { ok = false, error = "User not found" });
+
+        var err = ValidatePasswordComplexity(request.NewPassword);
+        if (err != null)
+            return BadRequest(new { ok = false, error = err });
+
+        var newHash = Convert.ToHexString(
+            SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(request.NewPassword))
+        ).ToLowerInvariant();
+
+        user.PasswordHash = newHash;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { ok = true });
+    }
+
+    private static string? ValidatePasswordComplexity(string password)
+    {
+        if (password.Length < 8)
+            return "Password must be at least 8 characters";
+        if (!password.Any(char.IsUpper))
+            return "Password must contain at least one uppercase letter";
+        if (!password.Any(char.IsLower))
+            return "Password must contain at least one lowercase letter";
+        if (!password.Any(char.IsDigit))
+            return "Password must contain at least one number";
+        if (!password.Any(c => !char.IsLetterOrDigit(c)))
+            return "Password must contain at least one special character";
+        return null;
     }
 }
 
@@ -253,10 +301,16 @@ public class UpdateUserRequest
 {
     public string? Role { get; set; }
     public string? DisplayName { get; set; }
+    public string? CustomerName { get; set; }
 }
 
 public class ChangePasswordRequest
 {
     public string CurrentPassword { get; set; } = "";
+    public string NewPassword { get; set; } = "";
+}
+
+public class ResetPasswordRequest
+{
     public string NewPassword { get; set; } = "";
 }

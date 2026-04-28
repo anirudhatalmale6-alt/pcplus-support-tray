@@ -1560,6 +1560,7 @@ async function loadUsers() {
                             <td style="font-size:12px">${new Date(u.createdAt).toLocaleDateString()}</td>
                             <td style="white-space:nowrap">
                                 <button class="btn btn-sm btn-secondary" onclick="editUser(${u.id},'${esc(u.role)}','${esc(u.displayName)}')" style="font-size:11px;padding:2px 8px">Edit</button>
+                                <button class="btn btn-sm btn-secondary" onclick="resetUserPassword(${u.id},'${esc(u.username)}')" style="font-size:11px;padding:2px 8px">Reset PW</button>
                                 <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id},'${esc(u.username)}')" style="font-size:11px;padding:2px 8px">Delete</button>
                             </td>
                         </tr>`).join('')}
@@ -1653,7 +1654,8 @@ async function changePassword() {
     const confirm = document.getElementById('pw-confirm').value;
     if (!current || !newPw) { alert('Please fill in all fields'); return; }
     if (newPw !== confirm) { alert('New passwords do not match'); return; }
-    if (newPw.length < 6) { alert('Password must be at least 6 characters'); return; }
+    const pwErr = validatePassword(newPw);
+    if (pwErr) { alert(pwErr); return; }
     const res = await apiFetch('/api/auth/change-password', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ currentPassword: current, newPassword: newPw })
@@ -1666,6 +1668,50 @@ async function changePassword() {
     } else {
         const err = await res?.json();
         alert('Error: ' + (err?.error || 'Failed to change password'));
+    }
+}
+
+function validatePassword(pw) {
+    if (pw.length < 8) return 'Password must be at least 8 characters';
+    if (!/[A-Z]/.test(pw)) return 'Password must contain at least one uppercase letter';
+    if (!/[a-z]/.test(pw)) return 'Password must contain at least one lowercase letter';
+    if (!/[0-9]/.test(pw)) return 'Password must contain at least one number';
+    if (!/[^A-Za-z0-9]/.test(pw)) return 'Password must contain at least one special character';
+    return null;
+}
+
+function resetUserPassword(id, username) {
+    const modal = document.getElementById('device-modal');
+    const content = document.getElementById('device-modal-content');
+    content.innerHTML = `
+        <h3>Reset Password for ${esc(username)}</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Password must be at least 8 characters with uppercase, lowercase, number, and special character.</p>
+        <div class="form-group"><label>New Password</label><input id="reset-pw" type="password" class="input"></div>
+        <div class="form-group"><label>Confirm Password</label><input id="reset-pw-confirm" type="password" class="input"></div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-primary" onclick="submitResetPassword(${id})">Reset Password</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('device-modal').classList.remove('active')">Cancel</button>
+        </div>`;
+    modal.classList.add('active');
+}
+
+async function submitResetPassword(id) {
+    const newPw = document.getElementById('reset-pw').value;
+    const confirmPw = document.getElementById('reset-pw-confirm').value;
+    if (!newPw) { alert('Please enter a new password'); return; }
+    if (newPw !== confirmPw) { alert('Passwords do not match'); return; }
+    const pwErr = validatePassword(newPw);
+    if (pwErr) { alert(pwErr); return; }
+    const res = await apiFetch('/api/auth/users/' + id + '/reset-password', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ newPassword: newPw })
+    });
+    if (res?.ok) {
+        document.getElementById('device-modal').classList.remove('active');
+        alert('Password reset successfully!');
+    } else {
+        const err = await res?.json();
+        alert('Error: ' + (err?.error || 'Failed to reset password'));
     }
 }
 
