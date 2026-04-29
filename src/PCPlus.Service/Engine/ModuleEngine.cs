@@ -53,6 +53,7 @@ namespace PCPlus.Service.Engine
             var ver = typeof(ModuleEngine).Assembly.GetName().Version?.ToString(3) ?? "4.3.0";
             Log(LogLevel.Info, "engine", $"Starting module engine v{ver} with {_modules.Count} modules");
 
+            _ipcServer.OnDiagnostic += msg => _auditLogger.Log("ipc", "diag", msg);
             _ipcServer.Start();
             Log(LogLevel.Info, "engine", "IPC server started (secured: session auth + command authorization)");
 

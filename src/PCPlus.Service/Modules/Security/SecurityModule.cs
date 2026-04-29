@@ -385,6 +385,8 @@ namespace PCPlus.Service.Modules.Security
 
             _context.Log(LogLevel.Info, Id, $"Security scan: {score}/100 ({grade})");
 
+            WriteSecurityFile(_lastResult);
+
             // Check for AV state changes
             var avCheck = checks.FirstOrDefault(c => c.Id == "antivirus");
             if (avCheck != null)
@@ -410,6 +412,25 @@ namespace PCPlus.Service.Modules.Security
                 EventType = ModuleEvent.SECURITY_SCAN_COMPLETE,
                 Data = new() { ["score"] = score, ["grade"] = grade }
             });
+        }
+
+        private static readonly string _securityFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "PCPlusEndpoint", "security_snapshot.json");
+
+        private void WriteSecurityFile(SecurityScanResult result)
+        {
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(result,
+                    new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                        WriteIndented = false
+                    });
+                File.WriteAllText(_securityFilePath, json);
+            }
+            catch { }
         }
 
         // --- Security Checks (each returns pass/fail with weight) ---

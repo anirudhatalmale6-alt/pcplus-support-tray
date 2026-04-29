@@ -2359,7 +2359,25 @@ namespace PCPlus.Tray.Forms
                     }
                 }
 
-                // Fallback: use local monitoring if service didn't provide health data
+                // Fallback tier 1: read service files (health + security)
+                if (!gotServiceData || _health == null)
+                {
+                    var serviceHealth = TryReadServiceHealthFile();
+                    if (serviceHealth != null)
+                    {
+                        _health = serviceHealth;
+                        gotServiceData = true;
+                    }
+                }
+
+                if (_securityResult == null)
+                {
+                    var serviceSecurity = TryReadServiceSecurityFile();
+                    if (serviceSecurity != null)
+                        _securityResult = serviceSecurity;
+                }
+
+                // Fallback tier 2: use local monitoring
                 if (!gotServiceData || _health == null)
                 {
                     if (!_usingLocalFallback)
@@ -2367,9 +2385,13 @@ namespace PCPlus.Tray.Forms
                         _usingLocalFallback = true;
                         _localFallback.Start();
                     }
-                    _health = _localFallback.CurrentHealth;
+                    var localHealth = _localFallback.CurrentHealth;
 
-                    // Use local security scan result if no service result
+                    if (_health == null)
+                        _health = localHealth;
+                    else if (_health.CpuTempC == 0 && localHealth.CpuTempC > 0)
+                        _health.CpuTempC = localHealth.CpuTempC;
+
                     if (_securityResult == null)
                         _securityResult = _localFallback.LastSecurityScan;
                 }
@@ -2387,6 +2409,45 @@ namespace PCPlus.Tray.Forms
                     }));
             }
             catch { }
+        }
+
+        private static readonly string _serviceHealthFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "PCPlusEndpoint", "health_snapshot.json");
+
+        private static readonly System.Text.Json.JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        };
+
+        private HealthSnapshot? TryReadServiceHealthFile()
+        {
+            try
+            {
+                if (!File.Exists(_serviceHealthFilePath)) return null;
+                var lastWrite = File.GetLastWriteTimeUtc(_serviceHealthFilePath);
+                if ((DateTime.UtcNow - lastWrite).TotalSeconds > 30) return null;
+                var json = File.ReadAllText(_serviceHealthFilePath);
+                return System.Text.Json.JsonSerializer.Deserialize<HealthSnapshot>(json, _jsonOptions);
+            }
+            catch { return null; }
+        }
+
+        private static readonly string _serviceSecurityFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "PCPlusEndpoint", "security_snapshot.json");
+
+        private SecurityScanResult? TryReadServiceSecurityFile()
+        {
+            try
+            {
+                if (!File.Exists(_serviceSecurityFilePath)) return null;
+                var lastWrite = File.GetLastWriteTimeUtc(_serviceSecurityFilePath);
+                if ((DateTime.UtcNow - lastWrite).TotalMinutes > 30) return null;
+                var json = File.ReadAllText(_serviceSecurityFilePath);
+                return System.Text.Json.JsonSerializer.Deserialize<SecurityScanResult>(json, _jsonOptions);
+            }
+            catch { return null; }
         }
 
         #endregion

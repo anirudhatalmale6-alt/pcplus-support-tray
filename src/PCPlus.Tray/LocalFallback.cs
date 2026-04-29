@@ -24,6 +24,14 @@ namespace PCPlus.Tray
         private long _lastBytesRecv;
         private DateTime _lastNetworkCheck = DateTime.MinValue;
 
+        // Temperature caching
+        private float _lastGoodCpuTemp;
+        private float _lastGoodGpuTemp;
+        private string _lastGoodCpuTempSource = "";
+        private string _lastGoodGpuTempSource = "";
+        private float _psAcpiTemp;
+        private DateTime _lastPsAcpiCheck = DateTime.MinValue;
+
         public HealthSnapshot CurrentHealth
         {
             get { lock (_lock) return _current; }
@@ -133,9 +141,60 @@ namespace PCPlus.Tray
 
         private void PollTemps(HealthSnapshot snap)
         {
-            if (TryWmiTemps(snap, "root\\LibreHardwareMonitor")) return;
-            if (TryWmiTemps(snap, "root\\OpenHardwareMonitor")) return;
+            if (TryWmiTemps(snap, "root\\LibreHardwareMonitor")) { CacheTemps(snap); return; }
+            if (TryWmiTemps(snap, "root\\OpenHardwareMonitor")) { CacheTemps(snap); return; }
             TryAcpiTemp(snap);
+            if (snap.CpuTempC > 0) { CacheTemps(snap); return; }
+            if (TryPowerShellAcpi(snap)) { CacheTemps(snap); return; }
+            snap.CpuTempC = _lastGoodCpuTemp;
+            snap.GpuTempC = _lastGoodGpuTemp;
+            snap.CpuTempSource = _lastGoodCpuTempSource;
+            snap.GpuTempSource = _lastGoodGpuTempSource;
+        }
+
+        private void CacheTemps(HealthSnapshot snap)
+        {
+            if (snap.CpuTempC > 0) { _lastGoodCpuTemp = snap.CpuTempC; _lastGoodCpuTempSource = snap.CpuTempSource; }
+            if (snap.GpuTempC > 0) { _lastGoodGpuTemp = snap.GpuTempC; _lastGoodGpuTempSource = snap.GpuTempSource; }
+        }
+
+        private bool TryPowerShellAcpi(HealthSnapshot snap)
+        {
+            try
+            {
+                if ((DateTime.UtcNow - _lastPsAcpiCheck).TotalSeconds < 15 && _psAcpiTemp > 0)
+                {
+                    snap.CpuTempC = _psAcpiTemp;
+                    snap.CpuTempSource = "ACPI Thermal Zone (PS)";
+                    return true;
+                }
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-NoProfile -NonInteractive -Command \"(Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction Stop | Select-Object -First 1).CurrentTemperature\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var proc = Process.Start(psi);
+                if (proc == null) return false;
+                var output = proc.StandardOutput.ReadToEnd().Trim();
+                proc.WaitForExit(5000);
+                if (int.TryParse(output, out var raw) && raw > 0)
+                {
+                    var tempC = (float)(raw / 10.0 - 273.15);
+                    if (tempC > 0 && tempC < 120)
+                    {
+                        _psAcpiTemp = tempC;
+                        _lastPsAcpiCheck = DateTime.UtcNow;
+                        snap.CpuTempC = tempC;
+                        snap.CpuTempSource = "ACPI Thermal Zone (PS)";
+                        return true;
+                    }
+                }
+            }
+            catch { }
+            return false;
         }
 
         private bool TryWmiTemps(HealthSnapshot snap, string ns)

@@ -151,6 +151,28 @@ namespace PCPlus.Service.Modules.Health
 
                 // Check thresholds and raise alerts
                 CheckAlerts(snapshot);
+
+                // Write snapshot to shared file for tray fallback (when IPC unavailable)
+                WriteHealthFile(snapshot);
+            }
+            catch { }
+        }
+
+        private static readonly string _healthFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "PCPlusEndpoint", "health_snapshot.json");
+
+        private void WriteHealthFile(HealthSnapshot snapshot)
+        {
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(snapshot,
+                    new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                        WriteIndented = false
+                    });
+                File.WriteAllText(_healthFilePath, json);
             }
             catch { }
         }

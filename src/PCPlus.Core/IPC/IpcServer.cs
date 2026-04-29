@@ -33,6 +33,7 @@ namespace PCPlus.Core.IPC
         private const int MAX_REQUESTS_PER_MINUTE = 120;
 
         public event Func<IpcRequest, ClientSession?, Task<IpcResponse>>? OnRequest;
+        public event Action<string>? OnDiagnostic;
         public int ClientCount { get { lock (_clientLock) return _clients.Count; } }
 
         public IpcServer()
@@ -221,13 +222,18 @@ namespace PCPlus.Core.IPC
 
         private async Task AcceptClientsAsync(CancellationToken ct)
         {
+            OnDiagnostic?.Invoke("IPC: AcceptClientsAsync started");
             while (!ct.IsCancellationRequested)
             {
                 try
                 {
+                    OnDiagnostic?.Invoke("IPC: Creating pipe...");
                     var pipe = CreateSecuredPipe();
+                    OnDiagnostic?.Invoke("IPC: Pipe created, waiting for connection...");
 
                     await pipe.WaitForConnectionAsync(ct);
+
+                    OnDiagnostic?.Invoke("IPC: Client connected!");
 
                     // Get the client's identity
                     string clientUser = "unknown";
@@ -240,6 +246,7 @@ namespace PCPlus.Core.IPC
                     }
                     catch { }
 
+                    OnDiagnostic?.Invoke($"IPC: Client identity: {clientUser}");
                     var client = new ConnectedClient(pipe, clientUser);
                     lock (_clientLock)
                     {
@@ -249,11 +256,13 @@ namespace PCPlus.Core.IPC
                     _ = HandleClientAsync(client, ct);
                 }
                 catch (OperationCanceledException) { break; }
-                catch
+                catch (Exception ex)
                 {
+                    OnDiagnostic?.Invoke($"IPC: Accept error: {ex.GetType().Name}: {ex.Message}");
                     try { await Task.Delay(1000, ct); } catch { break; }
                 }
             }
+            OnDiagnostic?.Invoke("IPC: AcceptClientsAsync exited");
         }
 
         private async Task HandleClientAsync(ConnectedClient client, CancellationToken ct)
