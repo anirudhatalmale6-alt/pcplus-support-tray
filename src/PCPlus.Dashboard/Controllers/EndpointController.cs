@@ -74,8 +74,10 @@ namespace PCPlus.Dashboard.Controllers
             device.CpuPercent = request.CpuPercent;
             device.RamPercent = request.RamPercent;
             device.DiskPercent = request.DiskPercent;
-            device.CpuTempC = request.CpuTempC;
-            device.GpuTempC = request.GpuTempC;
+            if (request.CpuTempC > 0)
+                device.CpuTempC = request.CpuTempC;
+            if (request.GpuTempC > 0)
+                device.GpuTempC = request.GpuTempC;
             // Only update security score if non-zero (PS heartbeat sends 0; don't overwrite real score)
             if (request.SecurityScore > 0)
             {

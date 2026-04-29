@@ -496,6 +496,13 @@ try {
         $disk = [math]::Round(($c.Size - $c.FreeSpace) / $c.Size * 100, 1)
     } catch {}
 
+    $cpuTemp = 0; $gpuTemp = 0
+    try {
+        $tz = Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($tz) { $cpuTemp = [math]::Round($tz.CurrentTemperature / 10 - 273.15, 1) }
+        if ($cpuTemp -le 0 -or $cpuTemp -ge 120) { $cpuTemp = 0 }
+    } catch {}
+
     $osVer = "Windows"
     try {
         $build = [Environment]::OSVersion.Version.Build
@@ -521,8 +528,8 @@ try {
         cpuPercent = $cpu
         ramPercent = $ram
         diskPercent = $disk
-        cpuTempC = 0
-        gpuTempC = 0
+        cpuTempC = $cpuTemp
+        gpuTempC = $gpuTemp
         securityScore = 0
         securityGrade = "?"
         lockdownActive = $false
