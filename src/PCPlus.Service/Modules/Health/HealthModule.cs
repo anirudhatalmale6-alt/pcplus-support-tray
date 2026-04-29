@@ -212,13 +212,14 @@ namespace PCPlus.Service.Modules.Health
 
         private void PollTemps(HealthSnapshot snap)
         {
-            // Primary: LibreHardwareMonitorLib (direct hardware access, no external tool needed)
+            // Primary: LibreHardwareMonitorLib (direct hardware access, most accurate)
             if (TryLibreHardwareMonitor(snap)) { CacheTemps(snap); return; }
+            // Fallback: ACPI thermal zone (reliable on most hardware)
+            TryAcpiTemp(snap);
+            if (snap.CpuTempC > 0) { CacheTemps(snap); return; }
             // Fallback: WMI queries for external LHM/OHM instances
             if (TryWmiTemps(snap, "root\\LibreHardwareMonitor")) { CacheTemps(snap); return; }
             if (TryWmiTemps(snap, "root\\OpenHardwareMonitor")) { CacheTemps(snap); return; }
-            TryAcpiTemp(snap);
-            if (snap.CpuTempC > 0 || snap.GpuTempC > 0) { CacheTemps(snap); return; }
             // No source succeeded - use last known good reading
             snap.CpuTempC = _lastGoodCpuTemp;
             snap.GpuTempC = _lastGoodGpuTemp;
