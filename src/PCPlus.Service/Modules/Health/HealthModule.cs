@@ -36,6 +36,10 @@ namespace PCPlus.Service.Modules.Health
         // Alert cooldown
         private readonly Dictionary<string, DateTime> _alertCooldowns = new();
         private const int COOLDOWN_SECONDS = 300;
+        private float _lastGoodCpuTemp;
+        private float _lastGoodGpuTemp;
+        private string _lastGoodCpuTempSource = "";
+        private string _lastGoodGpuTempSource = "";
 
         private const int MAX_HISTORY = 300; // 5 minutes at 1s intervals
 
@@ -209,11 +213,23 @@ namespace PCPlus.Service.Modules.Health
         private void PollTemps(HealthSnapshot snap)
         {
             // Primary: LibreHardwareMonitorLib (direct hardware access, no external tool needed)
-            if (TryLibreHardwareMonitor(snap)) return;
+            if (TryLibreHardwareMonitor(snap)) { CacheTemps(snap); return; }
             // Fallback: WMI queries for external LHM/OHM instances
-            if (TryWmiTemps(snap, "root\\LibreHardwareMonitor")) return;
-            if (TryWmiTemps(snap, "root\\OpenHardwareMonitor")) return;
+            if (TryWmiTemps(snap, "root\\LibreHardwareMonitor")) { CacheTemps(snap); return; }
+            if (TryWmiTemps(snap, "root\\OpenHardwareMonitor")) { CacheTemps(snap); return; }
             TryAcpiTemp(snap);
+            if (snap.CpuTempC > 0 || snap.GpuTempC > 0) { CacheTemps(snap); return; }
+            // No source succeeded - use last known good reading
+            snap.CpuTempC = _lastGoodCpuTemp;
+            snap.GpuTempC = _lastGoodGpuTemp;
+            snap.CpuTempSource = _lastGoodCpuTempSource;
+            snap.GpuTempSource = _lastGoodGpuTempSource;
+        }
+
+        private void CacheTemps(HealthSnapshot snap)
+        {
+            if (snap.CpuTempC > 0) { _lastGoodCpuTemp = snap.CpuTempC; _lastGoodCpuTempSource = snap.CpuTempSource; }
+            if (snap.GpuTempC > 0) { _lastGoodGpuTemp = snap.GpuTempC; _lastGoodGpuTempSource = snap.GpuTempSource; }
         }
 
         private bool TryLibreHardwareMonitor(HealthSnapshot snap)
