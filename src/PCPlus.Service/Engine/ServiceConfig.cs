@@ -26,6 +26,7 @@ namespace PCPlus.Service.Engine
         public float DiskAlertThreshold => GetFloat("diskAlertThreshold", 90f);
         public float TempAlertThreshold => GetFloat("tempAlertThreshold", 85f);
         public int HealthPollIntervalMs => GetInt("healthPollIntervalMs", 2000);
+        public bool DisableLHM => GetBool("disableLHM", false);
 
         // Ransomware
         public bool RansomwareProtectionEnabled => GetBool("ransomwareProtectionEnabled", true);

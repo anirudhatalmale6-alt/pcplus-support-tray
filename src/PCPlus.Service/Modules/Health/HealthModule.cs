@@ -54,6 +54,13 @@ namespace PCPlus.Service.Modules.Health
                 _cpuCounter.NextValue();
             }
             catch { _cpuCounter = null; }
+
+            if (_context.Config is Engine.ServiceConfig sc && sc.DisableLHM)
+            {
+                _lhmDisabled = true;
+                _context.Log(LogLevel.Info, "health", "LibreHardwareMonitor disabled by config (disableLHM=true). Using ACPI/WMI for temps.");
+            }
+
             return Task.CompletedTask;
         }
 
@@ -233,10 +240,11 @@ namespace PCPlus.Service.Modules.Health
         }
 
         private Computer? _computer;
+        private bool _lhmDisabled;
 
         private void PollTemps(HealthSnapshot snap)
         {
-            if (TryLibreHardwareMonitor(snap)) { CacheTemps(snap); return; }
+            if (!_lhmDisabled && TryLibreHardwareMonitor(snap)) { CacheTemps(snap); return; }
             TryAcpiTemp(snap);
             if (snap.CpuTempC > 0) { CacheTemps(snap); return; }
             if (TryWmiTemps(snap, "root\\LibreHardwareMonitor")) { CacheTemps(snap); return; }
@@ -321,10 +329,13 @@ namespace PCPlus.Service.Modules.Health
                 }
                 return found;
             }
-            catch
+            catch (Exception ex)
             {
-                _computer?.Close();
+                try { _computer?.Close(); } catch { }
                 _computer = null;
+                _lhmDisabled = true;
+                _context?.Log(LogLevel.Warning, "health",
+                    $"LibreHardwareMonitor disabled (driver blocked or unavailable): {ex.GetType().Name}. Using ACPI/WMI fallback.");
                 return false;
             }
         }
