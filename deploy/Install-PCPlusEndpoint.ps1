@@ -269,9 +269,41 @@ public static extern bool MoveFileEx(string lpExistingFileName, string lpNewFile
         $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
         Set-ItemProperty -Path $regPath -Name "PCPlusEndpoint" -Value "`"$trayExe`"" -ErrorAction SilentlyContinue
 
-        # Start the tray app
+        # Start the tray app in the interactive user session
+        # When run via RMM/SYSTEM, Start-Process launches in session 0 (invisible).
+        # Use a scheduled task with the Users group to start in the logged-in user's session.
+        $taskName = "PCPlusTrayLaunch"
+        schtasks /Delete /TN $taskName /F 2>$null | Out-Null
+        $taskXml = @"
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo><Description>Launch PC Plus Tray</Description></RegistrationInfo>
+  <Triggers/>
+  <Principals>
+    <Principal id="Author">
+      <GroupId>S-1-5-32-545</GroupId>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+  </Settings>
+  <Actions>
+    <Exec><Command>$trayExe</Command></Exec>
+  </Actions>
+</Task>
+"@
+        $taskXmlPath = "$env:TEMP\pcplus-tray-task.xml"
+        $taskXml | Out-File -FilePath $taskXmlPath -Encoding Unicode -Force
+        schtasks /Create /TN $taskName /XML $taskXmlPath /F 2>$null | Out-Null
+        schtasks /Run /TN $taskName 2>$null | Out-Null
+        Remove-Item $taskXmlPath -Force -ErrorAction SilentlyContinue
+        Write-Log "Tray app launched via scheduled task (interactive session)."
+
+        # Also try direct launch as fallback (works if script is run interactively)
         Start-Process -FilePath $trayExe -WindowStyle Hidden -ErrorAction SilentlyContinue
-        Write-Log "Tray app started."
+        Write-Log "Tray app auto-start configured."
     }
 
     # Create uninstall entry in Add/Remove Programs

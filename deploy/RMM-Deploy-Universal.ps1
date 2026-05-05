@@ -276,13 +276,43 @@ if (Test-Path $trayExe) {
         Write-Log "Failed to set auto-start: $_" "WARN"
     }
 
-    # Start tray for logged-in user
+    # Start tray in the interactive user session
+    # RMM runs as SYSTEM (session 0), so Start-Process won't show the tray.
+    # Use a scheduled task with the Users group to launch in the logged-in user's session.
+    $taskName = "PCPlusTrayLaunch"
     try {
-        Start-Process -FilePath $trayExe -WindowStyle Hidden -ErrorAction SilentlyContinue
-        Write-Log "Tray app started."
+        schtasks /Delete /TN $taskName /F 2>$null | Out-Null
+        $taskXml = @"
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo><Description>Launch PC Plus Tray</Description></RegistrationInfo>
+  <Triggers/>
+  <Principals>
+    <Principal id="Author">
+      <GroupId>S-1-5-32-545</GroupId>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+  </Settings>
+  <Actions>
+    <Exec><Command>$trayExe</Command></Exec>
+  </Actions>
+</Task>
+"@
+        $taskXmlPath = "$env:TEMP\pcplus-tray-task.xml"
+        $taskXml | Out-File -FilePath $taskXmlPath -Encoding Unicode -Force
+        schtasks /Create /TN $taskName /XML $taskXmlPath /F 2>$null | Out-Null
+        schtasks /Run /TN $taskName 2>$null | Out-Null
+        Remove-Item $taskXmlPath -Force -ErrorAction SilentlyContinue
+        Write-Log "Tray app launched via scheduled task (interactive session)."
     } catch {
-        Write-Log "Could not start tray app (no user logged in?): $_" "WARN"
+        Write-Log "Could not launch tray via scheduled task: $_" "WARN"
     }
+    # Also try direct launch as fallback
+    Start-Process -FilePath $trayExe -WindowStyle Hidden -ErrorAction SilentlyContinue
 } else {
     Write-Log "Tray exe not found at $trayExe" "WARN"
 }
