@@ -23,6 +23,7 @@ namespace PCPlus.Service
         private readonly ILogger<EndpointProtectionService> _logger;
         private DashboardClient? _dashboardClient;
         private AutoUpdater? _autoUpdater;
+        private TrayWatchdog? _trayWatchdog;
 
         public EndpointProtectionService(
             ModuleEngine engine,
@@ -69,6 +70,10 @@ namespace PCPlus.Service
             // Start auto-updater
             _autoUpdater = new AutoUpdater(_config, _engine);
             _autoUpdater.Start();
+
+            // Start tray watchdog (auto-restarts tray if it crashes)
+            _trayWatchdog = new TrayWatchdog(_config, _engine);
+            _trayWatchdog.Start();
 
             _logger.LogInformation("PC Plus Endpoint Protection Service is running.");
 
@@ -121,6 +126,7 @@ namespace PCPlus.Service
             catch (OperationCanceledException) { }
 
             // Stopping
+            _trayWatchdog?.Dispose();
             _autoUpdater?.Dispose();
             _dashboardClient?.Dispose();
             await _engine.StopAsync();
