@@ -28,11 +28,7 @@ namespace PCPlus.Tray
             bool createdNew;
             using var mutex = new System.Threading.Mutex(true, "PCPlusEndpoint_Tray", out createdNew);
             if (!createdNew)
-            {
-                MessageBox.Show("PC Plus Endpoint Protection is already running.", "PC Plus",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
-            }
 
             try
             {
