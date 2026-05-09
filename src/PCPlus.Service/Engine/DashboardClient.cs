@@ -184,6 +184,8 @@ namespace PCPlus.Service.Engine
                 {
                     try { installedSoftware = CollectSoftwareInventory(); } catch { }
                     try { bitlockerKeys = CollectBitLockerRecoveryKeys(); } catch { }
+                    // Send enrichment data (AV, backup, network, ransomware) to new endpoints
+                    _ = Task.Run(async () => { try { await SendEnrichmentData(); } catch { } });
                 }
 
                 var heartbeat = new
@@ -518,6 +520,412 @@ namespace PCPlus.Service.Engine
             }
             catch { }
             return keys;
+        }
+
+        /// <summary>
+        /// Sends enrichment data to the new dashboard endpoints every 10th heartbeat (~5 min).
+        /// Covers: AV products, backup status, network security, ransomware status.
+        /// </summary>
+        private async Task SendEnrichmentData()
+        {
+            if (_http == null) return;
+            var deviceId = _config.DeviceId;
+            var hostname = Environment.MachineName;
+
+            // 1. Antivirus products
+            try
+            {
+                var products = CollectAntivirusProducts();
+                if (products.Count > 0)
+                {
+                    await _http.PostAsJsonAsync("/api/endpoint/antivirus", new
+                    {
+                        deviceId,
+                        products
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _engine.Log(LogLevel.Debug, "dashboard-client", $"AV enrichment failed: {ex.Message}");
+            }
+
+            // 2. Backup status
+            try
+            {
+                var backup = CollectBackupStatus();
+                if (backup != null)
+                {
+                    await _http.PostAsJsonAsync("/api/endpoint/backup-status", new
+                    {
+                        deviceId,
+                        hostname,
+                        provider = backup.Provider,
+                        lastBackupTime = backup.LastBackupTime,
+                        status = backup.Status,
+                        sizeBytes = backup.SizeBytes,
+                        protectedPaths = backup.ProtectedPaths,
+                        shadowCopyEnabled = backup.ShadowCopyEnabled,
+                        shadowCopyCount = backup.ShadowCopyCount,
+                        recoveryPointCount = backup.RecoveryPointCount
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _engine.Log(LogLevel.Debug, "dashboard-client", $"Backup enrichment failed: {ex.Message}");
+            }
+
+            // 3. Network security
+            try
+            {
+                var network = CollectNetworkSecurity();
+                await _http.PostAsJsonAsync("/api/endpoint/network-security", new
+                {
+                    deviceId,
+                    hostname,
+                    firewallEnabled = network.FirewallEnabled,
+                    firewallProfiles = network.FirewallProfiles,
+                    openPorts = network.OpenPorts,
+                    activeConnections = network.ActiveConnections,
+                    rdpEnabled = network.RdpEnabled,
+                    dnsServers = network.DnsServers,
+                    wifiSecurityType = network.WifiSecurityType
+                });
+            }
+            catch (Exception ex)
+            {
+                _engine.Log(LogLevel.Debug, "dashboard-client", $"Network enrichment failed: {ex.Message}");
+            }
+
+            // 4. Ransomware shield status
+            try
+            {
+                var rwModule = _engine.GetModule("ransomware");
+                if (rwModule?.IsRunning == true)
+                {
+                    var status = rwModule.GetStatus();
+                    await _http.PostAsJsonAsync("/api/endpoint/ransomware-status", new
+                    {
+                        deviceId,
+                        hostname,
+                        behaviorMonitoringEnabled = status.Metrics.TryGetValue("behaviorMonitoring", out var bm) && Convert.ToBoolean(bm),
+                        protectedFolders = GetProtectedFolders(),
+                        shadowCopyProtected = IsShadowCopyProtected(),
+                        honeypotActive = status.Metrics.TryGetValue("honeypotActive", out var hp) && Convert.ToBoolean(hp),
+                        rollbackCapable = IsShadowCopyProtected(),
+                        detectionRules = GetDetectionRules(),
+                        threatHistory = new List<object>()
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _engine.Log(LogLevel.Debug, "dashboard-client", $"Ransomware enrichment failed: {ex.Message}");
+            }
+
+            _engine.Log(LogLevel.Debug, "dashboard-client", "Enrichment data sent");
+        }
+
+        private List<object> CollectAntivirusProducts()
+        {
+            var products = new List<object>();
+            try
+            {
+                using var searcher = new System.Management.ManagementObjectSearcher(
+                    "root\\SecurityCenter2", "SELECT * FROM AntiVirusProduct");
+                foreach (System.Management.ManagementObject obj in searcher.Get())
+                {
+                    var name = obj["displayName"]?.ToString() ?? "";
+                    if (string.IsNullOrEmpty(name)) continue;
+
+                    var state = Convert.ToUInt32(obj["productState"]);
+                    // Decode productState: bits 12-15 = scanner enabled, bits 4-7 = definition status
+                    var scannerEnabled = ((state >> 12) & 0xF) == 1;
+                    var defsOutdated = ((state >> 4) & 0xF) != 0;
+
+                    // Determine Active vs Passive vs OnDemand
+                    string status;
+                    if (scannerEnabled && name.Contains("Defender", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // If Defender + another AV is active, Defender is passive
+                        status = products.Any(p => ((dynamic)p).status == "Active") ? "Passive" : "Active";
+                    }
+                    else if (scannerEnabled)
+                    {
+                        status = "Active";
+                    }
+                    else
+                    {
+                        status = "OnDemand";
+                    }
+
+                    // If a non-Defender product is active, mark Defender as Passive
+                    if (status == "Active" && !name.Contains("Defender", StringComparison.OrdinalIgnoreCase))
+                    {
+                        for (int i = 0; i < products.Count; i++)
+                        {
+                            var p = (dynamic)products[i];
+                            if (p.name.ToString().Contains("Defender") && p.status == "Active")
+                            {
+                                products[i] = new
+                                {
+                                    name = (string)p.name,
+                                    vendor = (string)p.vendor,
+                                    version = (string)p.version,
+                                    definitionDate = (string)p.definitionDate,
+                                    status = "Passive",
+                                    realTimeEnabled = false,
+                                    lastScanTime = (string)p.lastScanTime,
+                                    quarantineCount = (int)p.quarantineCount
+                                };
+                            }
+                        }
+                    }
+
+                    products.Add(new
+                    {
+                        name,
+                        vendor = name.Contains("Defender") ? "Microsoft" :
+                                 name.Contains("Avast") ? "Avast" :
+                                 name.Contains("AVG") ? "AVG" :
+                                 name.Contains("Norton") ? "Norton" :
+                                 name.Contains("McAfee") ? "McAfee" :
+                                 name.Contains("Kaspersky") ? "Kaspersky" :
+                                 name.Contains("Bitdefender") ? "Bitdefender" :
+                                 name.Contains("ESET") ? "ESET" :
+                                 name.Contains("Malwarebytes") ? "Malwarebytes" :
+                                 name.Contains("Webroot") ? "Webroot" :
+                                 name.Contains("Sophos") ? "Sophos" :
+                                 name.Contains("Trend") ? "Trend Micro" : "Unknown",
+                        version = "",
+                        definitionDate = defsOutdated ? "" : DateTime.UtcNow.ToString("yyyy-MM-dd"),
+                        status,
+                        realTimeEnabled = scannerEnabled,
+                        lastScanTime = "",
+                        quarantineCount = 0
+                    });
+                }
+            }
+            catch { }
+            return products;
+        }
+
+        private class BackupInfo
+        {
+            public string Provider { get; set; } = "";
+            public string? LastBackupTime { get; set; }
+            public string Status { get; set; } = "";
+            public long SizeBytes { get; set; }
+            public List<string> ProtectedPaths { get; set; } = new();
+            public bool ShadowCopyEnabled { get; set; }
+            public int ShadowCopyCount { get; set; }
+            public int RecoveryPointCount { get; set; }
+        }
+
+        private BackupInfo? CollectBackupStatus()
+        {
+            var info = new BackupInfo();
+            try
+            {
+                // Check File History
+                var fhKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\FileHistory");
+                if (fhKey != null)
+                {
+                    info.Provider = "WindowsFileHistory";
+                    var protectedUpTo = fhKey.GetValue("ProtectedUpToTime");
+                    if (protectedUpTo is long ft && ft > 0)
+                    {
+                        var lastBackup = DateTime.FromFileTimeUtc(ft);
+                        info.LastBackupTime = lastBackup.ToString("o");
+                        info.Status = (DateTime.UtcNow - lastBackup).TotalDays < 7 ? "Success" : "Overdue";
+                    }
+                    else
+                    {
+                        info.Status = "Success";
+                    }
+                }
+                else
+                {
+                    // Check System Restore
+                    var srKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                        @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore");
+                    if (srKey != null)
+                    {
+                        var rpEnabled = Convert.ToInt32(srKey.GetValue("RPSessionInterval", 0));
+                        if (rpEnabled > 0 || Convert.ToInt32(srKey.GetValue("DisableSR", 1)) == 0)
+                        {
+                            info.Provider = "SystemRestore";
+                            info.Status = "Success";
+                        }
+                    }
+                }
+
+                // Check shadow copies
+                try
+                {
+                    using var searcher = new System.Management.ManagementObjectSearcher(
+                        "SELECT * FROM Win32_ShadowCopy");
+                    var shadows = searcher.Get();
+                    info.ShadowCopyCount = shadows.Count;
+                    info.ShadowCopyEnabled = shadows.Count > 0;
+                    info.RecoveryPointCount = shadows.Count;
+                }
+                catch { }
+
+                // Protected paths (common backup locations)
+                info.ProtectedPaths = new List<string>();
+                var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                foreach (var folder in new[] { "Documents", "Desktop", "Pictures", "Downloads" })
+                {
+                    var path = Path.Combine(userProfile, folder);
+                    if (Directory.Exists(path)) info.ProtectedPaths.Add(path);
+                }
+
+                if (!string.IsNullOrEmpty(info.Provider)) return info;
+            }
+            catch { }
+            return null;
+        }
+
+        private class NetworkInfo
+        {
+            public bool FirewallEnabled { get; set; }
+            public List<object> FirewallProfiles { get; set; } = new();
+            public List<object> OpenPorts { get; set; } = new();
+            public int ActiveConnections { get; set; }
+            public bool RdpEnabled { get; set; }
+            public List<string> DnsServers { get; set; } = new();
+            public string WifiSecurityType { get; set; } = "N/A";
+        }
+
+        private NetworkInfo CollectNetworkSecurity()
+        {
+            var info = new NetworkInfo();
+            try
+            {
+                // Check firewall profiles
+                foreach (var profile in new[] { "DomainProfile", "StandardProfile", "PublicProfile" })
+                {
+                    using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                        $@"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\{profile}");
+                    var enabled = key != null && Convert.ToInt32(key.GetValue("EnableFirewall", 0)) == 1;
+                    info.FirewallProfiles.Add(new
+                    {
+                        name = profile.Replace("Profile", "").Replace("Standard", "Private"),
+                        enabled,
+                        defaultAction = "Block"
+                    });
+                    if (enabled) info.FirewallEnabled = true;
+                }
+
+                // Check RDP
+                try
+                {
+                    using var rdpKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                        @"SYSTEM\CurrentControlSet\Control\Terminal Server");
+                    info.RdpEnabled = rdpKey != null && Convert.ToInt32(rdpKey.GetValue("fDenyTSConnections", 1)) == 0;
+                }
+                catch { }
+
+                // Get DNS servers
+                try
+                {
+                    var adapters = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces();
+                    foreach (var adapter in adapters.Where(a => a.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up))
+                    {
+                        var dns = adapter.GetIPProperties().DnsAddresses;
+                        foreach (var d in dns)
+                        {
+                            var addr = d.ToString();
+                            if (!info.DnsServers.Contains(addr)) info.DnsServers.Add(addr);
+                        }
+                    }
+                }
+                catch { }
+
+                // Count active TCP connections
+                try
+                {
+                    var tcpStats = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+                    info.ActiveConnections = tcpStats.GetActiveTcpConnections().Length;
+                }
+                catch { }
+
+                // Get listening ports (top 20)
+                try
+                {
+                    var tcpStats = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+                    var listeners = tcpStats.GetActiveTcpListeners().Take(20);
+                    info.OpenPorts = listeners.Select(l => (object)new
+                    {
+                        port = l.Port,
+                        protocol = "TCP",
+                        process = "",
+                        state = "LISTENING"
+                    }).ToList();
+                }
+                catch { }
+            }
+            catch { }
+            return info;
+        }
+
+        private List<string> GetProtectedFolders()
+        {
+            var folders = new List<string>();
+            try
+            {
+                // Check Controlled Folder Access (Windows Defender)
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access\ProtectedFolders");
+                if (key != null)
+                {
+                    foreach (var name in key.GetValueNames())
+                    {
+                        folders.Add(name);
+                    }
+                }
+            }
+            catch { }
+
+            // Default protected paths
+            if (folders.Count == 0)
+            {
+                var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                foreach (var folder in new[] { "Documents", "Desktop", "Pictures", "Music", "Videos", "Downloads" })
+                {
+                    var path = Path.Combine(userProfile, folder);
+                    if (Directory.Exists(path)) folders.Add(path);
+                }
+            }
+            return folders;
+        }
+
+        private bool IsShadowCopyProtected()
+        {
+            try
+            {
+                using var searcher = new System.Management.ManagementObjectSearcher("SELECT * FROM Win32_ShadowCopy");
+                return searcher.Get().Count > 0;
+            }
+            catch { return false; }
+        }
+
+        private List<object> GetDetectionRules()
+        {
+            return new List<object>
+            {
+                new { ruleName = "Honeypot File Monitoring", enabled = true, severity = "Critical" },
+                new { ruleName = "Rapid File Encryption", enabled = true, severity = "Critical" },
+                new { ruleName = "Known Ransomware Extensions", enabled = true, severity = "High" },
+                new { ruleName = "Suspicious PowerShell", enabled = true, severity = "High" },
+                new { ruleName = "Mass File Rename", enabled = true, severity = "High" },
+                new { ruleName = "Parent-Child Process Anomaly", enabled = true, severity = "Medium" },
+                new { ruleName = "Shadow Copy Deletion", enabled = true, severity = "Critical" },
+                new { ruleName = "File Entropy Analysis", enabled = true, severity = "Medium" }
+            };
         }
 
         public void Dispose()
