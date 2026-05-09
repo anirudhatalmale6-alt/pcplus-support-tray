@@ -503,7 +503,7 @@ namespace PCPlus.Tray
 
         private void ShowTicketForm()
         {
-            OpenUrl("https://pcpluscomputing.com/contact-us/");
+            OpenUrl("https://support.pcpluscomputing.com/#ticket/create");
         }
 
         private void ShowSystemInfo()
