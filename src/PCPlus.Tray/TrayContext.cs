@@ -68,8 +68,12 @@ namespace PCPlus.Tray
             _reconnectTimer = new System.Windows.Forms.Timer { Interval = 10000 };
             _reconnectTimer.Tick += async (s, e) =>
             {
-                if (!_serviceConnected && !_connecting)
-                    await ConnectToServiceAsync();
+                try
+                {
+                    if (!_serviceConnected && !_connecting)
+                        await ConnectToServiceAsync();
+                }
+                catch { }
             };
             _reconnectTimer.Start();
 
@@ -77,10 +81,15 @@ namespace PCPlus.Tray
             // Starts local monitoring immediately so heartbeats always have data
             _localFallback.Start();
             _heartbeatTimer = new System.Windows.Forms.Timer { Interval = 30000 }; // 30 seconds
-            _heartbeatTimer.Tick += async (s, e) => await SendDirectHeartbeatAsync();
+            _heartbeatTimer.Tick += async (s, e) =>
+            {
+                try { await SendDirectHeartbeatAsync(); } catch { }
+            };
             _heartbeatTimer.Start();
-            // Send first heartbeat after 5 seconds (let local monitor collect initial data)
-            _ = Task.Delay(5000).ContinueWith(_ => SendDirectHeartbeatAsync());
+            _ = Task.Delay(5000).ContinueWith(async _ =>
+            {
+                try { await SendDirectHeartbeatAsync(); } catch { }
+            });
         }
 
         private async Task ConnectToServiceAsync()

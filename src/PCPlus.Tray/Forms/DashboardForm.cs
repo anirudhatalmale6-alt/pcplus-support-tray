@@ -60,7 +60,10 @@ namespace PCPlus.Tray.Forms
             BuildUI();
 
             _refreshTimer = new System.Windows.Forms.Timer { Interval = 3000 };
-            _refreshTimer.Tick += async (s, e) => await RefreshData();
+            _refreshTimer.Tick += async (s, e) =>
+            {
+                try { await RefreshData(); } catch { }
+            };
             _refreshTimer.Start();
 
             _ = RefreshData();

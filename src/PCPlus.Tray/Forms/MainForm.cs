@@ -1549,6 +1549,8 @@ namespace PCPlus.Tray.Forms
 
         private async void BuildWifiView()
         {
+            try
+            {
             var title = CreatePageTitle("WiFi Security Scanner");
             _contentArea.Controls.Add(title);
 
@@ -1725,6 +1727,7 @@ namespace PCPlus.Tray.Forms
                 };
                 _contentArea.Controls.Add(errLabel);
             }
+            } catch { }
         }
 
         #endregion
@@ -1733,6 +1736,8 @@ namespace PCPlus.Tray.Forms
 
         private async void BuildPoliciesView()
         {
+            try
+            {
             var title = CreatePageTitle("Policy Engine");
             _contentArea.Controls.Add(title);
 
@@ -1936,6 +1941,7 @@ namespace PCPlus.Tray.Forms
                 };
                 _contentArea.Controls.Add(errLabel);
             }
+            } catch { }
         }
 
         #endregion
