@@ -181,18 +181,23 @@ $ErrorActionPreference = 'Stop'
 
 try {{
     # Kill tray app if running
-    Get-Process -Name 'PCPlusSupportTray' -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process -Name 'PCPlusTray' -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep -Seconds 1
 
     # Stop service
     Stop-Service -Name 'PCPlusEndpoint' -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
 
-    # Backup current version
+    # Backup current version (preserve subdirectory structure)
     $backupDir = '{installDir}\backup-{CurrentVersion}'
     if (-not (Test-Path $backupDir)) {{ New-Item -Path $backupDir -ItemType Directory -Force | Out-Null }}
-    Copy-Item -Path '{installDir}\*.exe' -Destination $backupDir -Force -ErrorAction SilentlyContinue
-    Copy-Item -Path '{installDir}\*.dll' -Destination $backupDir -Force -ErrorAction SilentlyContinue
+    Get-ChildItem -Path '{installDir}' -Recurse -File -Include *.exe,*.dll,*.pdb | Where-Object {{ $_.FullName -notlike '*backup*' }} | ForEach-Object {{
+        $rel = $_.FullName.Substring('{installDir}'.Length)
+        $dest = Join-Path $backupDir $rel
+        $destDir = Split-Path $dest -Parent
+        if (-not (Test-Path $destDir)) {{ New-Item -Path $destDir -ItemType Directory -Force | Out-Null }}
+        Copy-Item -Path $_.FullName -Destination $dest -Force
+    }}
 
     # Copy new files
     $sourceDir = '{stagingDir}'
@@ -205,17 +210,19 @@ try {{
         Copy-Item -Path $file.FullName -Destination $destPath -Force
     }}
 
-    # Verify key files exist after copy
-    if (-not (Test-Path '{installDir}\PCPlusSupportTray.exe') -and -not (Test-Path '{installDir}\PCPlusService.exe')) {{
+    # Verify key files exist after copy (check both flat and subdirectory layouts)
+    $trayFound = (Test-Path '{installDir}\PCPlusTray.exe') -or (Test-Path '{installDir}\Tray\PCPlusTray.exe')
+    $svcFound = (Test-Path '{installDir}\PCPlusService.exe') -or (Test-Path '{installDir}\Service\PCPlusService.exe')
+    if (-not $trayFound -and -not $svcFound) {{
         throw 'Update files not found after copy - rolling back'
     }}
 
     # Start service
     Start-Service -Name 'PCPlusEndpoint' -ErrorAction SilentlyContinue
 
-    # Restart tray app for logged-in user
-    $trayExe = '{installDir}\PCPlusSupportTray.exe'
-    if (Test-Path $trayExe) {{
+    # Restart tray app for logged-in user (check both flat and subdirectory layouts)
+    $trayExe = if (Test-Path '{installDir}\Tray\PCPlusTray.exe') {{ '{installDir}\Tray\PCPlusTray.exe' }} elseif (Test-Path '{installDir}\PCPlusTray.exe') {{ '{installDir}\PCPlusTray.exe' }} else {{ $null }}
+    if ($trayExe) {{
         Start-Process -FilePath $trayExe -ErrorAction SilentlyContinue
     }}
 
@@ -230,8 +237,8 @@ try {{
         Copy-Item -Path ""$backupDir\*"" -Destination '{installDir}' -Force -ErrorAction SilentlyContinue
     }}
     Start-Service -Name 'PCPlusEndpoint' -ErrorAction SilentlyContinue
-    $trayExe = '{installDir}\PCPlusSupportTray.exe'
-    if (Test-Path $trayExe) {{ Start-Process -FilePath $trayExe -ErrorAction SilentlyContinue }}
+    $trayExe = if (Test-Path '{installDir}\Tray\PCPlusTray.exe') {{ '{installDir}\Tray\PCPlusTray.exe' }} elseif (Test-Path '{installDir}\PCPlusTray.exe') {{ '{installDir}\PCPlusTray.exe' }} else {{ $null }}
+    if ($trayExe) {{ Start-Process -FilePath $trayExe -ErrorAction SilentlyContinue }}
 
     $logDir = '{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PCPlusEndpoint", "Logs")}'
     if (-not (Test-Path $logDir)) {{ New-Item -Path $logDir -ItemType Directory -Force | Out-Null }}
