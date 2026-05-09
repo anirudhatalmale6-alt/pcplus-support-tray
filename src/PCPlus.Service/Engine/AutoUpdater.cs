@@ -168,46 +168,79 @@ namespace PCPlus.Service.Engine
                 // 1. Stop the service
                 // 2. Copy new files over old ones
                 // 3. Start the service
-                var installDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                    "PC Plus", "Endpoint Protection");
+                // Detect actual install path from the running executable's location
+                var installDir = Path.GetDirectoryName(Environment.ProcessPath)
+                    ?? Path.GetDirectoryName(typeof(AutoUpdater).Assembly.Location)
+                    ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PCPlus");
                 var scriptPath = Path.Combine(tempDir, "apply-update.ps1");
 
                 var updateScript = $@"
 # PC Plus Auto-Update Script
 Start-Sleep -Seconds 3
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Stop'
 
-# Stop service
-Stop-Service -Name 'PCPlusEndpoint' -Force
-Start-Sleep -Seconds 2
+try {{
+    # Kill tray app if running
+    Get-Process -Name 'PCPlusSupportTray' -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 1
 
-# Backup current version
-$backupDir = '{installDir}\backup-{CurrentVersion}'
-if (-not (Test-Path $backupDir)) {{ New-Item -Path $backupDir -ItemType Directory -Force | Out-Null }}
-Copy-Item -Path '{installDir}\*.exe' -Destination $backupDir -Force
-Copy-Item -Path '{installDir}\*.dll' -Destination $backupDir -Force
+    # Stop service
+    Stop-Service -Name 'PCPlusEndpoint' -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
 
-# Copy new files
-$sourceDir = '{stagingDir}'
-$sourceFiles = Get-ChildItem -Path $sourceDir -Recurse -File
-foreach ($file in $sourceFiles) {{
-    $relativePath = $file.FullName.Substring($sourceDir.Length + 1)
-    $destPath = Join-Path '{installDir}' $relativePath
-    $destDir = Split-Path $destPath -Parent
-    if (-not (Test-Path $destDir)) {{ New-Item -Path $destDir -ItemType Directory -Force | Out-Null }}
-    Copy-Item -Path $file.FullName -Destination $destPath -Force
+    # Backup current version
+    $backupDir = '{installDir}\backup-{CurrentVersion}'
+    if (-not (Test-Path $backupDir)) {{ New-Item -Path $backupDir -ItemType Directory -Force | Out-Null }}
+    Copy-Item -Path '{installDir}\*.exe' -Destination $backupDir -Force -ErrorAction SilentlyContinue
+    Copy-Item -Path '{installDir}\*.dll' -Destination $backupDir -Force -ErrorAction SilentlyContinue
+
+    # Copy new files
+    $sourceDir = '{stagingDir}'
+    $sourceFiles = Get-ChildItem -Path $sourceDir -Recurse -File
+    foreach ($file in $sourceFiles) {{
+        $relativePath = $file.FullName.Substring($sourceDir.Length + 1)
+        $destPath = Join-Path '{installDir}' $relativePath
+        $destDir = Split-Path $destPath -Parent
+        if (-not (Test-Path $destDir)) {{ New-Item -Path $destDir -ItemType Directory -Force | Out-Null }}
+        Copy-Item -Path $file.FullName -Destination $destPath -Force
+    }}
+
+    # Verify key files exist after copy
+    if (-not (Test-Path '{installDir}\PCPlusSupportTray.exe') -and -not (Test-Path '{installDir}\PCPlusService.exe')) {{
+        throw 'Update files not found after copy - rolling back'
+    }}
+
+    # Start service
+    Start-Service -Name 'PCPlusEndpoint' -ErrorAction SilentlyContinue
+
+    # Restart tray app for logged-in user
+    $trayExe = '{installDir}\PCPlusSupportTray.exe'
+    if (Test-Path $trayExe) {{
+        Start-Process -FilePath $trayExe -ErrorAction SilentlyContinue
+    }}
+
+    # Log success
+    $logDir = '{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PCPlusEndpoint", "Logs")}'
+    if (-not (Test-Path $logDir)) {{ New-Item -Path $logDir -ItemType Directory -Force | Out-Null }}
+    Add-Content -Path ""$logDir\updates.log"" -Value ""[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Updated from v{CurrentVersion} to {tagName} - SUCCESS""
+}} catch {{
+    # Rollback from backup
+    $backupDir = '{installDir}\backup-{CurrentVersion}'
+    if (Test-Path $backupDir) {{
+        Copy-Item -Path ""$backupDir\*"" -Destination '{installDir}' -Force -ErrorAction SilentlyContinue
+    }}
+    Start-Service -Name 'PCPlusEndpoint' -ErrorAction SilentlyContinue
+    $trayExe = '{installDir}\PCPlusSupportTray.exe'
+    if (Test-Path $trayExe) {{ Start-Process -FilePath $trayExe -ErrorAction SilentlyContinue }}
+
+    $logDir = '{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PCPlusEndpoint", "Logs")}'
+    if (-not (Test-Path $logDir)) {{ New-Item -Path $logDir -ItemType Directory -Force | Out-Null }}
+    Add-Content -Path ""$logDir\updates.log"" -Value ""[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Update to {tagName} FAILED - rolled back: $_""
+}} finally {{
+    # Cleanup
+    Remove-Item -Path '{zipPath}' -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path '{stagingDir}' -Recurse -Force -ErrorAction SilentlyContinue
 }}
-
-# Start service
-Start-Service -Name 'PCPlusEndpoint'
-
-# Cleanup
-Remove-Item -Path '{zipPath}' -Force -ErrorAction SilentlyContinue
-Remove-Item -Path '{stagingDir}' -Recurse -Force -ErrorAction SilentlyContinue
-
-# Log update
-$logDir = '{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PCPlusEndpoint", "Logs")}'
-Add-Content -Path ""$logDir\updates.log"" -Value ""[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Updated from v{CurrentVersion} to {tagName}""
 ";
 
                 await File.WriteAllTextAsync(scriptPath, updateScript);
