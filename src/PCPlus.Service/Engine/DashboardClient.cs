@@ -366,6 +366,40 @@ namespace PCPlus.Service.Engine
                     if (rwModule?.IsRunning == true)
                         await rwModule.HandleCommandAsync(new ModuleCommand { ModuleId = "ransomware", Action = "ActivateLockdown" });
                     break;
+
+                case "restart-tray":
+                    RestartTrayApp();
+                    break;
+
+                case "restart-service":
+                    _engine.Log(LogLevel.Info, "dashboard-client", "Service restart requested from dashboard");
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(2000);
+                        Environment.Exit(0);
+                    });
+                    break;
+
+                case "update":
+                    _engine.Log(LogLevel.Info, "dashboard-client", "Update check requested from dashboard");
+                    break;
+            }
+        }
+
+        private void RestartTrayApp()
+        {
+            try
+            {
+                foreach (var p in Process.GetProcessesByName("PCPlusTray"))
+                {
+                    p.Kill();
+                    p.Dispose();
+                }
+                _engine.Log(LogLevel.Info, "dashboard-client", "Tray app killed - watchdog will restart it");
+            }
+            catch (Exception ex)
+            {
+                _engine.Log(LogLevel.Warning, "dashboard-client", $"Failed to restart tray: {ex.Message}");
             }
         }
 
