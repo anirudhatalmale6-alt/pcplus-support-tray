@@ -2161,7 +2161,7 @@ namespace PCPlus.Tray.Forms
 
                 using var phoneFont = new Font("Segoe UI", 14, FontStyle.Bold);
                 using var phoneBrush = new SolidBrush(TextDark);
-                g.DrawString("1-888-987-7727", phoneFont, phoneBrush, 54, 34);
+                g.DrawString("604-760-1662", phoneFont, phoneBrush, 54, 34);
             };
             _contentArea.Controls.Add(phoneCard);
             y += 70 + gap;
