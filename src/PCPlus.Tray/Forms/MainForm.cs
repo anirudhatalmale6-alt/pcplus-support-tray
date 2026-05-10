@@ -147,6 +147,7 @@ namespace PCPlus.Tray.Forms
             AddNavItem(navPanel, "wifi", "WiFi Security", "\u2637", ref y);
             AddNavItem(navPanel, "policies", "Policy Engine", "\u2692", ref y);
             y += 10; // spacer
+            AddNavItem(navPanel, "support", "Support Center", "\u2709", ref y);
             AddNavItem(navPanel, "system", "System Info", "\u2699", ref y);
 
             // Bottom status
@@ -245,6 +246,7 @@ namespace PCPlus.Tray.Forms
                 case "advisor": BuildAdvisorView(); break;
                 case "wifi": BuildWifiView(); break;
                 case "policies": BuildPoliciesView(); break;
+                case "support": BuildSupportView(); break;
                 case "system": BuildSystemView(); break;
             }
         }
@@ -1977,6 +1979,222 @@ namespace PCPlus.Tray.Forms
         #endregion
 
         #region System Info View
+
+        private void BuildSupportView()
+        {
+            var title = CreatePageTitle("Support Center");
+            _contentArea.Controls.Add(title);
+
+            int m = 16;
+            int contentW = _contentArea.Width - m * 2 - 24;
+            if (contentW < 200) contentW = 660;
+            int y = 55;
+            int gap = 14;
+
+            // Hero card
+            var heroCard = CreateCard(new Point(m + 12, y), new Size(contentW, 110));
+            heroCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            heroCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var gradBrush = new LinearGradientBrush(
+                    new Rectangle(0, 0, heroCard.Width, heroCard.Height),
+                    Color.FromArgb(20, 37, 150, 190), Color.FromArgb(8, 37, 150, 190),
+                    LinearGradientMode.Horizontal);
+                using var gradPath = RoundedRect(new Rectangle(0, 0, heroCard.Width - 1, heroCard.Height - 1), 10);
+                g.FillPath(gradBrush, gradPath);
+
+                using var iconFont = new Font("Segoe UI", 32);
+                using var iconBrush = new SolidBrush(AccentTeal);
+                g.DrawString("✉", iconFont, iconBrush, 24, 22);
+
+                using var headFont = new Font("Segoe UI", 15, FontStyle.Bold);
+                using var headBrush = new SolidBrush(TextDark);
+                g.DrawString("We're here to help", headFont, headBrush, 85, 22);
+
+                using var subFont = new Font("Segoe UI", 10);
+                using var subBrush = new SolidBrush(TextMuted);
+                g.DrawString("Get in touch with our support team through live chat, email, or phone.", subFont, subBrush, 87, 52);
+                g.DrawString("Our technicians are ready to assist you.", subFont, subBrush, 87, 74);
+            };
+            _contentArea.Controls.Add(heroCard);
+            y += 110 + gap;
+
+            // Action buttons row
+            int btnW = (contentW - gap * 2) / 3;
+
+            // Live Chat button card
+            var chatCard = CreateCard(new Point(m + 12, y), new Size(btnW, 140));
+            chatCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            chatCard.Cursor = Cursors.Hand;
+            chatCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var circleBrush = new SolidBrush(Color.FromArgb(220, 245, 235));
+                g.FillEllipse(circleBrush, (btnW - 48) / 2, 18, 48, 48);
+                using var iconFont = new Font("Segoe UI", 20);
+                using var iconBrush = new SolidBrush(AccentGreen);
+                g.DrawString("▬", iconFont, iconBrush, (btnW - 24) / 2, 28);
+
+                using var lblFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var lblBrush = new SolidBrush(TextDark);
+                var sz = g.MeasureString("Live Chat", lblFont);
+                g.DrawString("Live Chat", lblFont, lblBrush, (btnW - sz.Width) / 2, 78);
+
+                using var subFont = new Font("Segoe UI", 8.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                var sub = "Chat with a technician";
+                var ssz = g.MeasureString(sub, subFont);
+                g.DrawString(sub, subFont, subBrush, (btnW - ssz.Width) / 2, 100);
+            };
+            chatCard.Click += (s, e) =>
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = "https://support.pcpluscomputing.com/livechat.html", UseShellExecute = true });
+            };
+            _contentArea.Controls.Add(chatCard);
+
+            // Create Ticket button card
+            var ticketCard = CreateCard(new Point(m + 12 + btnW + gap, y), new Size(btnW, 140));
+            ticketCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            ticketCard.Cursor = Cursors.Hand;
+            ticketCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var circleBrush = new SolidBrush(Color.FromArgb(220, 230, 255));
+                g.FillEllipse(circleBrush, (btnW - 48) / 2, 18, 48, 48);
+                using var iconFont = new Font("Segoe UI", 20);
+                using var iconBrush = new SolidBrush(AccentBlue);
+                g.DrawString("✍", iconFont, iconBrush, (btnW - 24) / 2, 28);
+
+                using var lblFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var lblBrush = new SolidBrush(TextDark);
+                var sz = g.MeasureString("Create Ticket", lblFont);
+                g.DrawString("Create Ticket", lblFont, lblBrush, (btnW - sz.Width) / 2, 78);
+
+                using var subFont = new Font("Segoe UI", 8.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                var sub = "Submit a support request";
+                var ssz = g.MeasureString(sub, subFont);
+                g.DrawString(sub, subFont, subBrush, (btnW - ssz.Width) / 2, 100);
+            };
+            ticketCard.Click += (s, e) =>
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = "https://support.pcpluscomputing.com/#ticket/create", UseShellExecute = true });
+            };
+            _contentArea.Controls.Add(ticketCard);
+
+            // Remote Support button card
+            var remoteCard = CreateCard(new Point(m + 12 + (btnW + gap) * 2, y), new Size(btnW, 140));
+            remoteCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            remoteCard.Cursor = Cursors.Hand;
+            remoteCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var circleBrush = new SolidBrush(Color.FromArgb(240, 230, 250));
+                g.FillEllipse(circleBrush, (btnW - 48) / 2, 18, 48, 48);
+                using var iconFont = new Font("Segoe UI", 20);
+                using var iconBrush = new SolidBrush(Color.FromArgb(139, 92, 246));
+                g.DrawString("⌘", iconFont, iconBrush, (btnW - 24) / 2, 28);
+
+                using var lblFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var lblBrush = new SolidBrush(TextDark);
+                var sz = g.MeasureString("Remote Support", lblFont);
+                g.DrawString("Remote Support", lblFont, lblBrush, (btnW - sz.Width) / 2, 78);
+
+                using var subFont = new Font("Segoe UI", 8.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                var sub = "Let us connect remotely";
+                var ssz = g.MeasureString(sub, subFont);
+                g.DrawString(sub, subFont, subBrush, (btnW - ssz.Width) / 2, 100);
+            };
+            remoteCard.Click += (s, e) =>
+            {
+                try
+                {
+                    var quickAssist = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                        "Quick Assist", "QuickAssist.exe");
+                    if (File.Exists(quickAssist))
+                        System.Diagnostics.Process.Start(quickAssist);
+                    else
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        { FileName = "ms-quick-assist:", UseShellExecute = true });
+                }
+                catch
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    { FileName = "https://quick-assist.microsoft.com/", UseShellExecute = true });
+                }
+            };
+            _contentArea.Controls.Add(remoteCard);
+            y += 140 + gap;
+
+            // Phone contact card
+            var phoneCard = CreateCard(new Point(m + 12, y), new Size(contentW, 70));
+            phoneCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            phoneCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var iconFont = new Font("Segoe UI", 18);
+                using var iconBrush = new SolidBrush(AccentTeal);
+                g.DrawString("☎", iconFont, iconBrush, 20, 16);
+
+                using var lblFont = new Font("Segoe UI", 9);
+                using var lblBrush = new SolidBrush(TextMuted);
+                g.DrawString("Call us anytime", lblFont, lblBrush, 56, 14);
+
+                using var phoneFont = new Font("Segoe UI", 14, FontStyle.Bold);
+                using var phoneBrush = new SolidBrush(TextDark);
+                g.DrawString("1-888-987-7727", phoneFont, phoneBrush, 54, 34);
+            };
+            _contentArea.Controls.Add(phoneCard);
+            y += 70 + gap;
+
+            // Website links card
+            var linksCard = CreateCard(new Point(m + 12, y), new Size(contentW, 55));
+            linksCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            linksCard.Cursor = Cursors.Hand;
+            linksCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var iconFont = new Font("Segoe UI", 14);
+                using var iconBrush = new SolidBrush(AccentBlue);
+                g.DrawString("↗", iconFont, iconBrush, 22, 14);
+
+                using var lblFont = new Font("Segoe UI", 10, FontStyle.Bold);
+                using var lblBrush = new SolidBrush(AccentBlue);
+                g.DrawString("Visit pcpluscomputing.com", lblFont, lblBrush, 52, 8);
+
+                using var subFont = new Font("Segoe UI", 8.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                g.DrawString("Book appointments, browse services, and more", subFont, subBrush, 54, 30);
+            };
+            linksCard.Click += (s, e) =>
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = "https://pcpluscomputing.com", UseShellExecute = true });
+            };
+            _contentArea.Controls.Add(linksCard);
+        }
 
         private void BuildSystemView()
         {
