@@ -19,6 +19,11 @@ namespace PCPlus.Dashboard.Data
         public DbSet<SmtpConfig> SmtpConfigs => Set<SmtpConfig>();
         public DbSet<DeviceHistory> DeviceHistories => Set<DeviceHistory>();
         public DbSet<PCPlus.Dashboard.Services.NotificationConfig> NotificationConfigs => Set<PCPlus.Dashboard.Services.NotificationConfig>();
+        public DbSet<SecurityLog> SecurityLogs => Set<SecurityLog>();
+        public DbSet<BackupStatus> BackupStatuses => Set<BackupStatus>();
+        public DbSet<NetworkSecurityData> NetworkSecurityData => Set<NetworkSecurityData>();
+        public DbSet<RansomwareStatus> RansomwareStatuses => Set<RansomwareStatus>();
+        public DbSet<AntivirusProduct> AntivirusProducts => Set<AntivirusProduct>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -64,6 +69,34 @@ namespace PCPlus.Dashboard.Data
                 e.HasIndex(h => h.DeviceId);
                 e.HasIndex(h => h.CustomerName);
                 e.HasIndex(h => h.Timestamp);
+            });
+
+            modelBuilder.Entity<SecurityLog>(e =>
+            {
+                e.HasIndex(l => l.DeviceId);
+                e.HasIndex(l => l.Severity);
+                e.HasIndex(l => l.Category);
+                e.HasIndex(l => l.Timestamp);
+            });
+
+            modelBuilder.Entity<BackupStatus>(e =>
+            {
+                e.HasIndex(b => b.DeviceId);
+            });
+
+            modelBuilder.Entity<NetworkSecurityData>(e =>
+            {
+                e.HasIndex(n => n.DeviceId);
+            });
+
+            modelBuilder.Entity<RansomwareStatus>(e =>
+            {
+                e.HasIndex(r => r.DeviceId);
+            });
+
+            modelBuilder.Entity<AntivirusProduct>(e =>
+            {
+                e.HasIndex(a => a.DeviceId);
             });
 
             // Seed default admin user and default policy profile

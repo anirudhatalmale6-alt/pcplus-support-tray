@@ -19,21 +19,21 @@ namespace PCPlus.Tray.Forms
         private readonly System.Windows.Forms.Timer _refreshTimer;
         private bool _usingLocalFallback;
 
-        // Theme colors - clean, professional light theme like Malwarebytes
-        private static readonly Color SidebarBg = Color.FromArgb(22, 27, 34);
-        private static readonly Color SidebarText = Color.FromArgb(180, 190, 210);
-        private static readonly Color SidebarActive = Color.FromArgb(36, 41, 51);
-        private static readonly Color SidebarHover = Color.FromArgb(30, 35, 44);
-        private static readonly Color ContentBg = Color.FromArgb(246, 248, 250);
+        // Theme colors - Malwarebytes-inspired professional look
+        private static readonly Color SidebarBg = Color.FromArgb(16, 20, 30);
+        private static readonly Color SidebarText = Color.FromArgb(160, 175, 200);
+        private static readonly Color SidebarActive = Color.FromArgb(25, 32, 48);
+        private static readonly Color SidebarHover = Color.FromArgb(22, 28, 40);
+        private static readonly Color ContentBg = Color.FromArgb(243, 245, 249);
         private static readonly Color CardBg = Color.White;
-        private static readonly Color CardBorder = Color.FromArgb(220, 225, 230);
-        private static readonly Color TextDark = Color.FromArgb(30, 30, 30);
-        private static readonly Color TextMuted = Color.FromArgb(100, 110, 120);
-        private static readonly Color AccentTeal = Color.FromArgb(0, 120, 215);  // Blue to match PC Plus branding
-        private static readonly Color AccentGreen = Color.FromArgb(46, 184, 92);
-        private static readonly Color AccentOrange = Color.FromArgb(245, 166, 35);
-        private static readonly Color AccentRed = Color.FromArgb(220, 53, 69);
-        private static readonly Color AccentBlue = Color.FromArgb(56, 132, 244);
+        private static readonly Color CardBorder = Color.FromArgb(228, 232, 240);
+        private static readonly Color TextDark = Color.FromArgb(20, 24, 36);
+        private static readonly Color TextMuted = Color.FromArgb(108, 117, 135);
+        private static readonly Color AccentTeal = Color.FromArgb(37, 150, 190);
+        private static readonly Color AccentGreen = Color.FromArgb(16, 185, 129);
+        private static readonly Color AccentOrange = Color.FromArgb(245, 158, 11);
+        private static readonly Color AccentRed = Color.FromArgb(239, 68, 68);
+        private static readonly Color AccentBlue = Color.FromArgb(59, 130, 246);
 
         // Cached data
         private HealthSnapshot? _health;
@@ -190,23 +190,25 @@ namespace PCPlus.Tray.Forms
             btn.Paint += (s, e) =>
             {
                 var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
                 var isActive = _currentView == (string)btn.Tag;
 
                 if (isActive)
                 {
                     using var activeBrush = new SolidBrush(SidebarActive);
-                    g.FillRectangle(activeBrush, btn.ClientRectangle);
-                    using var accentPen = new Pen(AccentTeal, 3);
-                    g.DrawLine(accentPen, 0, 0, 0, btn.Height);
+                    using var activePath = RoundedRect(new Rectangle(8, 2, btn.Width - 16, btn.Height - 4), 8);
+                    g.FillPath(activeBrush, activePath);
+                    using var accentBrush = new SolidBrush(AccentTeal);
+                    g.FillRectangle(accentBrush, 0, 6, 3, btn.Height - 12);
                 }
 
                 using var iconFont = new Font("Segoe UI Symbol", 12);
                 using var textFont = new Font("Segoe UI", 10, isActive ? FontStyle.Bold : FontStyle.Regular);
                 var textColor = isActive ? Color.White : SidebarText;
                 using var brush = new SolidBrush(textColor);
-                g.DrawString(icon, iconFont, brush, 18, 10);
-                g.DrawString(text, textFont, brush, 46, 10);
+                g.DrawString(icon, iconFont, brush, 22, 10);
+                g.DrawString(text, textFont, brush, 50, 10);
             };
             btn.MouseEnter += (s, e) =>
             {
@@ -274,8 +276,8 @@ namespace PCPlus.Tray.Forms
             if (contentW < 200) contentW = 700; // fallback if panel not laid out yet
             int y = 10;
 
-            // === HERO STATUS BAR ===
-            var heroCard = CreateCard(new Point(m, y), new Size(contentW, 70));
+            // === HERO STATUS CARD - Large Malwarebytes-style ===
+            var heroCard = CreateCard(new Point(m, y), new Size(contentW, 120));
             heroCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             heroCard.Paint += (s, e) =>
             {
@@ -286,29 +288,41 @@ namespace PCPlus.Tray.Forms
                 var hasData = _health != null && (_health.CpuPercent > 0 || _health.RamPercent > 0);
                 var statusColor = hasData ? AccentGreen : AccentOrange;
 
-                // Colored left accent bar
-                using var accentBrush = new SolidBrush(statusColor);
-                g.FillRectangle(accentBrush, 0, 0, 5, heroCard.Height);
+                // Gradient background
+                using var gradBrush = new LinearGradientBrush(
+                    new Point(0, 0), new Point(heroCard.Width, 0),
+                    Color.FromArgb(8, statusColor), Color.FromArgb(2, statusColor));
+                g.FillRectangle(gradBrush, heroCard.ClientRectangle);
 
-                // Shield circle
-                g.FillEllipse(accentBrush, 16, 13, 40, 40);
-                using var checkPen = new Pen(Color.White, 2.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-                if (hasData) { g.DrawLine(checkPen, 28, 34, 34, 40); g.DrawLine(checkPen, 34, 40, 44, 27); }
+                // Large shield circle
+                int shieldSize = 64;
+                int shieldX = 24, shieldY = (heroCard.Height - shieldSize) / 2;
+                using var shieldBrush = new SolidBrush(statusColor);
+                g.FillEllipse(shieldBrush, shieldX, shieldY, shieldSize, shieldSize);
+
+                using var checkPen = new Pen(Color.White, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                if (hasData)
+                {
+                    g.DrawLine(checkPen, shieldX + 20, shieldY + 34, shieldX + 28, shieldY + 42);
+                    g.DrawLine(checkPen, shieldX + 28, shieldY + 42, shieldX + 44, shieldY + 24);
+                }
                 else
                 {
-                    using var dotFont = new Font("Segoe UI", 14, FontStyle.Bold);
+                    using var dotFont = new Font("Segoe UI", 18, FontStyle.Bold);
                     using var wb = new SolidBrush(Color.White);
-                    g.DrawString("...", dotFont, wb, 24, 17);
+                    g.DrawString("...", dotFont, wb, shieldX + 14, shieldY + 16);
                 }
 
-                // Status text
+                int textX = shieldX + shieldSize + 20;
+
+                // Status text - large
                 var statusText = hasData ? "Protection Active" : "Connecting...";
-                using var statusFont = new Font("Segoe UI", 15, FontStyle.Bold);
+                using var statusFont = new Font("Segoe UI", 18, FontStyle.Bold);
                 using var statusBrush = new SolidBrush(TextDark);
-                g.DrawString(statusText, statusFont, statusBrush, 64, 8);
+                g.DrawString(statusText, statusFont, statusBrush, textX, 18);
 
                 // Sub-info row
-                using var subFont = new Font("Segoe UI", 9f);
+                using var subFont = new Font("Segoe UI", 9.5f);
                 using var subBrush = new SolidBrush(TextMuted);
                 var score = _securityResult?.TotalScore ?? 0;
                 var scanTime = _securityResult?.ScanTime.ToString("MMM d, h:mm tt") ?? "Never";
@@ -320,10 +334,26 @@ namespace PCPlus.Tray.Forms
                     var up = _health.Uptime;
                     subParts.Add($"Uptime: {(int)up.TotalDays}d {up.Hours}h {up.Minutes}m");
                 }
-                g.DrawString(string.Join("   |   ", subParts), subFont, subBrush, 66, 40);
+                g.DrawString(string.Join("   •   ", subParts), subFont, subBrush, textX, 56);
+
+                // Security score badge on right
+                if (hasData)
+                {
+                    var badgeX = heroCard.Width - 100;
+                    var badgeY = (heroCard.Height - 50) / 2;
+                    using var scoreBg = new SolidBrush(Color.FromArgb(15, statusColor));
+                    using var scorePath = RoundedRect(new Rectangle(badgeX, badgeY, 76, 50), 8);
+                    g.FillPath(scoreBg, scorePath);
+                    using var scoreFont = new Font("Segoe UI", 20, FontStyle.Bold);
+                    using var scoreBrush = new SolidBrush(statusColor);
+                    var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                    g.DrawString($"{score}", scoreFont, scoreBrush, new RectangleF(badgeX, badgeY - 4, 76, 50), sf);
+                    using var scoreLbl = new Font("Segoe UI", 7f);
+                    g.DrawString("/100", scoreLbl, subBrush, new RectangleF(badgeX, badgeY + 32, 76, 20), sf);
+                }
             };
             _contentArea.Controls.Add(heroCard);
-            y += 78;
+            y += 128;
 
             // === SYSTEM GAUGES - 4 cards in a row ===
             int gap = 10;
@@ -2482,9 +2512,14 @@ namespace PCPlus.Tray.Forms
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var shadowBrush = new SolidBrush(Color.FromArgb(8, 0, 0, 0));
+                using var shadowPath = RoundedRect(new Rectangle(1, 2, card.Width - 2, card.Height - 2), 10);
+                g.FillPath(shadowBrush, shadowPath);
+                using var bgBrush = new SolidBrush(CardBg);
+                using var bgPath = RoundedRect(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 10);
+                g.FillPath(bgBrush, bgPath);
                 using var pen = new Pen(CardBorder);
-                using var path = RoundedRect(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 8);
-                g.DrawPath(pen, path);
+                g.DrawPath(pen, bgPath);
             };
             return card;
         }
