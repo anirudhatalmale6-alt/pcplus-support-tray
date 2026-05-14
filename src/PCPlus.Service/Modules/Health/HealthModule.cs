@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Management;
 using System.Net.NetworkInformation;
 using System.Text.Json;
-using LibreHardwareMonitor.Hardware;
 using PCPlus.Core.Interfaces;
 using PCPlus.Core.Models;
 
@@ -55,11 +54,7 @@ namespace PCPlus.Service.Modules.Health
             }
             catch { _cpuCounter = null; }
 
-            if (_context.Config is Engine.ServiceConfig sc && sc.DisableLHM)
-            {
-                _lhmDisabled = true;
-                _context.Log(LogLevel.Info, "health", "LibreHardwareMonitor disabled by config (disableLHM=true). Using ACPI/WMI for temps.");
-            }
+            _context.Log(LogLevel.Info, "health", "Using WMI/ACPI for temperature monitoring (no driver required).");
 
             return Task.CompletedTask;
         }
@@ -239,12 +234,10 @@ namespace PCPlus.Service.Modules.Health
             catch { }
         }
 
-        private Computer? _computer;
-        private bool _lhmDisabled;
+        private bool _lhmDisabled = true;
 
         private void PollTemps(HealthSnapshot snap)
         {
-            if (!_lhmDisabled && TryLibreHardwareMonitor(snap)) { CacheTemps(snap); return; }
             TryAcpiTemp(snap);
             if (snap.CpuTempC > 0) { CacheTemps(snap); return; }
             if (TryWmiTemps(snap, "root\\LibreHardwareMonitor")) { CacheTemps(snap); return; }
@@ -260,84 +253,6 @@ namespace PCPlus.Service.Modules.Health
         {
             if (snap.CpuTempC > 0) { _lastGoodCpuTemp = snap.CpuTempC; _lastGoodCpuTempSource = snap.CpuTempSource; }
             if (snap.GpuTempC > 0) { _lastGoodGpuTemp = snap.GpuTempC; _lastGoodGpuTempSource = snap.GpuTempSource; }
-        }
-
-        private bool TryLibreHardwareMonitor(HealthSnapshot snap)
-        {
-            try
-            {
-                if (_computer == null)
-                {
-                    _computer = new Computer
-                    {
-                        IsCpuEnabled = true,
-                        IsGpuEnabled = true,
-                        IsMotherboardEnabled = true
-                    };
-                    _computer.Open();
-                }
-
-                bool found = false;
-                foreach (var hardware in _computer.Hardware)
-                {
-                    hardware.Update();
-                    foreach (var subHardware in hardware.SubHardware)
-                        subHardware.Update();
-
-                    foreach (var sensor in hardware.Sensors)
-                    {
-                        if (sensor.SensorType != SensorType.Temperature || !sensor.Value.HasValue)
-                            continue;
-
-                        var val = sensor.Value.Value;
-                        if (val <= 0 || val > 120) continue;
-
-                        if (snap.CpuTempC == 0 && (hardware.HardwareType == HardwareType.Cpu))
-                        {
-                            snap.CpuTempC = val;
-                            snap.CpuTempSource = $"{hardware.Name} - {sensor.Name}";
-                            found = true;
-                        }
-
-                        if (snap.GpuTempC == 0 && (hardware.HardwareType == HardwareType.GpuNvidia ||
-                            hardware.HardwareType == HardwareType.GpuAmd || hardware.HardwareType == HardwareType.GpuIntel))
-                        {
-                            snap.GpuTempC = val;
-                            snap.GpuTempSource = $"{hardware.Name} - {sensor.Name}";
-                            found = true;
-                        }
-                    }
-
-                    foreach (var sub in hardware.SubHardware)
-                    {
-                        foreach (var sensor in sub.Sensors)
-                        {
-                            if (sensor.SensorType != SensorType.Temperature || !sensor.Value.HasValue)
-                                continue;
-
-                            var val = sensor.Value.Value;
-                            if (val <= 0 || val > 120) continue;
-
-                            if (snap.CpuTempC == 0 && sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase))
-                            {
-                                snap.CpuTempC = val;
-                                snap.CpuTempSource = $"{sub.Name} - {sensor.Name}";
-                                found = true;
-                            }
-                        }
-                    }
-                }
-                return found;
-            }
-            catch (Exception ex)
-            {
-                try { _computer?.Close(); } catch { }
-                _computer = null;
-                _lhmDisabled = true;
-                _context?.Log(LogLevel.Warning, "health",
-                    $"LibreHardwareMonitor disabled (driver blocked or unavailable): {ex.GetType().Name}. Using ACPI/WMI fallback.");
-                return false;
-            }
         }
 
         private bool TryWmiTemps(HealthSnapshot snap, string ns)
