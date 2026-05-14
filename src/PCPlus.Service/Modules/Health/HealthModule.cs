@@ -73,8 +73,6 @@ namespace PCPlus.Service.Modules.Health
             _pollTimer?.Dispose();
             _pollTimer = null;
             _cpuCounter?.Dispose();
-            _computer?.Close();
-            _computer = null;
             IsRunning = false;
             return Task.CompletedTask;
         }
@@ -233,8 +231,6 @@ namespace PCPlus.Service.Modules.Health
             }
             catch { }
         }
-
-        private bool _lhmDisabled = true;
 
         private void PollTemps(HealthSnapshot snap)
         {
