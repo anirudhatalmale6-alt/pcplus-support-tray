@@ -1,9 +1,11 @@
-# PC Plus Endpoint Protection v4.29.0 - Safe RMM Deployment Script
+# PC Plus Endpoint Protection v4.31.0 - Safe RMM Deployment Script
 # Handles Avast exclusions before installing to prevent false positive blocks
 # Run via Tactical RMM as PowerShell script (Run as System)
+# Set $Tier below to match the customer's subscription (Free, Standard, Premium)
 
 $ErrorActionPreference = 'Stop'
-$Version = "4.29.0"
+$Version = "4.31.0"
+$Tier = "Premium"  # Change per customer: Free, Standard, or Premium
 $InstallDir = "C:\Program Files\PC Plus\Endpoint Protection"
 $DataDir = "C:\ProgramData\PCPlusEndpoint"
 $LogFile = "C:\ProgramData\PCPlusEndpoint\Logs\deploy.log"
@@ -162,7 +164,22 @@ if (Test-Path $trayExe) {
     }
 }
 
-# Step 7: Verify version
+# Step 7: Set license tier in config.json
+$configFile = "$DataDir\config.json"
+try {
+    if (Test-Path $configFile) {
+        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+    } else {
+        $config = [PSCustomObject]@{}
+    }
+    $config | Add-Member -NotePropertyName "activeTier" -NotePropertyValue $Tier -Force
+    $config | ConvertTo-Json -Depth 10 | Set-Content $configFile -Encoding UTF8
+    Log "Config: activeTier set to $Tier"
+} catch {
+    Log "Config update warning: $_"
+}
+
+# Step 8: Verify version
 $exeVersion = (Get-Item "$InstallDir\Service\PCPlusService.exe" -ErrorAction SilentlyContinue).VersionInfo.ProductVersion
 Log "Installed version: $exeVersion"
 
