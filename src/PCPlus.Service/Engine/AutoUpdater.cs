@@ -85,8 +85,8 @@ namespace PCPlus.Service.Engine
                     _engine.Log(LogLevel.Info, "auto-updater",
                         $"Update available: v{CurrentVersion} -> v{latestVer}");
 
-                    // Check if auto-install is enabled
-                    var autoInstall = _config.GetValue("autoUpdateInstall")?.ToLower() == "true";
+                    var autoInstallSetting = _config.GetValue("autoUpdateInstall");
+                    var autoInstall = autoInstallSetting == null || autoInstallSetting.ToLower() != "false";
                     if (autoInstall)
                     {
                         await DownloadAndInstallAsync(release);
@@ -121,13 +121,14 @@ namespace PCPlus.Service.Engine
                 var tagName = release.GetProperty("tag_name").GetString() ?? "";
                 var assets = release.GetProperty("assets");
 
-                // Find the ZIP asset (PCPlus-EndpointProtection-*.zip)
+                // Find the endpoint installer ZIP asset
                 string? downloadUrl = null;
                 foreach (var asset in assets.EnumerateArray())
                 {
                     var name = asset.GetProperty("name").GetString() ?? "";
                     if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
-                        name.Contains("PCPlus", StringComparison.OrdinalIgnoreCase))
+                        name.Contains("Endpoint", StringComparison.OrdinalIgnoreCase) &&
+                        name.Contains("Installer", StringComparison.OrdinalIgnoreCase))
                     {
                         downloadUrl = asset.GetProperty("browser_download_url").GetString();
                         break;
