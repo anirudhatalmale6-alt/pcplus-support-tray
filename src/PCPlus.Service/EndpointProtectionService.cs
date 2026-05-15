@@ -8,6 +8,7 @@ using PCPlus.Service.Modules.Ransomware;
 using PCPlus.Service.Modules.Maintenance;
 using PCPlus.Service.Modules.Policy;
 using PCPlus.Service.Modules.CustomerValue;
+using PCPlus.Service.Modules.Phishing;
 
 namespace PCPlus.Service
 {
@@ -59,6 +60,7 @@ namespace PCPlus.Service
             _engine.RegisterModule(new MaintenanceModule());
             _engine.RegisterModule(new PolicyModule());
             _engine.RegisterModule(new CustomerValueModule());
+            _engine.RegisterModule(new PhishingModule());
 
             // Start the engine (will start eligible modules based on license)
             await _engine.StartAsync(stoppingToken);
