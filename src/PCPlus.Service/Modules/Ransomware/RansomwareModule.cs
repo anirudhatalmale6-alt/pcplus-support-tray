@@ -46,6 +46,7 @@ namespace PCPlus.Service.Modules.Ransomware
         private VssGuard? _vssGuard;
         private AdvancedDetection? _advancedDetection;
         private ThreatIntelFeed? _threatIntel;
+        private SystemHardening? _hardening;
 
         // Track file state for reconciliation scanning
         private readonly Dictionary<string, long> _honeypotHashes = new();
@@ -186,6 +187,10 @@ namespace PCPlus.Service.Modules.Ransomware
             _advancedDetection = new AdvancedDetection(_scoring);
             _advancedDetection.Start(_context, rollbackDir);
 
+            // System Hardening: Proactive OS-level protection (ASR rules, controlled folder, script lockdown)
+            _hardening = new SystemHardening();
+            _hardening.Start(_context);
+
             // Process monitoring every 3 seconds
             _processMonitor = new Timer(MonitorProcesses, null, 0, 3000);
 
@@ -206,6 +211,7 @@ namespace PCPlus.Service.Modules.Ransomware
             _vssGuard?.Dispose();
             _advancedDetection?.Dispose();
             _threatIntel?.Dispose();
+            _hardening?.Dispose();
             _scoring.Stop();
             IsRunning = false;
             return Task.CompletedTask;
@@ -282,6 +288,32 @@ namespace PCPlus.Service.Modules.Ransomware
                         ["threatIntel"] = _threatIntel?.GetStatus() ?? new object()
                     }));
 
+                case "GetHardeningStatus":
+                    return Task.FromResult(ModuleResponse.Ok("System hardening status", new Dictionary<string, object>
+                    {
+                        ["hardening"] = _hardening?.GetStatus() ?? new HardeningStatus()
+                    }));
+
+                case "ApplyHardeningRule":
+                    if (command.Parameters.TryGetValue("ruleId", out var applyRuleId))
+                    {
+                        var success = _hardening?.ApplyRule(applyRuleId) ?? false;
+                        return Task.FromResult(success
+                            ? ModuleResponse.Ok($"Rule '{applyRuleId}' applied")
+                            : ModuleResponse.Fail($"Failed to apply rule '{applyRuleId}'"));
+                    }
+                    return Task.FromResult(ModuleResponse.Fail("Missing 'ruleId' parameter"));
+
+                case "RevertHardeningRule":
+                    if (command.Parameters.TryGetValue("ruleId", out var revertRuleId))
+                    {
+                        var success = _hardening?.RevertRule(revertRuleId) ?? false;
+                        return Task.FromResult(success
+                            ? ModuleResponse.Ok($"Rule '{revertRuleId}' reverted")
+                            : ModuleResponse.Fail($"Failed to revert rule '{revertRuleId}'"));
+                    }
+                    return Task.FromResult(ModuleResponse.Fail("Missing 'ruleId' parameter"));
+
                 case "UpdateThreatIntel":
                     _ = _threatIntel?.ForceUpdateAsync();
                     return Task.FromResult(ModuleResponse.Ok("Threat intelligence update started"));
@@ -317,6 +349,7 @@ namespace PCPlus.Service.Modules.Ransomware
         {
             var vssStatus = _vssGuard?.GetStatus();
             var advStatus = _advancedDetection?.GetStatus();
+            var hardenStatus = _hardening?.GetStatus();
 
             return new ModuleStatus
             {
@@ -325,7 +358,7 @@ namespace PCPlus.Service.Modules.Ransomware
                 IsRunning = IsRunning,
                 RequiredTier = RequiredTier,
                 StatusText = _lockdownState.IsActive ? "LOCKDOWN ACTIVE" :
-                             IsRunning ? $"Active (v5.0: {_honeypotFiles.Count} honeypots, VSS Guard, Advanced Detection)" : "Stopped",
+                             IsRunning ? $"Active v5.0: {_honeypotFiles.Count} honeypots, VSS Guard, {hardenStatus?.AppliedRules ?? 0} hardening rules" : "Stopped",
                 LastActivity = DateTime.UtcNow,
                 Metrics = new()
                 {
@@ -339,6 +372,8 @@ namespace PCPlus.Service.Modules.Ransomware
                     ["advancedDetections"] = advStatus?.DetectionCount ?? 0,
                     ["rollbackFiles"] = advStatus?.RollbackFilesCount ?? 0,
                     ["rollbackSizeMb"] = advStatus?.RollbackSizeMb ?? 0,
+                    ["hardeningRulesApplied"] = hardenStatus?.AppliedRules ?? 0,
+                    ["hardeningRulesTotal"] = hardenStatus?.TotalRules ?? 0,
                     ["scoringVersion"] = "behavior-v5.0"
                 }
             };
