@@ -34,6 +34,11 @@ namespace PCPlus.Service.Modules.Ransomware
             [BehaviorSignal.RansomwareExtension] = 10,
             [BehaviorSignal.FileRename] = 5,
             [BehaviorSignal.UnsignedProcess] = 5,
+            [BehaviorSignal.BootConfigTamper] = 45,
+            [BehaviorSignal.RegistryPersistence] = 30,
+            [BehaviorSignal.LateralMovement] = 35,
+            [BehaviorSignal.WmiPersistence] = 30,
+            [BehaviorSignal.BackupDeletion] = 40,
         };
 
         // Thresholds - read from config
@@ -275,6 +280,11 @@ namespace PCPlus.Service.Modules.Ransomware
         FileRename,
         UnsignedProcess,
         RansomwareExtension,
+        BootConfigTamper,
+        RegistryPersistence,
+        LateralMovement,
+        WmiPersistence,
+        BackupDeletion,
     }
 
     public enum FileOpType

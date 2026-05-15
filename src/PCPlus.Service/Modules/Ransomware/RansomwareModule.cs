@@ -30,7 +30,7 @@ namespace PCPlus.Service.Modules.Ransomware
     {
         public string Id => "ransomware";
         public string Name => "Ransomware Protection";
-        public string Version => "4.1.0";
+        public string Version => "5.0.0";
         public LicenseTier RequiredTier => LicenseTier.Premium;
         public bool IsRunning { get; private set; }
 
@@ -43,6 +43,8 @@ namespace PCPlus.Service.Modules.Ransomware
         private Timer? _reconciliationScan;
         private readonly HashSet<string> _honeypotFiles = new();
         private readonly BehaviorScoringEngine _scoring = new();
+        private VssGuard? _vssGuard;
+        private AdvancedDetection? _advancedDetection;
 
         // Track file state for reconciliation scanning
         private readonly Dictionary<string, long> _honeypotHashes = new();
@@ -157,7 +159,7 @@ namespace PCPlus.Service.Modules.Ransomware
             }
 
             IsRunning = true;
-            _context.Log(LogLevel.Info, Id, "Starting ransomware protection (behavior scoring v4.1)...");
+            _context.Log(LogLevel.Info, Id, "Starting ransomware protection (v5.0 - advanced)...");
 
             // Start the scoring engine
             _scoring.Start();
@@ -168,6 +170,17 @@ namespace PCPlus.Service.Modules.Ransomware
             // Set up file system watchers
             SetupFileWatchers();
 
+            // VSS Guard: Active shadow copy protection (locks, snapshots, process interception)
+            _vssGuard = new VssGuard(_scoring);
+            _vssGuard.Start(_context);
+
+            // Advanced Detection: Registry sentinel, boot guard, network monitor, file rollback
+            var rollbackDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "PCPlusEndpoint", "rollback");
+            _advancedDetection = new AdvancedDetection(_scoring);
+            _advancedDetection.Start(_context, rollbackDir);
+
             // Process monitoring every 3 seconds
             _processMonitor = new Timer(MonitorProcesses, null, 0, 3000);
 
@@ -175,7 +188,7 @@ namespace PCPlus.Service.Modules.Ransomware
             _reconciliationScan = new Timer(ReconciliationScan, null, 15000, 30000);
 
             _context.Log(LogLevel.Info, Id,
-                $"Ransomware protection active. {_honeypotFiles.Count} honeypots deployed. Behavior scoring enabled.");
+                $"Ransomware protection v5.0 active. {_honeypotFiles.Count} honeypots, VSS Guard, Advanced Detection, file rollback enabled.");
             return Task.CompletedTask;
         }
 
@@ -185,6 +198,8 @@ namespace PCPlus.Service.Modules.Ransomware
             _watchers = Array.Empty<FileSystemWatcher>();
             _processMonitor?.Dispose();
             _reconciliationScan?.Dispose();
+            _vssGuard?.Dispose();
+            _advancedDetection?.Dispose();
             _scoring.Stop();
             IsRunning = false;
             return Task.CompletedTask;
@@ -232,6 +247,39 @@ namespace PCPlus.Service.Modules.Ransomware
                         }
                     }));
 
+                case "GetVssGuardStatus":
+                    return Task.FromResult(ModuleResponse.Ok("VSS Guard status", new Dictionary<string, object>
+                    {
+                        ["vssGuard"] = _vssGuard?.GetStatus() ?? new VssGuardStatus()
+                    }));
+
+                case "GetAdvancedStatus":
+                    return Task.FromResult(ModuleResponse.Ok("Advanced detection status", new Dictionary<string, object>
+                    {
+                        ["advanced"] = _advancedDetection?.GetStatus() ?? new AdvancedDetectionStatus()
+                    }));
+
+                case "CreateSnapshot":
+                    _vssGuard?.CreateEmergencySnapshot();
+                    return Task.FromResult(ModuleResponse.Ok("Emergency VSS snapshot created"));
+
+                case "RestoreFiles":
+                    var restoredCount = _advancedDetection?.Rollback?.RestoreAll() ?? 0;
+                    return Task.FromResult(ModuleResponse.Ok($"Restored {restoredCount} files from rollback cache", new Dictionary<string, object>
+                    {
+                        ["restoredCount"] = restoredCount
+                    }));
+
+                case "RestoreFile":
+                    if (command.Parameters.TryGetValue("path", out var filePath))
+                    {
+                        var restored = _advancedDetection?.Rollback?.RestoreFile(filePath) ?? false;
+                        return Task.FromResult(restored
+                            ? ModuleResponse.Ok($"File restored: {filePath}")
+                            : ModuleResponse.Fail($"No rollback copy found for: {filePath}"));
+                    }
+                    return Task.FromResult(ModuleResponse.Fail("Missing 'path' parameter"));
+
                 case "event":
                     return Task.FromResult(ModuleResponse.Ok());
 
@@ -240,24 +288,36 @@ namespace PCPlus.Service.Modules.Ransomware
             }
         }
 
-        public ModuleStatus GetStatus() => new()
+        public ModuleStatus GetStatus()
         {
-            ModuleId = Id,
-            ModuleName = Name,
-            IsRunning = IsRunning,
-            RequiredTier = RequiredTier,
-            StatusText = _lockdownState.IsActive ? "LOCKDOWN ACTIVE" :
-                         IsRunning ? $"Active ({_honeypotFiles.Count} honeypots, scoring enabled)" : "Stopped",
-            LastActivity = DateTime.UtcNow,
-            Metrics = new()
+            var vssStatus = _vssGuard?.GetStatus();
+            var advStatus = _advancedDetection?.GetStatus();
+
+            return new ModuleStatus
             {
-                ["detectionCount"] = _detections.Count,
-                ["lockdownActive"] = _lockdownState.IsActive,
-                ["honeypotCount"] = _honeypotFiles.Count,
-                ["activeThreats"] = _scoring.GetActiveThreats().Count,
-                ["scoringVersion"] = "behavior-v4.1"
-            }
-        };
+                ModuleId = Id,
+                ModuleName = Name,
+                IsRunning = IsRunning,
+                RequiredTier = RequiredTier,
+                StatusText = _lockdownState.IsActive ? "LOCKDOWN ACTIVE" :
+                             IsRunning ? $"Active (v5.0: {_honeypotFiles.Count} honeypots, VSS Guard, Advanced Detection)" : "Stopped",
+                LastActivity = DateTime.UtcNow,
+                Metrics = new()
+                {
+                    ["detectionCount"] = _detections.Count,
+                    ["lockdownActive"] = _lockdownState.IsActive,
+                    ["honeypotCount"] = _honeypotFiles.Count,
+                    ["activeThreats"] = _scoring.GetActiveThreats().Count,
+                    ["vssGuardActive"] = vssStatus?.IsActive ?? false,
+                    ["vssBlockedAttempts"] = vssStatus?.BlockedAttempts ?? 0,
+                    ["vssSnapshotCount"] = vssStatus?.SnapshotCount ?? 0,
+                    ["advancedDetections"] = advStatus?.DetectionCount ?? 0,
+                    ["rollbackFiles"] = advStatus?.RollbackFilesCount ?? 0,
+                    ["rollbackSizeMb"] = advStatus?.RollbackSizeMb ?? 0,
+                    ["scoringVersion"] = "behavior-v5.0"
+                }
+            };
+        }
 
         // --- Honeypot System ---
 
@@ -726,6 +786,9 @@ namespace PCPlus.Service.Modules.Ransomware
                     _lockdownState.ActiveActions.KilledProcessNames.Add(threat.ProcessName);
                 }
             }
+
+            // Emergency VSS snapshot before network cutoff
+            _vssGuard?.CreateEmergencySnapshot();
 
             if (_context.Config.AutoContainmentEnabled)
             {
