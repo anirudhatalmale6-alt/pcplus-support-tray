@@ -52,7 +52,7 @@ namespace PCPlus.Service.Modules.Ransomware
         private readonly Dictionary<string, long> _honeypotHashes = new();
 
         // Known ransomware file extensions
-        private static readonly HashSet<string> RansomwareExtensions = new(StringComparer.OrdinalIgnoreCase)
+        internal static readonly HashSet<string> RansomwareExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
             ".encrypted", ".locked", ".crypto", ".crypt", ".enc", ".locky",
             ".cerber", ".zepto", ".thor", ".aesir", ".zzzzz", ".micro",
@@ -337,6 +337,9 @@ namespace PCPlus.Service.Modules.Ransomware
                     }
                     return Task.FromResult(ModuleResponse.Fail("Missing 'path' parameter"));
 
+                case "RunTests":
+                    return RunTestHarness();
+
                 case "event":
                     return Task.FromResult(ModuleResponse.Ok());
 
@@ -377,6 +380,23 @@ namespace PCPlus.Service.Modules.Ransomware
                     ["scoringVersion"] = "behavior-v5.0"
                 }
             };
+        }
+
+        private async Task<ModuleResponse> RunTestHarness()
+        {
+            try
+            {
+                var harness = new RansomwareTestHarness(_context);
+                var report = await harness.RunAllTestsAsync();
+                return ModuleResponse.Ok($"{report.Passed}/{report.TotalTests} tests passed", new Dictionary<string, object>
+                {
+                    ["report"] = report
+                });
+            }
+            catch (Exception ex)
+            {
+                return ModuleResponse.Fail($"Test harness error: {ex.Message}");
+            }
         }
 
         // --- Honeypot System ---
