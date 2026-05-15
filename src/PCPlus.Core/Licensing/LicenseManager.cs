@@ -86,7 +86,7 @@ namespace PCPlus.Core.Licensing
             return Convert.ToHexString(hash)[..32]; // 32 char hex string
         }
 
-        /// <summary>Load saved license from disk.</summary>
+        /// <summary>Load saved license from disk. Falls back to config.json activeTier if no license.dat.</summary>
         public LicenseInfo LoadLicense()
         {
             try
@@ -115,6 +115,30 @@ namespace PCPlus.Core.Licensing
                                 StatusMessage = "License not valid for this device"
                             };
                         }
+                    }
+                }
+                else
+                {
+                    // No license.dat - check config.json activeTier as fallback
+                    var configFile = Path.Combine(_configDir, "config.json");
+                    if (File.Exists(configFile))
+                    {
+                        try
+                        {
+                            var configJson = File.ReadAllText(configFile);
+                            var config = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(configJson);
+                            if (config != null && config.TryGetValue("activeTier", out var tierElement))
+                            {
+                                var tier = ParseTier(tierElement.GetString());
+                                _currentLicense = new LicenseInfo
+                                {
+                                    IsValid = true,
+                                    Tier = tier,
+                                    StatusMessage = $"Config override: {tier}"
+                                };
+                            }
+                        }
+                        catch { }
                     }
                 }
             }
