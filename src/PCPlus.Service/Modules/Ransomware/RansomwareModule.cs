@@ -45,6 +45,7 @@ namespace PCPlus.Service.Modules.Ransomware
         private readonly BehaviorScoringEngine _scoring = new();
         private VssGuard? _vssGuard;
         private AdvancedDetection? _advancedDetection;
+        private ThreatIntelFeed? _threatIntel;
 
         // Track file state for reconciliation scanning
         private readonly Dictionary<string, long> _honeypotHashes = new();
@@ -164,6 +165,10 @@ namespace PCPlus.Service.Modules.Ransomware
             // Start the scoring engine
             _scoring.Start();
 
+            // Start threat intelligence feed (auto-updates ransomware signatures every 12h)
+            _threatIntel = new ThreatIntelFeed(_context);
+            _threatIntel.Start();
+
             // Deploy honeypot files
             DeployHoneypotFiles();
 
@@ -200,6 +205,7 @@ namespace PCPlus.Service.Modules.Ransomware
             _reconciliationScan?.Dispose();
             _vssGuard?.Dispose();
             _advancedDetection?.Dispose();
+            _threatIntel?.Dispose();
             _scoring.Stop();
             IsRunning = false;
             return Task.CompletedTask;
@@ -269,6 +275,25 @@ namespace PCPlus.Service.Modules.Ransomware
                     {
                         ["restoredCount"] = restoredCount
                     }));
+
+                case "GetThreatIntelStatus":
+                    return Task.FromResult(ModuleResponse.Ok("Threat intelligence status", new Dictionary<string, object>
+                    {
+                        ["threatIntel"] = _threatIntel?.GetStatus() ?? new object()
+                    }));
+
+                case "UpdateThreatIntel":
+                    _ = _threatIntel?.ForceUpdateAsync();
+                    return Task.FromResult(ModuleResponse.Ok("Threat intelligence update started"));
+
+                case "AddIndicator":
+                    if (command.Parameters.TryGetValue("type", out var iocType) &&
+                        command.Parameters.TryGetValue("value", out var iocValue))
+                    {
+                        _threatIntel?.AddCustomIndicator(iocType, iocValue);
+                        return Task.FromResult(ModuleResponse.Ok($"Added custom indicator: {iocType}={iocValue}"));
+                    }
+                    return Task.FromResult(ModuleResponse.Fail("Missing 'type' and 'value' parameters"));
 
                 case "RestoreFile":
                     if (command.Parameters.TryGetValue("path", out var filePath))
@@ -453,8 +478,8 @@ namespace PCPlus.Service.Modules.Ransomware
             var pid = TryGetFileOwnerProcess(e.FullPath);
             var procName = pid > 0 ? GetProcessName(pid) : "unknown";
 
-            // Ransom note detection
-            if (RansomNoteNames.Contains(name))
+            // Ransom note detection (static list + live threat intel)
+            if (RansomNoteNames.Contains(name) || (_threatIntel?.IsKnownRansomNote(name) ?? false))
             {
                 if (pid > 0)
                     _scoring.AddSignal(pid, procName, BehaviorSignal.RansomNoteCreation,
@@ -465,8 +490,8 @@ namespace PCPlus.Service.Modules.Ransomware
                     processName: procName, processId: pid);
             }
 
-            // Ransomware extension
-            if (RansomwareExtensions.Contains(ext))
+            // Ransomware extension (static list + live threat intel)
+            if (RansomwareExtensions.Contains(ext) || (_threatIntel?.IsKnownExtension(ext) ?? false))
             {
                 if (pid > 0)
                     _scoring.AddSignal(pid, procName, BehaviorSignal.RansomwareExtension,
@@ -506,7 +531,7 @@ namespace PCPlus.Service.Modules.Ransomware
                 {
                     _scoring.RecordFileOperation(pid, procName, e.FullPath, FileOpType.ExtensionChange);
 
-                    if (RansomwareExtensions.Contains(newExt))
+                    if (RansomwareExtensions.Contains(newExt) || (_threatIntel?.IsKnownExtension(newExt) ?? false))
                     {
                         _scoring.AddSignal(pid, procName, BehaviorSignal.RansomwareExtension,
                             $"Renamed to ransomware extension: {e.Name}");
@@ -518,7 +543,7 @@ namespace PCPlus.Service.Modules.Ransomware
                 }
             }
 
-            if (RansomwareExtensions.Contains(newExt))
+            if (RansomwareExtensions.Contains(newExt) || (_threatIntel?.IsKnownExtension(newExt) ?? false))
             {
                 RecordThreat(ThreatType.MassFileRename, ThreatSeverity.High,
                     $"File renamed with ransomware extension: {e.OldName} -> {e.Name}",
@@ -609,8 +634,8 @@ namespace PCPlus.Service.Modules.Ransomware
                 var cmdLine = GetProcessCommandLine(pid);
                 var processPath = GetProcessPath(pid);
 
-                // Known ransomware process name (+50)
-                if (IsKnownRansomwareProcess(name))
+                // Known ransomware process name (+50) - uses live threat intel
+                if (IsKnownRansomwareProcess(name) || (_threatIntel?.IsKnownProcess(name) ?? false))
                 {
                     _scoring.AddSignal(pid, proc.ProcessName, BehaviorSignal.KnownRansomwareName,
                         $"Known ransomware: {proc.ProcessName}");

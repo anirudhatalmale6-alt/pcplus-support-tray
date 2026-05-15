@@ -25,14 +25,18 @@ namespace PCPlus.Service.Modules.Ransomware
         private ManagementEventWatcher? _processWatcher;
         private Timer? _snapshotTimer;
         private Timer? _integrityTimer;
+        private Timer? _aclEnforcementTimer;
+        private Timer? _vssServiceWatcher;
         private IModuleContext _context = null!;
         private readonly BehaviorScoringEngine _scoring;
         private bool _isActive;
+        private bool _aclHardeningApplied;
         private int _blockedAttempts;
         private int _snapshotCount;
         private DateTime _lastSnapshotTime = DateTime.MinValue;
         private readonly List<VssEvent> _events = new();
         private readonly object _lock = new();
+        private readonly Dictionary<string, string> _originalAcls = new();
 
         // Processes that legitimately interact with VSS
         private static readonly HashSet<string> WhitelistedParents = new(StringComparer.OrdinalIgnoreCase)
@@ -58,16 +62,35 @@ namespace PCPlus.Service.Modules.Ransomware
             _scoring = scoring;
         }
 
+        // Critical executables that ransomware uses to destroy recovery options
+        private static readonly string[] HardenedExecutables = new[]
+        {
+            @"C:\Windows\System32\vssadmin.exe",
+            @"C:\Windows\System32\wbem\WMIC.exe",
+            @"C:\Windows\System32\wbadmin.exe",
+        };
+
         public void Start(IModuleContext context)
         {
             _context = context;
             _isActive = true;
 
+            ApplyAclHardening();
+            ProtectVssService();
             StartProcessInterception();
             StartSnapshotSchedule();
             StartIntegrityMonitor();
 
-            _context.Log(LogLevel.Info, "ransomware", "VSS Guard active: shadow copy protection, process interception, snapshot scheduling");
+            // Re-enforce ACLs every 5 minutes (in case something restores them)
+            _aclEnforcementTimer = new Timer(_ => EnforceAcls(), null,
+                TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+
+            // Monitor VSS service health every 60 seconds
+            _vssServiceWatcher = new Timer(_ => EnsureVssServiceRunning(), null,
+                TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+
+            _context.Log(LogLevel.Info, "ransomware",
+                $"VSS Guard active: ACL hardening, process interception, VSS service protection, snapshot scheduling");
         }
 
         public void Stop()
@@ -77,6 +100,9 @@ namespace PCPlus.Service.Modules.Ransomware
             _processWatcher?.Dispose();
             _snapshotTimer?.Dispose();
             _integrityTimer?.Dispose();
+            _aclEnforcementTimer?.Dispose();
+            _vssServiceWatcher?.Dispose();
+            RestoreOriginalAcls();
         }
 
         public VssGuardStatus GetStatus()
@@ -84,6 +110,7 @@ namespace PCPlus.Service.Modules.Ransomware
             return new VssGuardStatus
             {
                 IsActive = _isActive,
+                AclHardeningApplied = _aclHardeningApplied,
                 BlockedAttempts = _blockedAttempts,
                 SnapshotCount = _snapshotCount,
                 LastSnapshotTime = _lastSnapshotTime,
@@ -307,6 +334,229 @@ namespace PCPlus.Service.Modules.Ransomware
 
         #endregion
 
+        #region ACL Hardening
+
+        /// <summary>
+        /// Restrict execution of vssadmin.exe, wmic.exe, and wbadmin.exe so only
+        /// SYSTEM and Administrators can run them. Regular user processes (including
+        /// ransomware running as the logged-in user) get Access Denied.
+        /// </summary>
+        private void ApplyAclHardening()
+        {
+            try
+            {
+                var systemSid = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+                var adminsSid = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
+                var everyoneSid = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
+
+                foreach (var exePath in HardenedExecutables)
+                {
+                    if (!File.Exists(exePath)) continue;
+                    try
+                    {
+                        var fileInfo = new FileInfo(exePath);
+                        var acl = fileInfo.GetAccessControl();
+
+                        // Save original ACL for restoration on service stop
+                        _originalAcls[exePath] = acl.GetSecurityDescriptorSddlForm(AccessControlSections.Access);
+
+                        // Remove inherited rules
+                        acl.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+
+                        // Remove all existing access rules
+                        var rules = acl.GetAccessRules(true, true, typeof(SecurityIdentifier));
+                        foreach (FileSystemAccessRule rule in rules)
+                            acl.RemoveAccessRule(rule);
+
+                        // Only SYSTEM and Administrators can execute
+                        acl.AddAccessRule(new FileSystemAccessRule(systemSid,
+                            FileSystemRights.FullControl, AccessControlType.Allow));
+                        acl.AddAccessRule(new FileSystemAccessRule(adminsSid,
+                            FileSystemRights.ReadAndExecute, AccessControlType.Allow));
+
+                        // Explicit deny for Everyone on execute (overrides inherited allow)
+                        // This blocks non-admin ransomware from calling these tools
+                        acl.AddAccessRule(new FileSystemAccessRule(everyoneSid,
+                            FileSystemRights.ExecuteFile, AccessControlType.Deny));
+
+                        fileInfo.SetAccessControl(acl);
+                        _context.Log(LogLevel.Info, "ransomware", $"VSS Guard: ACL hardened {Path.GetFileName(exePath)}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _context.Log(LogLevel.Warning, "ransomware",
+                            $"VSS Guard: Could not harden {Path.GetFileName(exePath)}: {ex.Message}");
+                    }
+                }
+
+                _aclHardeningApplied = true;
+                RecordEvent("acl_hardened", "system", $"Restricted execute permissions on {HardenedExecutables.Length} critical executables");
+            }
+            catch (Exception ex)
+            {
+                _context.Log(LogLevel.Error, "ransomware", $"VSS Guard: ACL hardening failed: {ex.Message}");
+            }
+        }
+
+        private void RestoreOriginalAcls()
+        {
+            foreach (var (exePath, sddl) in _originalAcls)
+            {
+                try
+                {
+                    if (!File.Exists(exePath)) continue;
+                    var fileInfo = new FileInfo(exePath);
+                    var acl = new FileSecurity();
+                    acl.SetSecurityDescriptorSddlForm(sddl, AccessControlSections.Access);
+                    fileInfo.SetAccessControl(acl);
+                }
+                catch { }
+            }
+            _aclHardeningApplied = false;
+            _context?.Log(LogLevel.Info, "ransomware", "VSS Guard: Original ACLs restored on shutdown");
+        }
+
+        private void EnforceAcls()
+        {
+            if (!_aclHardeningApplied || !_isActive) return;
+
+            foreach (var exePath in HardenedExecutables)
+            {
+                if (!File.Exists(exePath)) continue;
+                try
+                {
+                    var fileInfo = new FileInfo(exePath);
+                    var acl = fileInfo.GetAccessControl();
+                    var rules = acl.GetAccessRules(true, false, typeof(SecurityIdentifier));
+                    var everyoneSid = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
+
+                    bool hasDeny = false;
+                    foreach (FileSystemAccessRule rule in rules)
+                    {
+                        if (rule.IdentityReference.Equals(everyoneSid) &&
+                            rule.AccessControlType == AccessControlType.Deny)
+                        {
+                            hasDeny = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasDeny)
+                    {
+                        _context.Log(LogLevel.Warning, "ransomware",
+                            $"VSS Guard: ACL protection removed from {Path.GetFileName(exePath)} externally. Reapplying.");
+                        ApplyAclHardening();
+                        RecordEvent("acl_restored", exePath, "ACL hardening was removed externally and reapplied");
+                        return;
+                    }
+                }
+                catch { }
+            }
+        }
+
+        #endregion
+
+        #region VSS Service Protection
+
+        /// <summary>
+        /// Ensure the Volume Shadow Copy service can't be disabled by ransomware.
+        /// Set it to Automatic and monitor for changes.
+        /// </summary>
+        private void ProtectVssService()
+        {
+            try
+            {
+                // Set VSS service to automatic start and ensure it's running
+                RunCmd("sc.exe", "config VSS start= auto");
+                RunCmd("sc.exe", "start VSS");
+
+                // Protect System Restore service too
+                RunCmd("sc.exe", "config srservice start= auto");
+
+                // Set failure recovery actions: restart on 1st, 2nd, 3rd failure
+                RunCmd("sc.exe", "failure VSS reset= 86400 actions= restart/5000/restart/10000/restart/30000");
+
+                _context.Log(LogLevel.Info, "ransomware", "VSS Guard: VSS and System Restore services protected (auto-start, auto-recover)");
+                RecordEvent("vss_service_protected", "VSS", "Service set to auto-start with failure recovery");
+            }
+            catch (Exception ex)
+            {
+                _context.Log(LogLevel.Warning, "ransomware", $"VSS Guard: Service protection failed: {ex.Message}");
+            }
+        }
+
+        private void EnsureVssServiceRunning()
+        {
+            try
+            {
+                var output = RunCmdOutput("sc.exe", "query VSS");
+                if (output.Contains("STOPPED", StringComparison.OrdinalIgnoreCase))
+                {
+                    _context.Log(LogLevel.Warning, "ransomware",
+                        "VSS Guard: VSS service found stopped. Restarting.");
+                    RunCmd("sc.exe", "start VSS");
+
+                    _context.RaiseAlert(new PCPlus.Core.Models.Alert
+                    {
+                        ModuleId = "ransomware",
+                        Title = "VSS Service Was Stopped",
+                        Message = "The Volume Shadow Copy service was found stopped (possibly by ransomware). It has been restarted automatically.",
+                        Severity = PCPlus.Core.Models.AlertSeverity.Critical,
+                        Category = "ransomware"
+                    });
+                    RecordEvent("vss_service_restarted", "VSS", "VSS service was stopped and auto-restarted");
+                }
+
+                // Also check if someone changed it to disabled
+                var configOutput = RunCmdOutput("sc.exe", "qc VSS");
+                if (configOutput.Contains("DISABLED", StringComparison.OrdinalIgnoreCase))
+                {
+                    _context.Log(LogLevel.Critical, "ransomware",
+                        "VSS Guard: VSS service was DISABLED. Re-enabling.");
+                    RunCmd("sc.exe", "config VSS start= auto");
+                    RunCmd("sc.exe", "start VSS");
+                    RecordEvent("vss_service_reenabled", "VSS", "VSS service was disabled and re-enabled");
+                }
+            }
+            catch { }
+        }
+
+        private static void RunCmd(string fileName, string arguments)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true
+            };
+            using var proc = Process.Start(psi);
+            proc?.WaitForExit(10000);
+        }
+
+        private static string RunCmdOutput(string fileName, string arguments)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = fileName,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true
+                };
+                using var proc = Process.Start(psi);
+                var output = proc?.StandardOutput.ReadToEnd() ?? "";
+                proc?.WaitForExit(10000);
+                return output;
+            }
+            catch { return ""; }
+        }
+
+        #endregion
+
         #region Event Tracking
 
         private void RecordEvent(string type, string process, string detail)
@@ -345,6 +595,7 @@ namespace PCPlus.Service.Modules.Ransomware
     public class VssGuardStatus
     {
         public bool IsActive { get; set; }
+        public bool AclHardeningApplied { get; set; }
         public int BlockedAttempts { get; set; }
         public int SnapshotCount { get; set; }
         public DateTime LastSnapshotTime { get; set; }

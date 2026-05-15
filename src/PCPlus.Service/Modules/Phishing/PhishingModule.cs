@@ -10,7 +10,7 @@ namespace PCPlus.Service.Modules.Phishing
     {
         public string Id => "phishing";
         public string Name => "Phishing Protection";
-        public string Version => "1.0.0";
+        public string Version => "2.0.0";
         public LicenseTier RequiredTier => LicenseTier.Standard;
         public bool IsRunning { get; private set; }
 
@@ -24,6 +24,7 @@ namespace PCPlus.Service.Modules.Phishing
         private DateTime _lastBlocklistUpdate = DateTime.MinValue;
         private int _totalBlocked;
         private bool _dnsProtectionActive;
+        private AdvancedPhishing? _advancedPhishing;
 
         private static readonly string HostsFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "drivers", "etc", "hosts");
@@ -111,7 +112,11 @@ namespace PCPlus.Service.Modules.Phishing
                 catch (Exception ex) { _context.Log(LogLevel.Error, Id, $"Hosts file check failed: {ex.Message}"); }
             }, null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
 
-            _context.Log(LogLevel.Info, Id, "Phishing Protection active.");
+            // Start advanced phishing engine (realtime feeds, DNS monitor, typosquatting, browser scan)
+            _advancedPhishing = new AdvancedPhishing();
+            _advancedPhishing.Start(_context);
+
+            _context.Log(LogLevel.Info, Id, "Phishing Protection v2.0 active (DNS blocking + advanced detection).");
         }
 
         public Task StopAsync()
@@ -119,6 +124,7 @@ namespace PCPlus.Service.Modules.Phishing
             IsRunning = false;
             _dnsUpdateTimer?.Dispose();
             _hostsFileWatcher?.Dispose();
+            _advancedPhishing?.Dispose();
             RemoveHostsFileBlocking();
             _dnsProtectionActive = false;
             SaveEvents();
@@ -205,6 +211,7 @@ namespace PCPlus.Service.Modules.Phishing
                     }));
 
                 case "getstats":
+                    var advStatus = _advancedPhishing?.GetStatus();
                     return Task.FromResult(ModuleResponse.Ok("Phishing stats", new Dictionary<string, object>
                     {
                         ["totalBlocked"] = _totalBlocked,
@@ -212,7 +219,52 @@ namespace PCPlus.Service.Modules.Phishing
                         ["topBlocked"] = _blockCounts.OrderByDescending(kv => kv.Value).Take(10)
                             .ToDictionary(kv => kv.Key, kv => (object)kv.Value),
                         ["lastUpdate"] = _lastBlocklistUpdate.ToString("o"),
-                        ["recentEvents24h"] = _events.Count(e => e.Timestamp > DateTime.UtcNow.AddHours(-24))
+                        ["recentEvents24h"] = _events.Count(e => e.Timestamp > DateTime.UtcNow.AddHours(-24)),
+                        ["advancedPhishing"] = advStatus ?? new AdvancedPhishingStatus()
+                    }));
+
+                case "checkcert":
+                    if (command.Parameters.TryGetValue("domain", out var certDomain) && _advancedPhishing != null)
+                    {
+                        var certResult = _advancedPhishing.AnalyzeCertificate(certDomain);
+                        return Task.FromResult(ModuleResponse.Ok("Certificate analysis", new Dictionary<string, object>
+                        {
+                            ["domain"] = certDomain,
+                            ["issuer"] = certResult.Issuer,
+                            ["daysOld"] = certResult.DaysOld,
+                            ["riskLevel"] = certResult.RiskLevel,
+                            ["riskScore"] = certResult.RiskScore,
+                            ["warnings"] = certResult.Warnings
+                        }));
+                    }
+                    return Task.FromResult(ModuleResponse.Fail("Missing 'domain' parameter or advanced phishing not active"));
+
+                case "checktyposquat":
+                    if (command.Parameters.TryGetValue("domain", out var typoDomain) && _advancedPhishing != null)
+                    {
+                        var typoResult = _advancedPhishing.CheckTyposquatting(typoDomain);
+                        if (typoResult != null)
+                        {
+                            return Task.FromResult(ModuleResponse.Ok("Typosquatting detected", new Dictionary<string, object>
+                            {
+                                ["domain"] = typoDomain,
+                                ["brand"] = typoResult.Value.brand,
+                                ["legitimate"] = typoResult.Value.legitimate,
+                                ["similarity"] = typoResult.Value.score
+                            }));
+                        }
+                        return Task.FromResult(ModuleResponse.Ok("No typosquatting detected", new Dictionary<string, object>
+                        {
+                            ["domain"] = typoDomain,
+                            ["typosquatting"] = false
+                        }));
+                    }
+                    return Task.FromResult(ModuleResponse.Fail("Missing 'domain' parameter"));
+
+                case "getadvancedstatus":
+                    return Task.FromResult(ModuleResponse.Ok("Advanced phishing status", new Dictionary<string, object>
+                    {
+                        ["advanced"] = _advancedPhishing?.GetStatus() ?? new AdvancedPhishingStatus()
                     }));
 
                 default:
@@ -222,6 +274,7 @@ namespace PCPlus.Service.Modules.Phishing
 
         public ModuleStatus GetStatus()
         {
+            var adv = _advancedPhishing?.GetStatus();
             return new ModuleStatus
             {
                 ModuleId = Id,
@@ -229,7 +282,7 @@ namespace PCPlus.Service.Modules.Phishing
                 IsRunning = IsRunning,
                 RequiredTier = RequiredTier,
                 StatusText = _dnsProtectionActive
-                    ? $"Active - {_blockedDomains.Count:N0} domains blocked, {_totalBlocked} hits"
+                    ? $"Active v2.0 - {_blockedDomains.Count:N0} DNS blocked, {adv?.PhishingUrlCount ?? 0:N0} URL feeds, {_totalBlocked} hits"
                     : "Inactive",
                 LastActivity = _events.LastOrDefault()?.Timestamp ?? DateTime.MinValue,
                 Metrics = new Dictionary<string, object>
@@ -238,7 +291,11 @@ namespace PCPlus.Service.Modules.Phishing
                     ["totalBlocked"] = _totalBlocked,
                     ["dnsProtectionActive"] = _dnsProtectionActive,
                     ["lastBlocklistUpdate"] = _lastBlocklistUpdate.ToString("o"),
-                    ["eventsLast24h"] = _events.Count(e => e.Timestamp > DateTime.UtcNow.AddHours(-24))
+                    ["eventsLast24h"] = _events.Count(e => e.Timestamp > DateTime.UtcNow.AddHours(-24)),
+                    ["realtimePhishingUrls"] = adv?.PhishingUrlCount ?? 0,
+                    ["realtimeDomains"] = adv?.RealtimeDomainCount ?? 0,
+                    ["advancedDetections"] = adv?.DetectionCount ?? 0,
+                    ["lastFeedUpdate"] = (adv?.LastFeedUpdate ?? DateTime.MinValue).ToString("o")
                 }
             };
         }
@@ -255,6 +312,22 @@ namespace PCPlus.Service.Modules.Phishing
             {
                 reasons.Add("Domain is on phishing blocklist");
                 riskScore += 100;
+            }
+
+            if (_advancedPhishing?.IsRealtimeBlocked(domain) == true)
+            {
+                reasons.Add("Domain found in real-time threat feeds (PhishTank/OpenPhish/URLhaus)");
+                riskScore += 90;
+            }
+
+            if (_advancedPhishing != null)
+            {
+                var typoResult = _advancedPhishing.CheckTyposquatting(domain);
+                if (typoResult != null)
+                {
+                    reasons.Add($"Typosquatting: resembles {typoResult.Value.brand} ({typoResult.Value.legitimate})");
+                    riskScore += 70;
+                }
             }
 
             if (SuspiciousTlds.Any(tld => domain.EndsWith(tld)))
