@@ -86,17 +86,21 @@ namespace PCPlus.Service.Modules.Phishing
             return Task.CompletedTask;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             IsRunning = true;
             _context.Log(LogLevel.Info, Id, $"Phishing Protection starting. {_blockedDomains.Count} domains in blocklist.");
 
-            // Initial blocklist update
-            await UpdateBlocklistAsync();
-
-            // Apply DNS-level blocking via hosts file
+            // Apply any cached blocklist immediately
             ApplyHostsFileBlocking();
             _dnsProtectionActive = true;
+
+            // Download fresh blocklist in the background (don't block startup)
+            _ = Task.Run(async () =>
+            {
+                try { await UpdateBlocklistAsync(); ApplyHostsFileBlocking(); }
+                catch (Exception ex) { _context.Log(LogLevel.Error, Id, $"Initial blocklist update failed: {ex.Message}"); }
+            });
 
             // Update blocklist every 6 hours
             _dnsUpdateTimer = new Timer(async _ =>
@@ -117,6 +121,7 @@ namespace PCPlus.Service.Modules.Phishing
             _advancedPhishing.Start(_context);
 
             _context.Log(LogLevel.Info, Id, "Phishing Protection v2.0 active (DNS blocking + advanced detection).");
+            return Task.CompletedTask;
         }
 
         public Task StopAsync()
