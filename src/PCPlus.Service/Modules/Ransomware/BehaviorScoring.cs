@@ -79,6 +79,11 @@ namespace PCPlus.Service.Modules.Ransomware
                 ProcessName = processName
             });
 
+            // Deduplication: don't add the same signal type more than once per minute
+            var recentCutoff = DateTime.UtcNow.AddMinutes(-1);
+            if (score.Signals.Any(s => s.Signal == signal && s.Timestamp > recentCutoff))
+                return score.TotalScore;
+
             var points = GetSignalPoints(signal);
             score.TotalScore += points;
             score.LastActivity = DateTime.UtcNow;

@@ -90,7 +90,6 @@ namespace PCPlus.Service.Modules.Ransomware
             ["winword"] = new(StringComparer.OrdinalIgnoreCase) { "powershell", "pwsh", "cmd", "wscript", "cscript", "mshta" },
             ["excel"] = new(StringComparer.OrdinalIgnoreCase) { "powershell", "pwsh", "cmd", "wscript", "cscript", "mshta" },
             ["outlook"] = new(StringComparer.OrdinalIgnoreCase) { "powershell", "pwsh", "cmd", "wscript" },
-            ["explorer"] = new(StringComparer.OrdinalIgnoreCase) { "powershell", "pwsh" },
         };
 
         // Risky launch paths (processes spawned from these are suspicious)
@@ -1137,7 +1136,16 @@ namespace PCPlus.Service.Modules.Ransomware
             {
                 "svchost", "csrss", "wininit", "winlogon", "lsass",
                 "services", "smss", "dwm", "explorer", "taskhostw",
-                "runtimebroker", "searchindexer", "spoolsv", "dllhost"
+                "runtimebroker", "searchindexer", "spoolsv", "dllhost",
+                "powershell", "pwsh", "cmd", "conhost", "sihost",
+                "onedrive", "teams", "msedge", "chrome", "firefox",
+                "code", "devenv", "msbuild", "dotnet",
+                "slack", "discord", "spotify", "zoom",
+                "wmiprvse", "searchhost", "systemsettings",
+                "textinputhost", "startmenuexperiencehost",
+                "applicationframehost", "shellexperiencehost",
+                "pcplusservice", "pcplustray",
+                "meshagent", "tacticalrmm", "tacticalagent"
             };
             return system.Contains(name);
         }
