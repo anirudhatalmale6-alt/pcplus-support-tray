@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "PC Plus Endpoint Protection",
+  "description": "Real-time phishing protection for your browser. Scans links in emails and web pages against PC Plus threat intelligence.",
+  "version": "1.0.0",
+  "permissions": [
+    "activeTab",
+    "webNavigation",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:9876/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://outlook.live.com/*",
+        "https://outlook.office.com/*",
+        "https://outlook.office365.com/*",
+        "https://mail.yahoo.com/*",
+        "https://*.mail.yahoo.com/*"
+      ],
+      "js": ["content-email.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-links.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/shield-16.png",
+      "48": "icons/shield-48.png",
+      "128": "icons/shield-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/shield-16.png",
+    "48": "icons/shield-48.png",
+    "128": "icons/shield-128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html", "icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
