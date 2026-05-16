@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PCPlus.Core.Interfaces;
 using PCPlus.Core.Licensing;
 using PCPlus.Service.Engine;
 using PCPlus.Service.Modules.Health;
@@ -48,6 +49,23 @@ namespace PCPlus.Service
             // Load and validate license
             var licenseManager = new LicenseManager();
             var license = licenseManager.LoadLicense();
+
+            // Fallback: if license is Free but config.json has a higher tier, use config
+            if (license.Tier == LicenseTier.Free)
+            {
+                var configTier = _config.ActiveTier;
+                if (configTier > LicenseTier.Free)
+                {
+                    license = new PCPlus.Core.Models.LicenseInfo
+                    {
+                        IsValid = true,
+                        Tier = configTier,
+                        StatusMessage = $"Config override: {configTier}"
+                    };
+                    _logger.LogInformation("License overridden by config.json: {Tier}", configTier);
+                }
+            }
+
             _engine.License = license;
 
             _logger.LogInformation("License: Tier={Tier}, Valid={Valid}, Device={DeviceId}",
