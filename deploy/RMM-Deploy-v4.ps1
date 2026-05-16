@@ -95,11 +95,21 @@ try {
 # Step 2: Download installer
 Log "Downloading installer from GitHub..."
 try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $wc = New-Object System.Net.WebClient
-    $wc.DownloadFile($DownloadUrl, $TempExe)
+    # Prefer curl (lighter, handles redirects, no memory issues)
+    $curlPath = Get-Command curl.exe -ErrorAction SilentlyContinue
+    if ($curlPath) {
+        & curl.exe --ssl-no-revoke -L -o $TempExe $DownloadUrl 2>&1 | Out-Null
+    } else {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $wc = New-Object System.Net.WebClient
+        $wc.DownloadFile($DownloadUrl, $TempExe)
+    }
     $size = (Get-Item $TempExe).Length / 1MB
     Log "Downloaded $([math]::Round($size,1)) MB to $TempExe"
+    if ($size -lt 50) {
+        Log "ERROR: Download incomplete ($([math]::Round($size,1)) MB, expected ~69 MB)"
+        exit 1
+    }
 } catch {
     Log "ERROR: Download failed - $_"
     exit 1
@@ -108,6 +118,13 @@ try {
 # Step 3: Stop existing service and tray if running
 Log "Stopping existing service and tray..."
 Stop-Service -Name "PCPlusEndpoint" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 3
+# Force kill if STOP_PENDING
+$svcPid = (Get-WmiObject Win32_Service -Filter "Name='PCPlusEndpoint'" -ErrorAction SilentlyContinue).ProcessId
+if ($svcPid -and $svcPid -ne 0) {
+    taskkill /F /PID $svcPid 2>$null
+    Log "Force killed service process PID $svcPid"
+}
 Get-Process -Name "PCPlusTray" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 

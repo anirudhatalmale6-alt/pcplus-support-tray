@@ -53,6 +53,9 @@ Filename: "{app}\Tray\PCPlusTray.exe"; Flags: nowait postinstall skipifsilent ru
 ; Auto-start tray on login
 Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "PCPlusEndpoint"; ValueData: """{app}\Tray\PCPlusTray.exe"""; Flags: uninsdeletevalue
 
+[Icons]
+Name: "{commondesktop}\PC Plus Endpoint Protection"; Filename: "{app}\Tray\PCPlusTray.exe"; IconFilename: "{app}\Tray\PCPlusTray.exe"; Comment: "PC Plus Endpoint Protection"
+
 [UninstallRun]
 Filename: "net.exe"; Parameters: "stop PCPlusEndpoint"; Flags: runhidden
 Filename: "sc.exe"; Parameters: "delete PCPlusEndpoint"; Flags: runhidden
