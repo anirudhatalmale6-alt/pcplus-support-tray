@@ -33,6 +33,7 @@ namespace PCPlus.Service.Modules.Ransomware
         private bool _aclHardeningApplied;
         private int _blockedAttempts;
         private int _snapshotCount;
+        private int _lastKnownShadowCopyCount;
         private DateTime _lastSnapshotTime = DateTime.MinValue;
         private readonly List<VssEvent> _events = new();
         private readonly object _lock = new();
@@ -68,6 +69,7 @@ namespace PCPlus.Service.Modules.Ransomware
             @"C:\Windows\System32\vssadmin.exe",
             @"C:\Windows\System32\wbem\WMIC.exe",
             @"C:\Windows\System32\wbadmin.exe",
+            @"C:\Windows\System32\bcdedit.exe",
         };
 
         public void Start(IModuleContext context)
@@ -312,7 +314,6 @@ namespace PCPlus.Service.Modules.Ransomware
 
                 if (count == 0 && _snapshotCount > 0)
                 {
-                    // All shadow copies were deleted outside our control
                     _context.Log(LogLevel.Critical, "ransomware",
                         "VSS Guard: ALL shadow copies deleted! Possible ransomware activity.");
 
@@ -328,6 +329,26 @@ namespace PCPlus.Service.Modules.Ransomware
                     RecordEvent("shadow_copies_wiped", "system", "All shadow copies deleted - possible ransomware");
                     CreateEmergencySnapshot();
                 }
+                else if (count < _lastKnownShadowCopyCount && _lastKnownShadowCopyCount > 0)
+                {
+                    int deleted = _lastKnownShadowCopyCount - count;
+                    _context.Log(LogLevel.Warning, "ransomware",
+                        $"VSS Guard: {deleted} shadow copy/copies removed unexpectedly ({_lastKnownShadowCopyCount} -> {count})");
+
+                    _context.RaiseAlert(new PCPlus.Core.Models.Alert
+                    {
+                        ModuleId = "ransomware",
+                        Title = "Shadow Copies Missing",
+                        Message = $"{deleted} shadow copy/copies were deleted outside normal operations. Count dropped from {_lastKnownShadowCopyCount} to {count}.",
+                        Severity = PCPlus.Core.Models.AlertSeverity.Warning,
+                        Category = "ransomware"
+                    });
+
+                    RecordEvent("shadow_copies_reduced", "system",
+                        $"Shadow copy count dropped: {_lastKnownShadowCopyCount} -> {count}");
+                }
+
+                _lastKnownShadowCopyCount = count;
             }
             catch { }
         }
@@ -384,10 +405,11 @@ namespace PCPlus.Service.Modules.Ransomware
                         acl.AddAccessRule(new FileSystemAccessRule(adminsSid,
                             FileSystemRights.ReadAndExecute, AccessControlType.Allow));
 
-                        // Explicit deny for Everyone on execute (overrides inherited allow)
-                        // This blocks non-admin ransomware from calling these tools
-                        acl.AddAccessRule(new FileSystemAccessRule(everyoneSid,
-                            FileSystemRights.ExecuteFile, AccessControlType.Deny));
+                        // Deny execute for standard (non-admin) users
+                        var usersSid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+                        acl.AddAccessRule(new FileSystemAccessRule(usersSid,
+                            FileSystemRights.ExecuteFile | FileSystemRights.ReadAndExecute,
+                            AccessControlType.Deny));
 
                         fileInfo.SetAccessControl(acl);
                         _context.Log(LogLevel.Info, "ransomware", $"VSS Guard: ACL hardened {Path.GetFileName(exePath)}");
