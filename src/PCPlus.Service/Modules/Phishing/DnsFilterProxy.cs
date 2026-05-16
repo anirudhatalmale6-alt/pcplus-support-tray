@@ -68,13 +68,17 @@ namespace PCPlus.Service.Modules.Phishing
         private long _cachePoisonAttempts;
         private string? _originalDns;
         private DateTime _lastWatchdogCheck = DateTime.MinValue;
-        private bool _dotAvailable = false; // Start false, enable only after confirmed
+        private bool _dotAvailable = false;
+        private bool _dotConfigEnabled = true;
 
         public void Start(IModuleContext context, Func<string, bool> blockChecker)
         {
             _context = context;
             _isBlocked = blockChecker;
             _cts = new CancellationTokenSource();
+
+            var dotSetting = _context.Config.GetValue("dnsOverTlsEnabled");
+            _dotConfigEnabled = dotSetting == null || !string.Equals(dotSetting, "false", StringComparison.OrdinalIgnoreCase);
 
             try
             {
@@ -89,11 +93,13 @@ namespace PCPlus.Service.Modules.Phishing
                 // Start periodic cache cleanup
                 _cacheCleanupTask = Task.Run(CacheCleanupLoop);
 
-                // Test DNS-over-TLS connectivity
-                _ = Task.Run(TestDotConnectivity);
+                if (_dotConfigEnabled)
+                    _ = Task.Run(TestDotConnectivity);
+                else
+                    _context.Log(LogLevel.Info, ModuleName, "DNS-over-TLS disabled by config.");
 
                 _context.Log(LogLevel.Info, ModuleName,
-                    "DNS filter proxy v2.0 active on 127.0.0.1:53. DNS-over-TLS enabled. Anti-bypass watchdog running.");
+                    "DNS filter proxy v2.0 active on 127.0.0.1:53. Anti-bypass watchdog running.");
             }
             catch (Exception ex)
             {
@@ -264,7 +270,7 @@ namespace PCPlus.Service.Modules.Phishing
             // Forward to upstream (prefer DoT, fallback to UDP)
             byte[]? response = null;
 
-            if (_dotAvailable)
+            if (_dotConfigEnabled && _dotAvailable)
             {
                 response = ForwardQueryDoT(query);
                 if (response != null)
@@ -343,7 +349,6 @@ namespace PCPlus.Service.Modules.Phishing
 
         private byte[]? ForwardQueryDoT(byte[] query)
         {
-            // Try at most 2 resolvers to keep latency acceptable
             int attempts = 0;
             foreach (var resolver in _dotResolvers)
             {
@@ -360,18 +365,18 @@ namespace PCPlus.Service.Modules.Phishing
                     using var sslStream = new SslStream(tcp.GetStream(), false,
                         (sender, cert, chain, errors) =>
                         {
-                            // Validate the TLS certificate
                             if (errors == SslPolicyErrors.None) return true;
                             _context.Log(LogLevel.Warning, ModuleName,
                                 $"DoT certificate error for {resolver.Hostname}: {errors}");
                             return false;
                         });
 
-                    sslStream.AuthenticateAsClient(new SslClientAuthenticationOptions
+                    var authTask = sslStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
                     {
                         TargetHost = resolver.Hostname,
                         EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13
                     });
+                    if (!authTask.Wait(2000)) continue;
 
                     // DNS over TLS uses length-prefixed messages
                     var lengthPrefix = new byte[2];
@@ -688,8 +693,7 @@ namespace PCPlus.Service.Modules.Phishing
                     foreach (var key in oldAttempts)
                         _poisonAttempts.TryRemove(key, out _);
 
-                    // Periodically re-test DoT connectivity
-                    if (!_dotAvailable)
+                    if (_dotConfigEnabled && !_dotAvailable)
                         await TestDotConnectivity();
                 }
                 catch (OperationCanceledException) { break; }
