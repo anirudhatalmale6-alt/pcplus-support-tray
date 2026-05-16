@@ -314,7 +314,7 @@ namespace PCPlus.Service.Modules.Phishing
                 "bankofamerica.com", "citibank.com", "windows.com",
                 "windowsupdate.com", "office.com", "office365.com",
                 "live.com", "outlook.com", "onedrive.com", "sharepoint.com",
-                "pcpluscomputing.ca", "tacticalrmm.com"
+                "pcpluscomputing.com", "pcpluscomputing.ca", "tacticalrmm.com"
             };
             foreach (var d in safe) _whitelistedDomains.Add(d);
         }

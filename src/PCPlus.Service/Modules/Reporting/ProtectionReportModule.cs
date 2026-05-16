@@ -670,7 +670,7 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 </div>
 
 <div class=""footer"">
-<div class=""footer-text"">Protected by <a class=""footer-link"" href=""https://pcpluscomputing.ca"">PC Plus Computing</a> &mdash; Monitor. Protect. Secure.</div>
+<div class=""footer-text"">Protected by <a class=""footer-link"" href=""https://pcpluscomputing.com"">PC Plus Computing</a> &mdash; Monitor. Protect. Secure.</div>
 <div class=""footer-text"" style=""margin-top: 8px;"">This report was automatically generated. For questions, contact your IT administrator.</div>
 </div>
 </div>
