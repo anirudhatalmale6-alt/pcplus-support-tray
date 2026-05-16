@@ -15,10 +15,14 @@ namespace PCPlus.Service
         {
             var builder = Host.CreateApplicationBuilder(args);
 
-            // Register our service
             builder.Services.AddWindowsService(options =>
             {
                 options.ServiceName = "PCPlusEndpoint";
+            });
+
+            builder.Services.Configure<HostOptions>(opts =>
+            {
+                opts.ShutdownTimeout = TimeSpan.FromSeconds(15);
             });
 
             builder.Services.AddSingleton<ServiceConfig>(_ => ServiceConfig.Load());

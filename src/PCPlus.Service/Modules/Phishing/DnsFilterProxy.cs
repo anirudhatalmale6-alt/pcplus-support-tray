@@ -126,8 +126,21 @@ namespace PCPlus.Service.Modules.Phishing
         {
             _listener = new UdpClient(new IPEndPoint(IPAddress.Loopback, DnsPort));
             _listener.Client.ReceiveBufferSize = 65536;
+
+            // Disable SIO_UDP_CONNRESET - prevents "connection forcibly closed" errors
+            // when ICMP Port Unreachable is received on Windows
+            try
+            {
+                const int SIO_UDP_CONNRESET = unchecked((int)0x9800000C);
+                _listener.Client.IOControl(SIO_UDP_CONNRESET, new byte[] { 0 }, null);
+            }
+            catch { }
+
             _listenTask = Task.Run(ListenLoop);
         }
+
+        private DateTime _lastListenErrorLog = DateTime.MinValue;
+        private long _listenErrorCount;
 
         private async Task ListenLoop()
         {
@@ -140,9 +153,16 @@ namespace PCPlus.Service.Modules.Phishing
                 }
                 catch (OperationCanceledException) { break; }
                 catch (ObjectDisposedException) { break; }
+                catch (SocketException) { Interlocked.Increment(ref _listenErrorCount); }
                 catch (Exception ex)
                 {
-                    _context.Log(LogLevel.Warning, ModuleName, $"Listen error: {ex.Message}");
+                    Interlocked.Increment(ref _listenErrorCount);
+                    if ((DateTime.UtcNow - _lastListenErrorLog).TotalSeconds > 60)
+                    {
+                        _lastListenErrorLog = DateTime.UtcNow;
+                        _context.Log(LogLevel.Warning, ModuleName,
+                            $"Listen errors: {_listenErrorCount} total. Latest: {ex.Message}");
+                    }
                 }
             }
         }
@@ -240,8 +260,10 @@ namespace PCPlus.Service.Modules.Phishing
 
             if (response != null)
             {
-                // Cache poisoning detection
-                if (!ValidateResponse(response, domain, queryType))
+                // Cache poisoning detection (skip for PTR/reverse DNS - causes false positives)
+                bool skipValidation = queryType == 12 || domain.EndsWith(".in-addr.arpa") ||
+                    domain.EndsWith(".ip6.arpa") || domain.EndsWith(".local");
+                if (!skipValidation && !ValidateResponse(response, domain, queryType))
                 {
                     Interlocked.Increment(ref _cachePoisonAttempts);
                     _poisonAttempts[domain] = DateTime.UtcNow;
@@ -301,16 +323,19 @@ namespace PCPlus.Service.Modules.Phishing
 
         private byte[]? ForwardQueryDoT(byte[] query)
         {
+            // Try at most 2 resolvers to keep latency acceptable
+            int attempts = 0;
             foreach (var resolver in _dotResolvers)
             {
+                if (++attempts > 2) break;
                 try
                 {
                     using var tcp = new TcpClient();
-                    tcp.SendTimeout = 3000;
-                    tcp.ReceiveTimeout = 3000;
+                    tcp.SendTimeout = 2000;
+                    tcp.ReceiveTimeout = 2000;
 
                     var connectTask = tcp.ConnectAsync(IPAddress.Parse(resolver.Ip), DotPort);
-                    if (!connectTask.Wait(3000)) continue;
+                    if (!connectTask.Wait(2000)) continue;
 
                     using var sslStream = new SslStream(tcp.GetStream(), false,
                         (sender, cert, chain, errors) =>
