@@ -44,6 +44,19 @@ namespace PCPlus.Service.Modules.Phishing
         private readonly ConcurrentDictionary<string, bool> _blocklist = new();
         private readonly ConcurrentDictionary<string, DateTime> _poisonAttempts = new();
 
+        // Critical domains that must never be blocked (infrastructure)
+        private static readonly HashSet<string> _neverBlock = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "github.com", "raw.githubusercontent.com", "githubusercontent.com",
+            "github.io", "githubassets.com", "objects.githubusercontent.com",
+            "microsoft.com", "windows.com", "windowsupdate.com",
+            "google.com", "googleapis.com", "gstatic.com",
+            "cloudflare.com", "cloudflare-dns.com",
+            "apple.com", "icloud.com",
+            "pcpluscomputing.com", "pcpluscomputing.ca",
+            "tailscale.com", "login.tailscale.com",
+        };
+
         private Func<string, bool>? _isBlocked;
         private long _totalQueries;
         private long _blockedQueries;
@@ -214,31 +227,38 @@ namespace PCPlus.Service.Modules.Phishing
                 return;
             }
 
-            // Blocklist check
-            bool blocked = _blocklist.ContainsKey(domain);
-            if (!blocked && _isBlocked != null)
-                blocked = _isBlocked(domain);
+            // Never block critical infrastructure domains
+            bool whitelisted = _neverBlock.Contains(domain) ||
+                _neverBlock.Any(nb => domain.EndsWith("." + nb, StringComparison.OrdinalIgnoreCase));
 
-            // Also check parent domains (e.g., block sub.evil.com if evil.com is blocked)
-            if (!blocked)
-                blocked = IsParentDomainBlocked(domain);
-
-            if (blocked)
+            if (!whitelisted)
             {
-                Interlocked.Increment(ref _blockedQueries);
-                var blockedResponse = BuildBlockedResponse(query);
-                _listener?.Send(blockedResponse, blockedResponse.Length, clientEndpoint);
+                // Blocklist check
+                bool blocked = _blocklist.ContainsKey(domain);
+                if (!blocked && _isBlocked != null)
+                    blocked = _isBlocked(domain);
 
-                _context.RaiseAlert(new Alert
+                // Also check parent domains (e.g., block sub.evil.com if evil.com is blocked)
+                if (!blocked)
+                    blocked = IsParentDomainBlocked(domain);
+
+                if (blocked)
                 {
-                    ModuleId = ModuleName,
-                    Title = "DNS Query Blocked",
-                    Message = $"Blocked DNS lookup for: {domain}",
-                    Severity = AlertSeverity.Warning,
-                    Category = "dns-filter",
-                    Metadata = new() { ["domain"] = domain }
-                });
-                return;
+                    Interlocked.Increment(ref _blockedQueries);
+                    var blockedResponse = BuildBlockedResponse(query);
+                    _listener?.Send(blockedResponse, blockedResponse.Length, clientEndpoint);
+
+                    _context.RaiseAlert(new Alert
+                    {
+                        ModuleId = ModuleName,
+                        Title = "DNS Query Blocked",
+                        Message = $"Blocked DNS lookup for: {domain}",
+                        Severity = AlertSeverity.Warning,
+                        Category = "dns-filter",
+                        Metadata = new() { ["domain"] = domain }
+                    });
+                    return;
+                }
             }
 
             // Forward to upstream (prefer DoT, fallback to UDP)
