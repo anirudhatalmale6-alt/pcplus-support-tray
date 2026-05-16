@@ -1,0 +1,12 @@
+# Add this to your prometheus.yml scrape_configs section
+# PC Plus Endpoint Protection Dashboard Metrics
+
+scrape_configs:
+  - job_name: 'pcplus-dashboard'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['localhost:5000']
+        labels:
+          service: 'pcplus-endpoint-protection'
+          environment: 'production'
