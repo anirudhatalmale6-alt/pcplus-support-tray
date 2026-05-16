@@ -129,9 +129,60 @@ namespace PCPlus.Service.Modules.Phishing
                         }
                         break;
 
+                    case "/api/protection-summary":
+                        var reportModule = _context.GetModule("reporting");
+                        if (reportModule != null)
+                        {
+                            var summaryResult = reportModule.HandleCommandAsync(
+                                new PCPlus.Core.Models.ModuleCommand
+                                {
+                                    ModuleId = "reporting",
+                                    Action = "getsummary"
+                                }).Result;
+                            result = summaryResult.Data ?? (object)new Dictionary<string, object> { ["error"] = "No data" };
+                        }
+                        else
+                            result = new { error = "Reporting module not active" };
+                        break;
+
+                    case "/api/protection-score":
+                        var scoreModule = _context.GetModule("reporting");
+                        if (scoreModule != null)
+                        {
+                            var scoreResult = scoreModule.HandleCommandAsync(
+                                new PCPlus.Core.Models.ModuleCommand
+                                {
+                                    ModuleId = "reporting",
+                                    Action = "getscore"
+                                }).Result;
+                            result = scoreResult.Data ?? (object)new Dictionary<string, object> { ["error"] = "No data" };
+                        }
+                        else
+                            result = new { error = "Reporting module not active" };
+                        break;
+
+                    case "/api/protection-history":
+                        var histModule = _context.GetModule("reporting");
+                        if (histModule != null)
+                        {
+                            var days = GetQueryParam(ctx, "days") ?? "30";
+                            var histResult = histModule.HandleCommandAsync(
+                                new PCPlus.Core.Models.ModuleCommand
+                                {
+                                    ModuleId = "reporting",
+                                    Action = "gethistory",
+                                    Parameters = new Dictionary<string, string> { ["days"] = days }
+                                }).Result;
+                            result = histResult.Data ?? (object)new Dictionary<string, object> { ["error"] = "No data" };
+                        }
+                        else
+                            result = new { error = "Reporting module not active" };
+                        break;
+
                     default:
                         result = new { error = "Unknown endpoint", available = new[] {
-                            "/api/check-url", "/api/check-urls", "/api/status", "/api/report-phishing"
+                            "/api/check-url", "/api/check-urls", "/api/status", "/api/report-phishing",
+                            "/api/protection-summary", "/api/protection-score", "/api/protection-history"
                         }};
                         break;
                 }

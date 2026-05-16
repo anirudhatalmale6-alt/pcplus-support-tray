@@ -11,6 +11,7 @@ using PCPlus.Service.Modules.Policy;
 using PCPlus.Service.Modules.CustomerValue;
 using PCPlus.Service.Modules.Phishing;
 using PCPlus.Service.Modules.Telemetry;
+using PCPlus.Service.Modules.Reporting;
 
 namespace PCPlus.Service
 {
@@ -81,6 +82,7 @@ namespace PCPlus.Service
             _engine.RegisterModule(new CustomerValueModule());
             _engine.RegisterModule(new PhishingModule());
             _engine.RegisterModule(new TelemetryModule());
+            _engine.RegisterModule(new ProtectionReportModule());
 
             // Start the engine (will start eligible modules based on license)
             await _engine.StartAsync(stoppingToken);
