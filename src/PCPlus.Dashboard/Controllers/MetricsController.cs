@@ -22,7 +22,7 @@ namespace PCPlus.Dashboard.Controllers
             var sb = new StringBuilder();
 
             var devices = await _db.Devices.ToListAsync();
-            var alerts = await _db.DashboardAlerts
+            var alerts = await _db.Alerts
                 .Where(a => a.Timestamp > DateTime.UtcNow.AddHours(-24))
                 .ToListAsync();
 
