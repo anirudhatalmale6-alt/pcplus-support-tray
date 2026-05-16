@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PCPlus.Dashboard.Data;
@@ -7,6 +8,7 @@ namespace PCPlus.Dashboard.Controllers
 {
     [ApiController]
     [Route("metrics")]
+    [AllowAnonymous]
     public class MetricsController : ControllerBase
     {
         private readonly DashboardDb _db;
