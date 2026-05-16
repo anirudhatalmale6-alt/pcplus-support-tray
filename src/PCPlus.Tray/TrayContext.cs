@@ -195,10 +195,13 @@ namespace PCPlus.Tray
 
         private void UpdateTrayIcon()
         {
-            // Icon could change color based on status
-            // For now, just update tooltip
-            if (!_serviceConnected)
-                _trayIcon.Text = "PC Plus - Service not running";
+            var oldIcon = _trayIcon.Icon;
+            _trayIcon.Icon = CreateIcon(_serviceConnected);
+            oldIcon?.Dispose();
+
+            _trayIcon.Text = _serviceConnected
+                ? "PC Plus Endpoint Protection - Running"
+                : "PC Plus - Service not running";
         }
 
         /// <summary>
@@ -458,6 +461,42 @@ namespace PCPlus.Tray
             };
             menu.Items.Add(aboutItem);
 
+            // Restart Service
+            var restartItem = new ToolStripMenuItem("Restart Service");
+            restartItem.Click += async (s, e) =>
+            {
+                try
+                {
+                    restartItem.Enabled = false;
+                    restartItem.Text = "Restarting...";
+                    await Task.Run(() =>
+                    {
+                        using var sc = new System.ServiceProcess.ServiceController("PCPlusEndpoint");
+                        if (sc.Status == System.ServiceProcess.ServiceControllerStatus.Running ||
+                            sc.Status == System.ServiceProcess.ServiceControllerStatus.StartPending)
+                        {
+                            sc.Stop();
+                            sc.WaitForStatus(System.ServiceProcess.ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(15));
+                        }
+                        sc.Start();
+                        sc.WaitForStatus(System.ServiceProcess.ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
+                    });
+                    _trayIcon.ShowBalloonTip(3000, "PC Plus", "Service restarted successfully.", ToolTipIcon.Info);
+                }
+                catch (Exception ex)
+                {
+                    _trayIcon.ShowBalloonTip(5000, "PC Plus", $"Could not restart service: {ex.Message}", ToolTipIcon.Warning);
+                }
+                finally
+                {
+                    restartItem.Text = "Restart Service";
+                    restartItem.Enabled = true;
+                }
+            };
+            menu.Items.Add(restartItem);
+
+            menu.Items.Add(new ToolStripSeparator());
+
             // Exit
             var exitItem = new ToolStripMenuItem("Exit");
             exitItem.Click += (s, e) =>
@@ -585,7 +624,7 @@ namespace PCPlus.Tray
             }
         }
 
-        private Icon CreateIcon()
+        private Icon CreateIcon(bool running = true)
         {
             using var bitmap = new Bitmap(32, 32);
             using var g = Graphics.FromImage(bitmap);
@@ -599,15 +638,22 @@ namespace PCPlus.Tray
             bgPath.AddArc(1, 23, 8, 8, 90, 90);
             bgPath.CloseFigure();
 
+            var borderColor = running
+                ? Color.FromArgb(255, 40, 180, 80)
+                : Color.FromArgb(255, 220, 50, 50);
+            var textColor = running
+                ? Color.FromArgb(255, 30, 160, 60)
+                : Color.FromArgb(255, 200, 40, 40);
+
             using var bgBrush = new SolidBrush(Color.White);
             g.FillPath(bgBrush, bgPath);
 
-            using var borderPen = new Pen(Color.FromArgb(255, 40, 120, 220), 2f);
+            using var borderPen = new Pen(borderColor, 2f);
             g.DrawPath(borderPen, bgPath);
 
             using var font = new Font("Segoe UI", 12, FontStyle.Bold);
             var textSize = g.MeasureString("PC", font);
-            using var textBrush = new SolidBrush(Color.FromArgb(255, 30, 100, 200));
+            using var textBrush = new SolidBrush(textColor);
             g.DrawString("PC", font, textBrush,
                 (32 - textSize.Width) / 2, (32 - textSize.Height) / 2 - 1);
 
