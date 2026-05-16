@@ -55,7 +55,7 @@ namespace PCPlus.Service.Modules.Phishing
         private long _cachePoisonAttempts;
         private string? _originalDns;
         private DateTime _lastWatchdogCheck = DateTime.MinValue;
-        private bool _dotAvailable = true;
+        private bool _dotAvailable = false; // Start false, enable only after confirmed
 
         public void Start(IModuleContext context, Func<string, bool> blockChecker)
         {
@@ -395,8 +395,15 @@ namespace PCPlus.Service.Modules.Phishing
             return null;
         }
 
+        private DateTime _lastDotTest = DateTime.MinValue;
+
         private Task TestDotConnectivity()
         {
+            // Don't retest more than once every 5 minutes
+            if ((DateTime.UtcNow - _lastDotTest).TotalMinutes < 5)
+                return Task.CompletedTask;
+            _lastDotTest = DateTime.UtcNow;
+
             try
             {
                 var testQuery = BuildTestQuery("cloudflare.com");
@@ -406,7 +413,7 @@ namespace PCPlus.Service.Modules.Phishing
                 _context.Log(LogLevel.Info, ModuleName,
                     _dotAvailable
                         ? "DNS-over-TLS is working. All queries encrypted."
-                        : "DNS-over-TLS unavailable. Falling back to UDP.");
+                        : "DNS-over-TLS unavailable. Using UDP fallback.");
             }
             catch
             {

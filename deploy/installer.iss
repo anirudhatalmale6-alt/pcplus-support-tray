@@ -38,6 +38,9 @@ Source: "{#SourcePath}\..\browser-extension\*"; DestDir: "{app}\BrowserExtension
 Name: "{commonappdata}\PCPlusEndpoint"
 Name: "{commonappdata}\PCPlusEndpoint\Logs"
 Name: "{commonappdata}\PCPlusEndpoint\Audits"
+Name: "{commonappdata}\PCPlusEndpoint\ransomware"
+Name: "{commonappdata}\PCPlusEndpoint\phishing"
+Name: "{commonappdata}\PCPlusEndpoint\reports"
 
 [Run]
 ; Write config if it doesn't exist
