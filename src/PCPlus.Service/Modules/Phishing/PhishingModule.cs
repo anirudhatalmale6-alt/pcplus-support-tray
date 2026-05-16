@@ -26,6 +26,8 @@ namespace PCPlus.Service.Modules.Phishing
         private bool _dnsProtectionActive;
         private AdvancedPhishing? _advancedPhishing;
         private UrlReputationEngine? _urlReputation;
+        private DnsFilterProxy? _dnsProxy;
+        private LocalApiServer? _localApi;
 
         private static readonly string HostsFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "drivers", "etc", "hosts");
@@ -124,7 +126,50 @@ namespace PCPlus.Service.Modules.Phishing
             _urlReputation = new UrlReputationEngine();
             _urlReputation.Start(_context);
 
-            _context.Log(LogLevel.Info, Id, "Phishing Protection v2.0 active (DNS blocking + advanced detection + URL reputation).");
+            // Start DNS filter proxy - all DNS queries go through our filter
+            _dnsProxy = new DnsFilterProxy();
+            _dnsProxy.LoadBlocklist(_blockedDomains);
+            _dnsProxy.Start(_context, domain =>
+            {
+                // Check against our blocklist and advanced phishing feeds
+                if (_blockedDomains.Contains(domain)) return true;
+                if (_advancedPhishing?.IsRealtimeBlocked(domain) == true) return true;
+                return false;
+            });
+
+            // Start local API server for browser extension communication
+            _localApi = new LocalApiServer();
+            _localApi.Start(_context,
+                checkUrl: url =>
+                {
+                    var analysis = AnalyzeUrl(url);
+                    return new
+                    {
+                        url,
+                        blocked = analysis.IsBlocked,
+                        riskLevel = analysis.RiskLevel.ToString(),
+                        riskScore = analysis.RiskScore,
+                        reasons = analysis.Reasons
+                    };
+                },
+                checkUrls: urls =>
+                {
+                    var results = urls.Select(u =>
+                    {
+                        var a = AnalyzeUrl(u);
+                        return new
+                        {
+                            url = u,
+                            blocked = a.IsBlocked,
+                            riskLevel = a.RiskLevel.ToString(),
+                            riskScore = a.RiskScore,
+                            reasons = a.Reasons
+                        };
+                    }).ToArray();
+                    return new { results };
+                });
+
+            _context.Log(LogLevel.Info, Id, "Phishing Protection v3.0 active (DNS proxy + local API + advanced detection + URL reputation).");
             return Task.CompletedTask;
         }
 
@@ -135,6 +180,8 @@ namespace PCPlus.Service.Modules.Phishing
             _hostsFileWatcher?.Dispose();
             _advancedPhishing?.Dispose();
             _urlReputation?.Dispose();
+            _dnsProxy?.Dispose();
+            _localApi?.Dispose();
             RemoveHostsFileBlocking();
             _dnsProtectionActive = false;
             SaveEvents();
