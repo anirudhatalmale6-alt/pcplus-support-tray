@@ -25,6 +25,7 @@ namespace PCPlus.Service.Modules.Phishing
         private int _totalBlocked;
         private bool _dnsProtectionActive;
         private AdvancedPhishing? _advancedPhishing;
+        private UrlReputationEngine? _urlReputation;
 
         private static readonly string HostsFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "drivers", "etc", "hosts");
@@ -120,7 +121,10 @@ namespace PCPlus.Service.Modules.Phishing
             _advancedPhishing = new AdvancedPhishing();
             _advancedPhishing.Start(_context);
 
-            _context.Log(LogLevel.Info, Id, "Phishing Protection v2.0 active (DNS blocking + advanced detection).");
+            _urlReputation = new UrlReputationEngine();
+            _urlReputation.Start(_context);
+
+            _context.Log(LogLevel.Info, Id, "Phishing Protection v2.0 active (DNS blocking + advanced detection + URL reputation).");
             return Task.CompletedTask;
         }
 
@@ -130,6 +134,7 @@ namespace PCPlus.Service.Modules.Phishing
             _dnsUpdateTimer?.Dispose();
             _hostsFileWatcher?.Dispose();
             _advancedPhishing?.Dispose();
+            _urlReputation?.Dispose();
             RemoveHostsFileBlocking();
             _dnsProtectionActive = false;
             SaveEvents();

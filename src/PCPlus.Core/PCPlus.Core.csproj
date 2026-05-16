@@ -6,7 +6,7 @@
     <AssemblyName>PCPlus.Core</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>5.2.0</Version>
+    <Version>5.3.0</Version>
     <Company>PC Plus Computing</Company>
     <Product>PC Plus Endpoint Protection</Product>
   </PropertyGroup>

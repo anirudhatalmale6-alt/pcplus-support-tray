@@ -26,6 +26,9 @@ namespace PCPlus.Service.Modules.Security
         private Timer? _periodicScan;
         private bool _avWasActive = true;
         private SelfProtection? _selfProtection;
+        private CredentialLeakChecker? _credentialChecker;
+        private UsbDeviceMonitor? _usbMonitor;
+        private GeoIpBlocker? _geoIpBlocker;
 
         public Task InitializeAsync(IModuleContext context)
         {
@@ -44,6 +47,12 @@ namespace PCPlus.Service.Modules.Security
             // Start self-protection (service watchdog, binary integrity, uninstall protection)
             _selfProtection = new SelfProtection(_context);
             _selfProtection.Start();
+            _credentialChecker = new CredentialLeakChecker();
+            _credentialChecker.Start(_context);
+            _usbMonitor = new UsbDeviceMonitor();
+            _usbMonitor.Start(_context);
+            _geoIpBlocker = new GeoIpBlocker();
+            _geoIpBlocker.Start(_context);
             return Task.CompletedTask;
         }
 
@@ -51,6 +60,9 @@ namespace PCPlus.Service.Modules.Security
         {
             _periodicScan?.Dispose();
             _selfProtection?.Dispose();
+            _credentialChecker?.Dispose();
+            _usbMonitor?.Dispose();
+            _geoIpBlocker?.Dispose();
             IsRunning = false;
             return Task.CompletedTask;
         }
