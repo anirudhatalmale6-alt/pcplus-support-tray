@@ -113,7 +113,7 @@ namespace PCPlus.Service.Modules.Phishing
                         result = new
                         {
                             service = "PCPlus Endpoint Protection",
-                            version = "5.3.0",
+                            version = "5.6.0",
                             active = true,
                             modules = new[] { "health", "security", "ransomware", "phishing", "dns-proxy" }
                         };

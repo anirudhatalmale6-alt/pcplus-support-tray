@@ -169,7 +169,7 @@ namespace PCPlus.Service.Modules.Phishing
                     return new { results };
                 });
 
-            _context.Log(LogLevel.Info, Id, "Phishing Protection v3.0 active (DNS proxy + local API + advanced detection + URL reputation).");
+            _context.Log(LogLevel.Info, Id, "Phishing Protection v4.0 active (DNS-over-TLS proxy + anti-bypass + local API + advanced detection + URL reputation).");
             return Task.CompletedTask;
         }
 
@@ -269,6 +269,7 @@ namespace PCPlus.Service.Modules.Phishing
 
                 case "getstats":
                     var advStatus = _advancedPhishing?.GetStatus();
+                    var dnsProxyStats = _dnsProxy?.GetDetailedStats();
                     return Task.FromResult(ModuleResponse.Ok("Phishing stats", new Dictionary<string, object>
                     {
                         ["totalBlocked"] = _totalBlocked,
@@ -277,7 +278,20 @@ namespace PCPlus.Service.Modules.Phishing
                             .ToDictionary(kv => kv.Key, kv => (object)kv.Value),
                         ["lastUpdate"] = _lastBlocklistUpdate.ToString("o"),
                         ["recentEvents24h"] = _events.Count(e => e.Timestamp > DateTime.UtcNow.AddHours(-24)),
-                        ["advancedPhishing"] = advStatus ?? new AdvancedPhishingStatus()
+                        ["advancedPhishing"] = advStatus ?? new AdvancedPhishingStatus(),
+                        ["dnsProxy"] = dnsProxyStats != null ? new Dictionary<string, object>
+                        {
+                            ["totalQueries"] = dnsProxyStats.TotalQueries,
+                            ["blockedQueries"] = dnsProxyStats.BlockedQueries,
+                            ["cachedResponses"] = dnsProxyStats.CachedResponses,
+                            ["dotQueries"] = dnsProxyStats.DotQueries,
+                            ["udpFallback"] = dnsProxyStats.UdpFallbackQueries,
+                            ["failed"] = dnsProxyStats.FailedQueries,
+                            ["antiBypass"] = dnsProxyStats.AntiBypassDetections,
+                            ["cachePoisonAttempts"] = dnsProxyStats.CachePoisonAttempts,
+                            ["cacheSize"] = dnsProxyStats.CacheSize,
+                            ["dotAvailable"] = dnsProxyStats.DotAvailable
+                        } : new Dictionary<string, object>()
                     }));
 
                 case "checkcert":
@@ -332,6 +346,7 @@ namespace PCPlus.Service.Modules.Phishing
         public ModuleStatus GetStatus()
         {
             var adv = _advancedPhishing?.GetStatus();
+            var dnsStats = _dnsProxy?.GetDetailedStats();
             return new ModuleStatus
             {
                 ModuleId = Id,
@@ -339,7 +354,9 @@ namespace PCPlus.Service.Modules.Phishing
                 IsRunning = IsRunning,
                 RequiredTier = RequiredTier,
                 StatusText = _dnsProtectionActive
-                    ? $"Active v2.0 - {_blockedDomains.Count:N0} DNS blocked, {adv?.PhishingUrlCount ?? 0:N0} URL feeds, {_totalBlocked} hits"
+                    ? $"Active v4.0 - {_blockedDomains.Count:N0} DNS blocked, " +
+                      $"DoT={dnsStats?.DotAvailable ?? false}, " +
+                      $"{adv?.PhishingUrlCount ?? 0:N0} URL feeds, {_totalBlocked} hits"
                     : "Inactive",
                 LastActivity = _events.LastOrDefault()?.Timestamp ?? DateTime.MinValue,
                 Metrics = new Dictionary<string, object>
@@ -352,7 +369,13 @@ namespace PCPlus.Service.Modules.Phishing
                     ["realtimePhishingUrls"] = adv?.PhishingUrlCount ?? 0,
                     ["realtimeDomains"] = adv?.RealtimeDomainCount ?? 0,
                     ["advancedDetections"] = adv?.DetectionCount ?? 0,
-                    ["lastFeedUpdate"] = (adv?.LastFeedUpdate ?? DateTime.MinValue).ToString("o")
+                    ["lastFeedUpdate"] = (adv?.LastFeedUpdate ?? DateTime.MinValue).ToString("o"),
+                    ["dnsOverTls"] = dnsStats?.DotAvailable ?? false,
+                    ["dnsQueries"] = dnsStats?.TotalQueries ?? 0,
+                    ["dnsBlocked"] = dnsStats?.BlockedQueries ?? 0,
+                    ["dnsCached"] = dnsStats?.CachedResponses ?? 0,
+                    ["dnsAntiBypass"] = dnsStats?.AntiBypassDetections ?? 0,
+                    ["dnsCachePoisonAttempts"] = dnsStats?.CachePoisonAttempts ?? 0
                 }
             };
         }
