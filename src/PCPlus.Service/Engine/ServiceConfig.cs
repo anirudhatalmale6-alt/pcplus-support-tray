@@ -80,6 +80,9 @@ namespace PCPlus.Service.Engine
         public string DashboardApiUrl => Get("dashboardApiUrl", "");
         public string DashboardApiToken => Get("dashboardApiToken", "");
 
+        // Threat Intelligence
+        public string AbuseChAuthKey => Get("abuseChAuthKey", "");
+
         // AI
         public string AiProvider => Get("aiProvider", "none");
         public string AiApiKey => Get("aiApiKey", "");

@@ -355,6 +355,16 @@ namespace PCPlus.Service.Modules.Ransomware
                     try
                     {
                         var fileInfo = new FileInfo(exePath);
+
+                        // Take ownership first (required for TrustedInstaller-owned files)
+                        try
+                        {
+                            var ownerAcl = fileInfo.GetAccessControl();
+                            ownerAcl.SetOwner(adminsSid);
+                            fileInfo.SetAccessControl(ownerAcl);
+                        }
+                        catch { /* Ownership change may fail, try ACL anyway */ }
+
                         var acl = fileInfo.GetAccessControl();
 
                         // Save original ACL for restoration on service stop

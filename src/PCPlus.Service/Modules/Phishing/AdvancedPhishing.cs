@@ -94,7 +94,7 @@ namespace PCPlus.Service.Modules.Phishing
                 null, TimeSpan.FromMinutes(2), TimeSpan.FromHours(2));
 
             // Monitor DNS cache every 30 seconds
-            _dnsMonitorTimer = new Timer(_ => MonitorDnsCache(),
+            _dnsMonitorTimer = new Timer(_ => { MonitorDnsCache(); DetectDohBypass(); },
                 null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
 
             // Scan browser history every 10 minutes
@@ -325,6 +325,54 @@ namespace PCPlus.Service.Modules.Phishing
                             $"Typosquatting detected: '{domain}' resembles '{typoResult.Value.brand}' " +
                             $"(legitimate: {typoResult.Value.legitimate}, similarity: {typoResult.Value.score:P0})",
                             DetectionSeverity.High);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private static readonly string[] KnownDohProviders = new[]
+        {
+            "dns.google", "dns.google.com", "8.8.8.8", "8.8.4.4",
+            "cloudflare-dns.com", "1.1.1.1", "1.0.0.1",
+            "dns.quad9.net", "9.9.9.9",
+            "doh.opendns.com", "dns.adguard.com",
+            "doh.cleanbrowsing.org", "dns.nextdns.io"
+        };
+
+        private void DetectDohBypass()
+        {
+            try
+            {
+                var output = RunCommandOutput("netstat", "-ano");
+                var lines = output.Split('\n');
+                foreach (var line in lines)
+                {
+                    if (!line.Contains(":443") || !line.Contains("ESTABLISHED"))
+                        continue;
+
+                    var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length < 5) continue;
+                    var remoteAddr = parts[2];
+                    var ip = remoteAddr.Split(':')[0];
+
+                    if (KnownDohProviders.Contains(ip))
+                    {
+                        var pid = parts[4];
+                        string processName = "unknown";
+                        try
+                        {
+                            var proc = Process.GetProcessById(int.Parse(pid));
+                            processName = proc.ProcessName;
+                        }
+                        catch { }
+
+                        if (processName.Equals("svchost", StringComparison.OrdinalIgnoreCase)) continue;
+
+                        RecordDetection("doh_bypass", ip,
+                            $"DNS-over-HTTPS bypass detected: {processName} (PID {pid}) connecting to {ip}:443. " +
+                            "This may bypass hosts file DNS blocking.",
+                            DetectionSeverity.Medium);
                     }
                 }
             }

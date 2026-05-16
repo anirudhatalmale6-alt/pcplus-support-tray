@@ -183,7 +183,16 @@ namespace PCPlus.Service.Modules.Ransomware
         private async Task FetchAbuseCh(HashSet<string> hashes, ConcurrentDictionary<string, IndicatorOfCompromise> iocs)
         {
             const string feedName = "abuse.ch-hashes";
-            const string url = "https://feodotracker.abuse.ch/downloads/malware_hashes.csv";
+            var authKey = _context.Config.AbuseChAuthKey;
+
+            if (string.IsNullOrEmpty(authKey))
+            {
+                _context.Log(LogLevel.Info, ModuleName, "abuse.ch feeds require Auth-Key (free at auth.abuse.ch). Skipping.");
+                RecordFeedHealth(feedName, false, 0, "No Auth-Key configured");
+                return;
+            }
+
+            var url = $"https://mb-api.abuse.ch/v2/files/exports/{authKey}/recent.csv";
 
             try
             {
@@ -235,14 +244,23 @@ namespace PCPlus.Service.Modules.Ransomware
         {
             const string feedName = "threatfox";
             const string url = "https://threatfox-api.abuse.ch/api/v1/";
+            var authKey = _context.Config.AbuseChAuthKey;
+
+            if (string.IsNullOrEmpty(authKey))
+            {
+                RecordFeedHealth(feedName, false, 0, "No Auth-Key configured");
+                return;
+            }
 
             try
             {
-                var payload = new StringContent(
+                var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Headers.Add("Auth-Key", authKey);
+                request.Content = new StringContent(
                     JsonSerializer.Serialize(new { query = "get_iocs", days = 7 }),
                     System.Text.Encoding.UTF8, "application/json");
 
-                var response = await _http.PostAsync(url, payload);
+                var response = await _http.SendAsync(request);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync();
@@ -462,8 +480,10 @@ namespace PCPlus.Service.Modules.Ransomware
                     _lastUpdate = data.LastUpdate;
                 }
 
+                var age = DateTime.UtcNow - _lastUpdate;
+                var ageStr = age.TotalHours < 24 ? $"{age.TotalHours:F0}h" : $"{age.TotalDays:F0}d";
                 _context.Log(LogLevel.Info, ModuleName,
-                    $"Loaded persisted threat intel from {_lastUpdate:yyyy-MM-dd HH:mm} UTC");
+                    $"Loaded offline IOC cache ({ageStr} old, {_iocs.Count} IOCs, {_knownFileHashes.Count} hashes)");
             }
             catch (Exception ex)
             {

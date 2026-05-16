@@ -585,6 +585,34 @@ namespace PCPlus.Service.Modules.Ransomware
             _context = context;
             _rollbackDir = rollbackDir;
             Directory.CreateDirectory(rollbackDir);
+            ProtectRollbackCache();
+        }
+
+        private void ProtectRollbackCache()
+        {
+            try
+            {
+                var dirInfo = new DirectoryInfo(_rollbackDir);
+                dirInfo.Attributes |= FileAttributes.Hidden | FileAttributes.System;
+
+                var security = dirInfo.GetAccessControl();
+                var everyoneSid = new System.Security.Principal.SecurityIdentifier(
+                    System.Security.Principal.WellKnownSidType.WorldSid, null);
+                security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+                    everyoneSid,
+                    System.Security.AccessControl.FileSystemRights.Delete |
+                    System.Security.AccessControl.FileSystemRights.DeleteSubdirectoriesAndFiles,
+                    System.Security.AccessControl.InheritanceFlags.ContainerInherit |
+                    System.Security.AccessControl.InheritanceFlags.ObjectInherit,
+                    System.Security.AccessControl.PropagationFlags.None,
+                    System.Security.AccessControl.AccessControlType.Deny));
+                dirInfo.SetAccessControl(security);
+                _context.Log(LogLevel.Info, "rollback", "Rollback cache protected with ACL deny-delete");
+            }
+            catch (Exception ex)
+            {
+                _context.Log(LogLevel.Warning, "rollback", $"Could not protect rollback cache: {ex.Message}");
+            }
         }
 
         public void Start()

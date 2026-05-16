@@ -25,6 +25,7 @@ namespace PCPlus.Service.Modules.Security
         private SecurityScanResult _lastResult = new();
         private Timer? _periodicScan;
         private bool _avWasActive = true;
+        private SelfProtection? _selfProtection;
 
         public Task InitializeAsync(IModuleContext context)
         {
@@ -40,12 +41,16 @@ namespace PCPlus.Service.Modules.Security
             // Periodic rescan every 30 minutes
             _periodicScan = new Timer(_ => RunFullScan(), null,
                 TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(30));
+            // Start self-protection (service watchdog, binary integrity, uninstall protection)
+            _selfProtection = new SelfProtection(_context);
+            _selfProtection.Start();
             return Task.CompletedTask;
         }
 
         public Task StopAsync()
         {
             _periodicScan?.Dispose();
+            _selfProtection?.Dispose();
             IsRunning = false;
             return Task.CompletedTask;
         }

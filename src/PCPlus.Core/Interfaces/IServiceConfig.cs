@@ -70,6 +70,9 @@ namespace PCPlus.Core.Interfaces
         string DashboardApiUrl { get; }
         string DashboardApiToken { get; }
 
+        // Threat Intel
+        string AbuseChAuthKey { get; }
+
         // AI
         string AiProvider { get; } // "none", "local", "openai", "claude"
         string AiApiKey { get; }
