@@ -32,6 +32,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 Source: "{#SourcePath}\Service\*"; DestDir: "{app}\Service"; Flags: ignoreversion recursesubdirs
 Source: "{#SourcePath}\Tray\*"; DestDir: "{app}\Tray"; Flags: ignoreversion recursesubdirs
+Source: "{#SourcePath}\..\browser-extension\*"; DestDir: "{app}\BrowserExtension"; Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
 
 [Dirs]
 Name: "{commonappdata}\PCPlusEndpoint"

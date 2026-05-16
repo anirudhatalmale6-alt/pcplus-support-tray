@@ -25,7 +25,7 @@ $CustomerName    = if ($CustomerNameArg) { $CustomerNameArg } else { "{{site.nam
 $TrmmApiKey      = "WDHX6IPCKJ9BISAFVOUJFFXVKKN5HMZV"
 $TrmmApiUrl      = "https://api.pcpluscomputing.com"
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
-$ReleaseVersion  = "v4.19.0"           # Pin to known working version (use "latest" for newest)
+$ReleaseVersion  = "v5.7.0"            # Pin to known working version (use "latest" for newest)
 $WazuhManager    = "184.68.146.18"
 $WazuhVersion    = "4.11.2"
 $WazuhAgentGroup = "default"
@@ -679,6 +679,67 @@ try {
 } catch {
     Write-Log "Final heartbeat failed: $_" "WARN"
 }
+
+# ============================================================
+# BROWSER EXTENSION DEPLOYMENT (Chrome + Edge)
+# ============================================================
+Write-Log "Deploying browser extension..."
+
+$extDir = "$InstallDir\BrowserExtension"
+$extSourceDir = "$TempDir\browser-extension"
+
+# Download browser extension from release
+try {
+    $extUrl = "https://github.com/$GitHubRepo/raw/$targetVersion/browser-extension"
+    $extFiles = @("manifest.json", "background.js", "content-email.js", "content-links.js", "styles.css", "popup.html", "popup.js", "blocked.html")
+
+    New-Item -Path $extDir -ItemType Directory -Force | Out-Null
+    New-Item -Path "$extDir\icons" -ItemType Directory -Force | Out-Null
+
+    foreach ($f in $extFiles) {
+        $url = "https://raw.githubusercontent.com/$GitHubRepo/$targetVersion/browser-extension/$f"
+        Invoke-WebRequest -Uri $url -OutFile "$extDir\$f" -UseBasicParsing -ErrorAction Stop
+    }
+    # Icons
+    foreach ($size in @("16","48","128")) {
+        $url = "https://raw.githubusercontent.com/$GitHubRepo/$targetVersion/browser-extension/icons/shield-$size.png"
+        Invoke-WebRequest -Uri $url -OutFile "$extDir\icons\shield-$size.png" -UseBasicParsing -ErrorAction SilentlyContinue
+    }
+    Write-Log "Browser extension files downloaded to $extDir"
+} catch {
+    Write-Log "Browser extension download failed: $_ (will try from local package)" "WARN"
+    # Fallback: copy from package if included
+    if (Test-Path "$TempDir\Service\browser-extension") {
+        Copy-Item -Path "$TempDir\Service\browser-extension\*" -Destination $extDir -Recurse -Force
+        Write-Log "Copied from local package."
+    }
+}
+
+# Force-install extension via registry (Chrome)
+$chromeExtKey = "HKLM:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist"
+if (!(Test-Path $chromeExtKey)) { New-Item -Path $chromeExtKey -Force | Out-Null }
+
+# For unpacked dev extensions, use ExtensionSettings to allowlist the path
+$chromeExtSettings = "HKLM:\SOFTWARE\Policies\Google\Chrome\ExtensionSettings"
+if (!(Test-Path $chromeExtSettings)) { New-Item -Path $chromeExtSettings -Force | Out-Null }
+
+# Force-install extension via registry (Edge)
+$edgeExtKey = "HKLM:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist"
+if (!(Test-Path $edgeExtKey)) { New-Item -Path $edgeExtKey -Force | Out-Null }
+
+$edgeExtSettings = "HKLM:\SOFTWARE\Policies\Microsoft\Edge\ExtensionSettings"
+if (!(Test-Path $edgeExtSettings)) { New-Item -Path $edgeExtSettings -Force | Out-Null }
+
+# Developer mode load path (for testing before Chrome Web Store)
+$devExtRegChrome = "HKLM:\SOFTWARE\Policies\Google\Chrome"
+$devExtRegEdge = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"
+
+# Allow developer mode extensions
+Set-ItemProperty -Path $devExtRegChrome -Name "DeveloperToolsAvailability" -Value 1 -Type DWord -ErrorAction SilentlyContinue
+Set-ItemProperty -Path $devExtRegEdge -Name "DeveloperToolsAvailability" -Value 1 -Type DWord -ErrorAction SilentlyContinue
+
+Write-Log "Browser extension deployed. Path: $extDir"
+Write-Log "NOTE: Extension needs manual load via chrome://extensions until Chrome Web Store published."
 
 # Cleanup temp
 Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
