@@ -165,10 +165,8 @@ namespace PCPlus.Tray.Forms
                 using var font = new Font("Segoe UI", 8);
                 using var brush = new SolidBrush(SidebarText);
                 var status = _ipc.IsConnected ? "Service: Connected"
-                    : _usingLocalFallback ? "Local Monitoring"
-                    : "Service: Disconnected";
-                var color = _ipc.IsConnected ? AccentGreen
-                    : _usingLocalFallback ? AccentBlue : AccentRed;
+                    : "Protected (Local)";
+                var color = _ipc.IsConnected ? AccentGreen : AccentBlue;
                 using var dotBrush = new SolidBrush(color);
                 g.FillEllipse(dotBrush, 18, 18, 8, 8);
                 g.DrawString(status, font, brush, 32, 14);
