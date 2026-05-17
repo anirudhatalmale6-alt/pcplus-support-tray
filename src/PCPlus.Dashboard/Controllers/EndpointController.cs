@@ -68,6 +68,8 @@ namespace PCPlus.Dashboard.Controllers
             device.OsVersion = request.OsVersion;
             device.AgentVersion = request.AgentVersion;
             device.LicenseTier = request.LicenseTier;
+            if (!string.IsNullOrEmpty(request.DeviceGroup))
+                device.DeviceGroup = request.DeviceGroup;
             device.IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
             device.IsOnline = true;
             device.LastSeen = DateTime.UtcNow;

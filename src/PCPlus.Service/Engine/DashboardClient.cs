@@ -197,6 +197,7 @@ namespace PCPlus.Service.Engine
                     agentVersion = typeof(DashboardClient).Assembly.GetName().Version?.ToString(3) ?? "4.3.0",
                     licenseTier = _engine.License.Tier.ToString(),
                     customerName = _config.CompanyName,
+                    deviceGroup = _config.DeviceGroup,
                     localIp = localIp,
                     publicIp = publicIp,
                     cpuPercent = cpu,

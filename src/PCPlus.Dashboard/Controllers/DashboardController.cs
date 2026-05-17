@@ -60,6 +60,7 @@ namespace PCPlus.Dashboard.Controllers
         public async Task<ActionResult<List<Device>>> GetDevices(
             [FromQuery] string? customerId = null,
             [FromQuery] bool? online = null,
+            [FromQuery] string? group = null,
             [FromQuery] string? search = null)
         {
             var query = _db.Devices.AsQueryable();
@@ -68,6 +69,8 @@ namespace PCPlus.Dashboard.Controllers
                 query = query.Where(d => d.CustomerId == customerId);
             if (online.HasValue)
                 query = query.Where(d => d.IsOnline == online.Value);
+            if (!string.IsNullOrEmpty(group))
+                query = query.Where(d => d.DeviceGroup == group);
             if (!string.IsNullOrEmpty(search))
                 query = query.Where(d => d.Hostname.Contains(search) || d.CustomerName.Contains(search));
 

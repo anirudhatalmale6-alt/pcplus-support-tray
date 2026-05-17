@@ -15,6 +15,7 @@ namespace PCPlus.Dashboard.Models
         public string LicenseTier { get; set; } = "Free";
         public string LicenseKey { get; set; } = "";
         public string PolicyProfile { get; set; } = "default";
+        public string DeviceGroup { get; set; } = "";
         public string IpAddress { get; set; } = "";
         public string LocalIp { get; set; } = "";
         public string PublicIp { get; set; } = "";
@@ -182,6 +183,7 @@ namespace PCPlus.Dashboard.Models
         public string OsVersion { get; set; } = "";
         public string AgentVersion { get; set; } = "";
         public string LicenseTier { get; set; } = "";
+        public string DeviceGroup { get; set; } = "";
         public float CpuPercent { get; set; }
         public float RamPercent { get; set; }
         public float DiskPercent { get; set; }

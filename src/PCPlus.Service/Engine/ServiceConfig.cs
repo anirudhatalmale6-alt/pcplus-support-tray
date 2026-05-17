@@ -19,6 +19,7 @@ namespace PCPlus.Service.Engine
         public string CompanyName => Get("companyName", "PC Plus Computing");
         public string DeviceId => GetOrGenerateDeviceId();
         public string CustomerId => Get("customerId", "");
+        public string DeviceGroup => Get("deviceGroup", "");
 
         // Monitoring
         public float CpuAlertThreshold => GetFloat("cpuAlertThreshold", 90f);
