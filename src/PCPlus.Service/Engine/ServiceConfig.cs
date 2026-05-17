@@ -29,6 +29,15 @@ namespace PCPlus.Service.Engine
         public int HealthPollIntervalMs => GetInt("healthPollIntervalMs", 2000);
         public bool DisableLHM => GetBool("disableLHM", false);
 
+        // Module timing (configurable from dashboard)
+        public int SecurityScanIntervalMinutes => GetInt("securityScanIntervalMinutes", 720);
+        public int RansomwareProcessMonitorMs => GetInt("ransomwareProcessMonitorMs", 5000);
+        public int RansomwareReconciliationMs => GetInt("ransomwareReconciliationMs", 10000);
+        public int AdvancedDetectionNetworkMs => GetInt("advancedDetectionNetworkMs", 5000);
+        public int AdvancedDetectionRegistryMs => GetInt("advancedDetectionRegistryMs", 10000);
+        public int HeartbeatIntervalSeconds => GetInt("heartbeatIntervalSeconds", 30);
+        public int ReportSnapshotIntervalMinutes => GetInt("reportSnapshotIntervalMinutes", 15);
+
         // Ransomware
         public bool RansomwareProtectionEnabled => GetBool("ransomwareProtectionEnabled", true);
         public int HoneypotFileCount => GetInt("honeypotFileCount", 5);

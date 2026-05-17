@@ -53,8 +53,9 @@ namespace PCPlus.Service.Engine
             // Subscribe to alerts to forward them to dashboard
             _engine.OnAlert += ForwardAlert;
 
-            // Start heartbeat timer (every 30 seconds)
-            _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+            // Start heartbeat timer (configurable, default 30 seconds)
+            var hbInterval = TimeSpan.FromSeconds(_config.GetValue("heartbeatIntervalSeconds") is string hv && int.TryParse(hv, out var hs) ? hs : 30);
+            _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, hbInterval);
 
             _engine.Log(LogLevel.Info, "dashboard-client", $"Phone-home started -> {dashboardUrl}");
         }

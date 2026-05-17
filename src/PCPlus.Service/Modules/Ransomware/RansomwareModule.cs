@@ -190,11 +190,13 @@ namespace PCPlus.Service.Modules.Ransomware
             _hardening = new SystemHardening();
             _hardening.Start(_context);
 
-            // Process monitoring every 15 seconds (was 3s, but WMI queries overload low-resource VMs)
-            _processMonitor = new Timer(MonitorProcesses, null, 0, 15000);
+            // Process monitoring - configurable (default 5s for critical threat detection)
+            var processMs = _context.Config.GetValue("ransomwareProcessMonitorMs") is string pv && int.TryParse(pv, out var pm) ? pm : 5000;
+            _processMonitor = new Timer(MonitorProcesses, null, 0, processMs);
 
-            // Reconciliation scan every 30 seconds (catches what FSW misses)
-            _reconciliationScan = new Timer(ReconciliationScan, null, 15000, 30000);
+            // Reconciliation scan - configurable (default 10s, catches what FSW misses)
+            var reconMs = _context.Config.GetValue("ransomwareReconciliationMs") is string rv && int.TryParse(rv, out var rm) ? rm : 10000;
+            _reconciliationScan = new Timer(ReconciliationScan, null, reconMs, reconMs);
 
             _context.Log(LogLevel.Info, Id,
                 $"Ransomware protection v5.0 active. {_honeypotFiles.Count} honeypots, VSS Guard, Advanced Detection, file rollback enabled.");

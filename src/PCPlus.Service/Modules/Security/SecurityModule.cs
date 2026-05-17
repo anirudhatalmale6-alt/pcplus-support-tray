@@ -41,9 +41,9 @@ namespace PCPlus.Service.Modules.Security
             IsRunning = true;
             // Run initial scan
             Task.Run(() => RunFullScan());
-            // Periodic rescan every 30 minutes
-            _periodicScan = new Timer(_ => RunFullScan(), null,
-                TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(30));
+            // Periodic rescan - configurable interval (default 12 hours, non-critical)
+            var scanInterval = TimeSpan.FromMinutes(_context.Config.GetValue("securityScanIntervalMinutes") is string v && int.TryParse(v, out var m) ? m : 720);
+            _periodicScan = new Timer(_ => RunFullScan(), null, scanInterval, scanInterval);
             // Start self-protection (service watchdog, binary integrity, uninstall protection)
             _selfProtection = new SelfProtection(_context);
             _selfProtection.Start();

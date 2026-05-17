@@ -43,9 +43,10 @@ namespace PCPlus.Service.Modules.Reporting
             _serviceStartTime = DateTime.UtcNow;
             _currentSnapshot = new ProtectionSnapshot { Date = DateTime.UtcNow.Date };
 
-            // Collect stats every 5 minutes
+            // Collect stats - configurable (default 15 min, non-critical)
+            var snapMin = _context.Config.GetValue("reportSnapshotIntervalMinutes") is string sv && int.TryParse(sv, out var sm) ? sm : 15;
             _snapshotTimer = new Timer(_ => CollectSnapshot(), null,
-                TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(5));
+                TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(snapMin));
 
             // Generate HTML report every hour
             _reportTimer = new Timer(_ => GenerateReport(), null,
