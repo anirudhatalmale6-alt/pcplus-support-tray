@@ -328,6 +328,33 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-RestMethod -Uri "$dashUrl/api/endpoint/heartbeat" -Method POST -ContentType "application/json" -Body $body -TimeoutSec 10 | Out-Null
 
+    # Report AV products
+    try {
+        $avProds = Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct -ErrorAction SilentlyContinue
+        if ($avProds) {
+            $prodList = @()
+            foreach ($p in $avProds) {
+                $state = $p.productState
+                $rtOn = ($state -band 0x1000) -ne 0
+                $status = if ($rtOn) { "Active" } else { "Passive" }
+                $prodList += @{
+                    name = [string]$p.displayName
+                    vendor = [string]$p.displayName.Split(' ')[0]
+                    version = ""
+                    status = $status
+                    realTimeEnabled = $rtOn
+                    quarantineCount = 0
+                }
+            }
+            $avBody = @{
+                deviceId = [string]$devId
+                hostname = [string]$env:COMPUTERNAME
+                products = $prodList
+            } | ConvertTo-Json -Depth 4 -Compress
+            Invoke-RestMethod -Uri "$dashUrl/api/endpoint/antivirus" -Method POST -ContentType "application/json" -Body $avBody -TimeoutSec 10 | Out-Null
+        }
+    } catch {}
+
     # Forward queued alerts
     $queueDir = "$env:ProgramData\PCPlusEndpoint\alert-queue"
     if (Test-Path $queueDir) {
