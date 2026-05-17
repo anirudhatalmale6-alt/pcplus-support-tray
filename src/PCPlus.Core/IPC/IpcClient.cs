@@ -51,11 +51,13 @@ namespace PCPlus.Core.IPC
                 // Dispose any stale pipe
                 _listenerCts?.Cancel();
                 _pipe?.Dispose();
+                _pipe = null;
 
-                _pipe = new NamedPipeClientStream(".", IpcProtocol.PIPE_NAME,
+                var newPipe = new NamedPipeClientStream(".", IpcProtocol.PIPE_NAME,
                     PipeDirection.InOut, PipeOptions.Asynchronous);
 
-                await _pipe.ConnectAsync(timeoutMs);
+                await newPipe.ConnectAsync(timeoutMs);
+                _pipe = newPipe;
                 _reader = new StreamReader(_pipe, Encoding.UTF8);
                 _writer = new StreamWriter(_pipe, Encoding.UTF8) { AutoFlush = true };
 
@@ -67,6 +69,12 @@ namespace PCPlus.Core.IPC
 
                 // Authenticate immediately after connecting
                 await AuthenticateAsync();
+            }
+            catch
+            {
+                _pipe?.Dispose();
+                _pipe = null;
+                throw;
             }
             finally
             {
@@ -163,6 +171,8 @@ namespace PCPlus.Core.IPC
             }
             catch (Exception ex)
             {
+                try { _pipe?.Dispose(); } catch { }
+                _pipe = null;
                 return IpcResponse.Fail(request.Id, $"IPC error: {ex.Message}");
             }
             finally
@@ -235,6 +245,12 @@ namespace PCPlus.Core.IPC
             {
                 _session = null;
                 _sessionToken = "";
+                try { _reader?.Dispose(); } catch { }
+                try { _writer?.Dispose(); } catch { }
+                try { _pipe?.Dispose(); } catch { }
+                _pipe = null;
+                _reader = null;
+                _writer = null;
                 OnConnectionChanged?.Invoke(false);
             }
         }
