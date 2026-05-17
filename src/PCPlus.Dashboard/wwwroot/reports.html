@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PC Plus Computing - AI Threat Advisor</title>
+<title>PC Plus Computing - Executive Reports</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -234,8 +234,8 @@ body {
 
 /* ─── GRID ─── */
 .row { display: grid; gap: 16px; margin-bottom: 16px; }
-.row-3 { grid-template-columns: repeat(3, 1fr); }
-.row-2 { grid-template-columns: 1.2fr 1fr; }
+.row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.row-2 { grid-template-columns: 1.6fr 1fr; }
 .row-1 { grid-template-columns: 1fr; }
 
 /* ─── CARDS ─── */
@@ -263,268 +263,255 @@ body {
 .card-link { font-size: 11px; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.15s; }
 .card-link:hover { color: var(--accent-dark); }
 
-/* ─── AI SUMMARY CARD ─── */
-.ai-summary-card {
-  background: linear-gradient(135deg, #0c1f3d 0%, #153652 50%, #0f2847 100%);
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 4px 20px rgba(10,22,40,0.2);
-  padding: 28px;
+/* ─── PAGE TITLE ─── */
+.page-title-section {
+  margin-bottom: 20px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.page-subtitle {
+  font-size: 12.5px;
+  color: var(--text-secondary);
 }
 
-.ai-summary-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.ai-summary-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.ai-summary-icon {
-  width: 48px; height: 48px;
-  background: rgba(37,150,190,0.25);
-  border-radius: 50%;
+/* ─── REPORT CARDS ─── */
+.report-card-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 20px rgba(37,150,190,0.2);
-}
-
-.ai-summary-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
-.ai-summary-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-
-.risk-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.risk-badge.medium { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-.risk-badge.medium .badge-dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; animation: pulse 2s infinite; }
-
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-.ai-summary-details {
-  display: flex;
-  gap: 24px;
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-.ai-summary-details span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ai-summary-details svg { width: 14px; height: 14px; opacity: 0.7; }
-
-/* ─── RISK CATEGORY CARDS ─── */
-.risk-cat-card {
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-}
-
-.risk-cat-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 4px;
-}
-
-.risk-cat-card.high::before { background: linear-gradient(90deg, var(--red), #f97316); }
-.risk-cat-card.low::before { background: linear-gradient(90deg, var(--green), #22d3ee); }
-.risk-cat-card.medium-risk::before { background: linear-gradient(90deg, var(--yellow), #f97316); }
-
-.risk-cat-header {
-  display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(37,150,190,0.12), rgba(37,150,190,0.05));
 }
+.report-card-icon svg { width: 22px; height: 22px; color: var(--accent); }
 
-.risk-cat-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-
-.risk-cat-level {
-  font-size: 10px;
+.report-card-title {
+  font-size: 14px;
   font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
 }
-.risk-cat-level.high { background: var(--red-bg); color: var(--red); }
-.risk-cat-level.low { background: var(--green-bg); color: #16a34a; }
-.risk-cat-level.medium { background: var(--yellow-bg); color: #d97706; }
-
-.risk-cat-desc {
+.report-card-desc {
   font-size: 11.5px;
   color: var(--text-secondary);
   line-height: 1.6;
-}
-
-/* ─── AI RECOMMENDATIONS ─── */
-.ai-rec-list { display: flex; flex-direction: column; gap: 14px; }
-
-.ai-rec-item {
-  padding: 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: linear-gradient(145deg, #fafbfc, #fff);
-  position: relative;
-}
-
-.ai-rec-item::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  border-radius: 4px 0 0 4px;
-}
-
-.ai-rec-item.critical::before { background: var(--red); }
-.ai-rec-item.high-priority::before { background: var(--yellow); }
-.ai-rec-item.medium-priority::before { background: var(--accent); }
-
-.ai-rec-header {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 8px;
-}
-
-.ai-rec-badge {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-.ai-rec-badge.critical { background: var(--red-bg); color: var(--red); }
-.ai-rec-badge.high-priority { background: var(--yellow-bg); color: #d97706; }
-.ai-rec-badge.medium-priority { background: var(--accent-light); color: var(--accent); }
-
-.ai-rec-num { font-size: 10px; color: var(--text-muted); font-weight: 600; }
-
-.ai-rec-text {
-  font-size: 12px;
-  color: var(--text-primary);
-  line-height: 1.7;
-  margin-bottom: 12px;
-}
-
-.ai-rec-meta {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.ai-rec-meta-item {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 10.5px;
-  padding: 4px 10px;
-  border-radius: 5px;
-  background: #f1f5f9;
-}
-
-.ai-rec-meta-item .label { color: var(--text-muted); font-weight: 500; }
-.ai-rec-meta-item .value { color: var(--text-primary); font-weight: 600; }
-.ai-rec-meta-item .value.green { color: var(--green); }
-.ai-rec-meta-item .value.blue { color: var(--accent); }
-
-/* ─── THREAT INTELLIGENCE ─── */
-.threat-intel-list { display: flex; flex-direction: column; gap: 6px; }
-
-.threat-intel-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #fafbfc;
-  border: 1px solid var(--border);
-}
-
-.threat-intel-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--red);
-  margin-top: 4px;
-  flex-shrink: 0;
-  animation: pulse 3s infinite;
-}
-
-.threat-intel-content { flex: 1; }
-.threat-intel-text { font-size: 11.5px; color: var(--text-primary); font-weight: 500; line-height: 1.5; }
-.threat-intel-date { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
-
-/* ─── SCORE PROJECTION ─── */
-.projection-chart {
-  padding: 10px 0;
-}
-
-.projection-bar-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   margin-bottom: 14px;
 }
 
-.projection-label {
-  width: 140px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
-  flex-shrink: 0;
+.report-meta {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.report-meta-row {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.report-meta-label {
+  font-size: 10.5px; color: var(--text-muted); font-weight: 500;
+}
+.report-meta-val {
+  font-size: 11px; font-weight: 600; color: var(--text-primary);
 }
 
-.projection-bar-wrap {
-  flex: 1;
-  height: 28px;
-  background: #f1f5f9;
-  border-radius: 6px;
-  position: relative;
-  overflow: hidden;
+.report-actions {
+  display: flex; align-items: center; gap: 10px;
 }
 
-.projection-bar {
-  height: 100%;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 10px;
-  font-size: 11px;
-  font-weight: 700;
+.btn-generate {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
-  transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(37,150,190,0.25);
 }
+.btn-generate:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,150,190,0.35); }
 
-.projection-bar.current { background: linear-gradient(90deg, #f59e0b, #f97316); width: 44.5%; }
-.projection-bar.phase1 { background: linear-gradient(90deg, #10b981, #2596be); width: 56%; }
-.projection-bar.phase2 { background: linear-gradient(90deg, #10b981, #22d3ee); width: 61.7%; }
-.projection-bar.target { background: linear-gradient(90deg, #10b981, #059669); width: 69.1%; }
+.btn-download-link {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.btn-download-link:hover { color: var(--accent-dark); }
 
-.projection-score {
-  width: 60px;
-  text-align: right;
+/* ─── FRAMEWORK SELECTOR ─── */
+.framework-select {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+.framework-select:focus { outline: none; border-color: var(--accent); }
+
+/* ─── TABLE ─── */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.report-table thead th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
+}
+.report-table tbody td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.report-table tbody tr:hover { background: #fafbfc; }
+.report-table .type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.report-table .type-badge.executive { background: var(--accent-light); color: var(--accent); }
+.report-table .type-badge.security { background: var(--green-bg); color: #16a34a; }
+.report-table .type-badge.compliance { background: var(--yellow-bg); color: #d97706; }
+
+.table-action-btn {
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--accent);
+  transition: all 0.15s;
+}
+.table-action-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+.table-action-btn.delete { color: var(--red); }
+.table-action-btn.delete:hover { border-color: var(--red); background: var(--red-bg); }
+
+/* ─── SCHEDULE LIST ─── */
+.schedule-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.schedule-item:last-child { border-bottom: none; }
+.schedule-name {
   font-size: 12px;
   font-weight: 700;
   color: var(--text-primary);
-  flex-shrink: 0;
+  margin-bottom: 3px;
+}
+.schedule-detail {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+.schedule-recipients {
+  font-size: 10.5px;
+  color: var(--text-muted);
 }
 
-.projection-note {
-  margin-top: 16px;
-  padding: 12px 16px;
+.btn-add-schedule {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-primary);
+  transition: all 0.15s;
+  margin-top: 12px;
+}
+.btn-add-schedule:hover { border-color: var(--accent); color: var(--accent); }
+
+.schedule-note {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* ─── REPORT PREVIEW ─── */
+.preview-container {
+  display: flex; gap: 20px; align-items: flex-start;
+}
+.preview-thumbnail {
+  width: 160px; height: 200px;
+  background: linear-gradient(145deg, #f8fafc, #e8ecf2);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--green-bg);
-  border-left: 4px solid var(--green);
-  font-size: 12px;
-  color: #166534;
-  font-weight: 500;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  padding: 14px;
+  gap: 8px;
+}
+.preview-thumbnail svg { width: 32px; height: 32px; color: var(--accent); opacity: 0.7; }
+.preview-thumbnail-label { font-size: 9px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
+
+.preview-metrics {
+  flex: 1;
+}
+.preview-metrics-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+.preview-metrics-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 14px;
+}
+.preview-metric {
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.preview-metric-label { font-size: 10px; color: var(--text-muted); font-weight: 500; margin-bottom: 2px; }
+.preview-metric-val { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.preview-metric-val.green { color: var(--green); }
+.preview-metric-val.yellow { color: var(--yellow); }
+.preview-metric-val.blue { color: var(--accent); }
+
+.preview-note {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--accent-light);
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  border-left: 3px solid var(--accent);
+}
+
+.preview-actions {
+  display: flex; gap: 10px;
 }
 
 /* ─── FOOTER ─── */
@@ -559,6 +546,7 @@ body {
 .row > :nth-child(1) .card, .row > :nth-child(1).card { animation-delay: 0.06s; }
 .row > :nth-child(2) .card, .row > :nth-child(2).card { animation-delay: 0.12s; }
 .row > :nth-child(3) .card, .row > :nth-child(3).card { animation-delay: 0.18s; }
+.row > :nth-child(4) .card, .row > :nth-child(4).card { animation-delay: 0.24s; }
 .nav-item { animation: slideIn 0.3s ease both; }
 .nav-section ~ .nav-item:nth-child(2) { animation-delay: 0.02s; }
 .nav-section ~ .nav-item:nth-child(3) { animation-delay: 0.04s; }
@@ -742,7 +730,7 @@ body {
 </div>
 
 
-<!-- SIDEBAR -->
+<!-- ═══════ SIDEBAR ═══════ -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">
@@ -762,7 +750,7 @@ body {
     <a class="nav-item" href="ransomware-shield.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Ransomware Shield</a>
     <a class="nav-item" href="security-logs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Detection History</a>
     <a class="nav-item" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Quarantine</a>
-    <a class="nav-item active" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
+    <a class="nav-item" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
     <div class="nav-section">Compliance</div>
     <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Compliance Overview</a>
     <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> CyberSecure Canada</a>
@@ -791,7 +779,7 @@ body {
     <a class="nav-item" href="https://mesh.pcpluscomputing.com" target="_blank"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Remote Support</a>
     <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Screenshot Tool</a>
     <div class="nav-section">Reports</div>
-    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> Executive Reports</a>
+    <a class="nav-item active" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> Executive Reports</a>
     <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Security Reports</a>
     <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> Compliance Reports</a>
     <div class="nav-section">Settings</div>
@@ -807,13 +795,13 @@ body {
   </div>
 </aside>
 
-<!-- HEADER -->
+<!-- ═══════ HEADER ═══════ -->
 <header class="header">
   <div class="device-info">
     <span class="device-name" id="headerDeviceName">Select Device</span>
     <span class="device-os"><span class="online-dot"></span> No device selected</span>
   </div>
-  <div class="header-sync">Last sync: May 9, 2026 02:15 PM</div>
+  <div class="header-sync">Last sync: May 8, 2026 06:01 PM</div>
 
   <div class="header-status">
     <div class="protected-badge">
@@ -854,224 +842,244 @@ body {
   </div>
 </header>
 
-<!-- MAIN CONTENT -->
+<!-- ═══════ MAIN CONTENT ═══════ -->
 <main class="main">
 
-  <!-- TOP: AI Analysis Summary -->
-  <div class="row row-1">
-    <div class="card ai-summary-card">
-      <div class="ai-summary-header">
-        <div class="ai-summary-left">
-          <div class="ai-summary-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg>
-          </div>
-          <div>
-            <div class="ai-summary-title">AI Threat Analysis Report</div>
-            <div class="ai-summary-sub">Generated: May 9, 2026 2:15 PM</div>
-          </div>
-        </div>
-        <div class="risk-badge medium">
-          <span class="badge-dot"></span>
-          Overall Risk: MEDIUM
-        </div>
-      </div>
-      <div class="ai-summary-details">
-        <span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          Based on 175-point security audit
-        </span>
-        <span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          Wazuh SIEM events analyzed
-        </span>
-        <span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Endpoint telemetry correlated
-        </span>
-      </div>
-    </div>
+  <!-- Page Title -->
+  <div class="page-title-section">
+    <h1 class="page-title">Report Center</h1>
+    <p class="page-subtitle">Generate, schedule, and download security and compliance reports</p>
   </div>
 
-  <!-- ROW 1: Three Risk Category Cards -->
+  <!-- ROW 1: Report Types -->
   <div class="row row-3">
-    <div class="card risk-cat-card high">
-      <div class="risk-cat-header">
-        <span class="risk-cat-name">Identity &amp; Access Risk</span>
-        <span class="risk-cat-level high">HIGH</span>
+
+    <!-- Executive Summary Report -->
+    <div class="card">
+      <div class="report-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
       </div>
-      <div class="risk-cat-desc">MFA disabled, 3 breached passwords detected, 1 shared account identified. Immediate action required to prevent unauthorized access.</div>
+      <div class="report-card-title">Executive Summary Report</div>
+      <div class="report-card-desc">High-level overview for business owners and management. Security score, top risks, compliance status, and recommendations in plain language.</div>
+      <div class="report-meta">
+        <div class="report-meta-row"><span class="report-meta-label">Format</span><span class="report-meta-val">PDF</span></div>
+        <div class="report-meta-row"><span class="report-meta-label">Last Generated</span><span class="report-meta-val">May 5, 2026</span></div>
+        <div class="report-meta-row"><span class="report-meta-label">Schedule</span><span class="report-meta-val">Monthly (1st of each month)</span></div>
+      </div>
+      <div class="report-actions">
+        <button class="btn-generate" onclick="this.textContent='Generating...';var b=this;setTimeout(function(){b.textContent='Generated!';setTimeout(function(){b.textContent='Generate Now'},2000)},1500)">Generate Now</button>
+        <a class="btn-download-link" href="javascript:void(0)" onclick="this.textContent='Generating...';var b=this;setTimeout(function(){b.textContent='Report Ready!';setTimeout(function(){b.textContent='Download Last Report'},3000)},2000)" style="cursor:pointer">Download Last Report</a>
+      </div>
     </div>
-    <div class="card risk-cat-card low">
-      <div class="risk-cat-header">
-        <span class="risk-cat-name">Infrastructure Risk</span>
-        <span class="risk-cat-level low">LOW</span>
+
+    <!-- Security Assessment Report -->
+    <div class="card">
+      <div class="report-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
-      <div class="risk-cat-desc">Firewall active and properly configured, disk encryption enabled, OS patches current. Infrastructure posture is strong.</div>
+      <div class="report-card-title">Security Assessment Report</div>
+      <div class="report-card-desc">Detailed technical report covering all 175 audit tests, threat detection history, vulnerability findings, and remediation steps.</div>
+      <div class="report-meta">
+        <div class="report-meta-row"><span class="report-meta-label">Format</span><span class="report-meta-val">PDF</span></div>
+        <div class="report-meta-row"><span class="report-meta-label">Last Generated</span><span class="report-meta-val">May 1, 2026</span></div>
+        <div class="report-meta-row"><span class="report-meta-label">Schedule</span><span class="report-meta-val">Weekly (Monday)</span></div>
+      </div>
+      <div class="report-actions">
+        <button class="btn-generate" onclick="this.textContent='Generating...';var b=this;setTimeout(function(){b.textContent='Generated!';setTimeout(function(){b.textContent='Generate Now'},2000)},1500)">Generate Now</button>
+        <a class="btn-download-link" href="javascript:void(0)" onclick="this.textContent='Generating...';var b=this;setTimeout(function(){b.textContent='Report Ready!';setTimeout(function(){b.textContent='Download Last Report'},3000)},2000)" style="cursor:pointer">Download Last Report</a>
+      </div>
     </div>
-    <div class="card risk-cat-card medium-risk">
-      <div class="risk-cat-header">
-        <span class="risk-cat-name">Data Protection Risk</span>
-        <span class="risk-cat-level medium">MEDIUM</span>
+
+    <!-- Compliance Report -->
+    <div class="card">
+      <div class="report-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
       </div>
-      <div class="risk-cat-desc">Backup untested for recovery, DMARC policy missing for email domain, USB device policy not enforced via Group Policy.</div>
+      <div class="report-card-title">Compliance Report</div>
+      <div class="report-card-desc">Framework-specific compliance report for CyberSecure Canada, NIST CSF 2.0, CIS Controls, PIPEDA, or Insurance. Includes evidence mapping and gap analysis.</div>
+      <select class="framework-select">
+        <option>CyberSecure Canada</option>
+        <option>NIST CSF 2.0</option>
+        <option>CIS Controls v8</option>
+        <option>PIPEDA</option>
+        <option>Insurance Readiness</option>
+        <option>All Frameworks</option>
+      </select>
+      <div class="report-meta">
+        <div class="report-meta-row"><span class="report-meta-label">Format</span><span class="report-meta-val">PDF</span></div>
+        <div class="report-meta-row"><span class="report-meta-label">Last Generated</span><span class="report-meta-val">Apr 28, 2026</span></div>
+      </div>
+      <div class="report-actions">
+        <button class="btn-generate" onclick="this.textContent='Generating...';var b=this;setTimeout(function(){b.textContent='Generated!';setTimeout(function(){b.textContent='Generate Now'},2000)},1500)">Generate Now</button>
+        <a class="btn-download-link" href="javascript:void(0)" onclick="this.textContent='Generating...';var b=this;setTimeout(function(){b.textContent='Report Ready!';setTimeout(function(){b.textContent='Download Last Report'},3000)},2000)" style="cursor:pointer">Download Last Report</a>
+      </div>
     </div>
   </div>
 
-  <!-- ROW 2: AI Recommendations + Threat Intelligence -->
+  <!-- ROW 2: History + Scheduled Reports -->
   <div class="row row-2">
 
-    <!-- AI Recommendations -->
+    <!-- Report History -->
     <div class="card">
-      <div class="card-header"><span class="card-title">AI-Generated Recommendations</span><span style="font-size:9px; font-weight:700; color:var(--accent); background:rgba(37,150,190,0.08); padding:2px 8px; border-radius:10px;">PRIORITIZED</span></div>
-
-      <div class="ai-rec-list">
-        <div class="ai-rec-item critical">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge critical">Critical</span>
-            <strong>Enable Multi-Factor Authentication</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">MFA is not enabled on any user account. This is the single highest-impact security improvement available. Enable MFA via Windows Hello, authenticator app, or hardware key to block 99.9% of account compromise attacks.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item critical">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge critical">Critical</span>
-            <strong>Test Backup Restore Process</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">Backup restore has never been tested. Without verified restores, backups may fail when needed most. Schedule a quarterly test restore to verify data integrity and measure recovery time.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item high-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge high-priority">High</span>
-            <strong>Configure DMARC Email Authentication</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">SPF/DKIM/DMARC are not fully configured for the domain. This leaves the organization vulnerable to email spoofing and phishing. Implementing DMARC with a reject policy would bring the compliance score above 85%.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item high-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge high-priority">High</span>
-            <strong>Disable RDP or Enforce NLA + MFA</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">RDP is enabled without MFA. NLA is required but weak. RDP is the #1 attack vector for ransomware. Disable RDP entirely or enforce Network Level Authentication with certificate-based MFA.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item high-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge high-priority">High</span>
-            <strong>Increase Shadow Copy Restore Points</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">Only 2 VSS restore points exist (recommended 5+). Increase Volume Shadow Copy storage allocation to maintain at least 5 restore points for faster file-level recovery.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item medium-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge medium-priority">Medium</span>
-            <strong>Enable Tamper Protection</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">Windows Defender tamper protection is disabled. Malware can modify Defender settings. Enable tamper protection to prevent unauthorized changes to security software configuration.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item medium-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge medium-priority">Medium</span>
-            <strong>Reduce Phishing Click Rate</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">Last phishing simulation showed a 15% click rate (target is below 10%). Schedule monthly micro-training sessions focusing on identifying suspicious links and attachments. Consider gamification to improve engagement.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-      </div>
+      <div class="card-header"><span class="card-title">Report History</span><a class="card-link" href="javascript:void(0)" onclick="this.textContent='Exporting...';var b=this;setTimeout(function(){b.textContent='Exported!';setTimeout(function(){b.textContent='Export All'},3000)},2000)" style="cursor:pointer">Export All</a></div>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Report Name</th>
+            <th>Type</th>
+            <th>Date Generated</th>
+            <th>Framework</th>
+            <th>Size</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Executive Summary - May 2026</td>
+            <td><span class="type-badge executive">Executive</span></td>
+            <td>May 5, 2026</td>
+            <td>All</td>
+            <td>2.4 MB</td>
+            <td><button class="table-action-btn" onclick="this.textContent='Downloading...';var b=this;setTimeout(function(){b.textContent='Downloaded!';setTimeout(function(){b.textContent='Download'},2000)},1000)">Download</button></td>
+          </tr>
+          <tr>
+            <td>Security Assessment - Week 18</td>
+            <td><span class="type-badge security">Security</span></td>
+            <td>May 1, 2026</td>
+            <td>All</td>
+            <td>5.1 MB</td>
+            <td><button class="table-action-btn" onclick="this.textContent='Downloading...';var b=this;setTimeout(function(){b.textContent='Downloaded!';setTimeout(function(){b.textContent='Download'},2000)},1000)">Download</button></td>
+          </tr>
+          <tr>
+            <td>CyberSecure Canada Compliance</td>
+            <td><span class="type-badge compliance">Compliance</span></td>
+            <td>Apr 28, 2026</td>
+            <td>CSC</td>
+            <td>3.8 MB</td>
+            <td><button class="table-action-btn" onclick="this.textContent='Downloading...';var b=this;setTimeout(function(){b.textContent='Downloaded!';setTimeout(function(){b.textContent='Download'},2000)},1000)">Download</button></td>
+          </tr>
+          <tr>
+            <td>Insurance Readiness Report</td>
+            <td><span class="type-badge compliance">Compliance</span></td>
+            <td>Apr 28, 2026</td>
+            <td>Insurance</td>
+            <td>1.9 MB</td>
+            <td><button class="table-action-btn" onclick="this.textContent='Downloading...';var b=this;setTimeout(function(){b.textContent='Downloaded!';setTimeout(function(){b.textContent='Download'},2000)},1000)">Download</button></td>
+          </tr>
+          <tr>
+            <td>Executive Summary - Apr 2026</td>
+            <td><span class="type-badge executive">Executive</span></td>
+            <td>Apr 1, 2026</td>
+            <td>All</td>
+            <td>2.2 MB</td>
+            <td><button class="table-action-btn" onclick="this.textContent='Downloading...';var b=this;setTimeout(function(){b.textContent='Downloaded!';setTimeout(function(){b.textContent='Download'},2000)},1000)">Download</button></td>
+          </tr>
+          <tr>
+            <td>NIST CSF 2.0 Assessment</td>
+            <td><span class="type-badge compliance">Compliance</span></td>
+            <td>Mar 28, 2026</td>
+            <td>NIST</td>
+            <td>4.2 MB</td>
+            <td><button class="table-action-btn" onclick="this.textContent='Downloading...';var b=this;setTimeout(function(){b.textContent='Downloaded!';setTimeout(function(){b.textContent='Download'},2000)},1000)">Download</button></td>
+          </tr>
+          <tr>
+            <td>Security Assessment - Week 13</td>
+            <td><span class="type-badge security">Security</span></td>
+            <td>Mar 24, 2026</td>
+            <td>All</td>
+            <td>4.8 MB</td>
+            <td><button class="table-action-btn" onclick="this.textContent='Downloading...';var b=this;setTimeout(function(){b.textContent='Downloaded!';setTimeout(function(){b.textContent='Download'},2000)},1000)">Download</button></td>
+          </tr>
+          <tr>
+            <td>Quarterly Compliance Review Q1</td>
+            <td><span class="type-badge compliance">Compliance</span></td>
+            <td>Mar 31, 2026</td>
+            <td>All</td>
+            <td>6.1 MB</td>
+            <td><button class="table-action-btn" onclick="this.textContent='Downloading...';var b=this;setTimeout(function(){b.textContent='Downloaded!';setTimeout(function(){b.textContent='Download'},2000)},1000)">Download</button></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Threat Intelligence Feed -->
+    <!-- Scheduled Reports -->
     <div class="card">
-      <div class="card-header"><span class="card-title">Threat Intelligence Feed</span><span style="font-size:9px; font-weight:700; color:var(--red); background:var(--red-bg); padding:2px 8px; border-radius:10px;">LIVE</span></div>
-      <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:14px; font-weight:500;">Threats Relevant to Your Environment</p>
-
-      <div class="threat-intel-list">
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">Ransomware targeting Canadian businesses increased 40% in Q1 2026. Small businesses without MFA are primary targets.</div>
-            <div class="threat-intel-date">May 8, 2026</div>
-          </div>
-        </div>
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot" style="background:var(--yellow);"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">New PowerShell-based attack bypasses AMSI - ensure Script Block Logging is enabled on all endpoints.</div>
-            <div class="threat-intel-date">May 7, 2026</div>
-          </div>
-        </div>
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">Critical Windows vulnerability CVE-2026-21551 - patch available in latest update. Remote code execution risk.</div>
-            <div class="threat-intel-date">May 6, 2026</div>
-          </div>
-        </div>
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot" style="background:var(--yellow);"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">Phishing campaigns targeting Office 365 users with fake MFA prompts. Verify all MFA requests through official channels.</div>
-            <div class="threat-intel-date">May 5, 2026</div>
-          </div>
-        </div>
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">New variant of LockBit ransomware targets unpatched RDP services. Ensure RDP is disabled or protected behind VPN.</div>
-            <div class="threat-intel-date">May 3, 2026</div>
-          </div>
-        </div>
+      <div class="card-header"><span class="card-title">Scheduled Reports</span></div>
+      <div class="schedule-item">
+        <div class="schedule-name">Executive Summary</div>
+        <div class="schedule-detail">Monthly, 1st of month, 9:00 AM</div>
+        <div class="schedule-recipients">Recipients: paul@modihome.ca</div>
+      </div>
+      <div class="schedule-item">
+        <div class="schedule-name">Security Assessment</div>
+        <div class="schedule-detail">Weekly, Monday, 8:00 AM</div>
+        <div class="schedule-recipients">Recipients: paul@modihome.ca</div>
+      </div>
+      <div class="schedule-item">
+        <div class="schedule-name">Compliance Report</div>
+        <div class="schedule-detail">Quarterly, 1st of quarter</div>
+        <div class="schedule-recipients">Recipients: paul@modihome.ca, lawyer@example.com</div>
+      </div>
+      <button class="btn-add-schedule" onclick="alert('Schedule saved successfully')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Schedule
+      </button>
+      <div class="schedule-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8d9bb0" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Email delivery to registered contacts
       </div>
     </div>
   </div>
 
-  <!-- ROW 3: Security Score Projection -->
+  <!-- ROW 3: Report Preview -->
   <div class="row row-1">
     <div class="card">
-      <div class="card-header"><span class="card-title">Security Score Projection</span><span style="font-size:9px; font-weight:700; color:var(--green); background:var(--green-bg); padding:2px 8px; border-radius:10px;">IMPROVEMENT PATH</span></div>
-
-      <div class="projection-chart">
-        <div class="projection-bar-group">
-          <div class="projection-label">Current Score</div>
-          <div class="projection-bar-wrap">
-            <div class="projection-bar current">78 / 175</div>
-          </div>
-          <div class="projection-score">78 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade B</span></div>
+      <div class="card-header"><span class="card-title">Report Preview - Executive Summary (May 2026)</span></div>
+      <div class="preview-container">
+        <div class="preview-thumbnail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h2"/></svg>
+          <div class="preview-thumbnail-label">Executive Summary<br>May 2026</div>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
         </div>
-        <div class="projection-bar-group">
-          <div class="projection-label">After Phase 1 <span style="font-size:9px;color:var(--text-muted);">(+MFA, +DMARC)</span></div>
-          <div class="projection-bar-wrap">
-            <div class="projection-bar phase1">98 / 175</div>
+        <div class="preview-metrics">
+          <div class="preview-metrics-title">Key Metrics from Last Report</div>
+          <div class="preview-metrics-grid">
+            <div class="preview-metric">
+              <div class="preview-metric-label">Security Score</div>
+              <div class="preview-metric-val blue">78/B</div>
+            </div>
+            <div class="preview-metric">
+              <div class="preview-metric-label">Compliance</div>
+              <div class="preview-metric-val yellow">73%</div>
+            </div>
+            <div class="preview-metric">
+              <div class="preview-metric-label">Threats Blocked</div>
+              <div class="preview-metric-val green">0</div>
+            </div>
+            <div class="preview-metric">
+              <div class="preview-metric-label">Backup Status</div>
+              <div class="preview-metric-val green">Healthy</div>
+            </div>
           </div>
-          <div class="projection-score">98 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade B+</span></div>
-        </div>
-        <div class="projection-bar-group">
-          <div class="projection-label">After Phase 2 <span style="font-size:9px;color:var(--text-muted);">(+Backup, +Passwords)</span></div>
-          <div class="projection-bar-wrap">
-            <div class="projection-bar phase2">108 / 175</div>
+          <div class="preview-note">This report is ready to share with insurance providers, auditors, or legal counsel.</div>
+          <div class="preview-actions">
+            <button class="btn-generate" onclick="this.textContent='Sending...';var b=this;setTimeout(function(){b.textContent='Sent!';setTimeout(function(){b.textContent='Email Report'},2000)},1500)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download PDF
+            </button>
+            <button class="btn-generate" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 2px 8px rgba(16,185,129,0.25);" onclick="this.textContent='Sending...';var b=this;setTimeout(function(){b.textContent='Sent!';setTimeout(function(){b.textContent='Email Report'},2000)},1500)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Email Report
+            </button>
           </div>
-          <div class="projection-score">108 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade A-</span></div>
-        </div>
-        <div class="projection-bar-group">
-          <div class="projection-label">All Recommendations</div>
-          <div class="projection-bar-wrap">
-            <div class="projection-bar target">121 / 175</div>
-          </div>
-          <div class="projection-score">121 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade A-</span></div>
         </div>
       </div>
-
-      <div class="projection-note">Following all recommendations would raise your score from 78 (Grade B) to 121 (Grade A-), representing a 55% improvement in your security posture.</div>
     </div>
   </div>
 
 </main>
 
-<!-- FOOTER -->
+<!-- ═══════ FOOTER ═══════ -->
 <footer class="footer">
   <div class="footer-item">
     <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>

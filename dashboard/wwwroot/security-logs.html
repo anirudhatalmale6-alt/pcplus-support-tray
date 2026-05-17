@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ransomware Shield - PC Plus Computing</title>
+<title>Security Logs - PC Plus Computing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -99,12 +99,6 @@ body {
 /* ─── MAIN ─── */
 .main { margin-left: var(--sidebar-w); margin-top: var(--header-h); padding: 20px 24px; padding-bottom: calc(var(--footer-h) + 20px); min-height: calc(100vh - var(--header-h)); }
 
-/* ─── GRID ─── */
-.row { display: grid; gap: 16px; margin-bottom: 16px; }
-.row-4 { grid-template-columns: repeat(4, 1fr); }
-.row-2 { grid-template-columns: 1fr 1fr; }
-.row-3 { grid-template-columns: 1fr 1fr 1fr; }
-
 /* ─── CARDS ─── */
 .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; box-shadow: var(--shadow); transition: box-shadow 0.2s ease, transform 0.2s ease; }
 .card:hover { box-shadow: var(--shadow-md); }
@@ -126,246 +120,81 @@ body {
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
 .card { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.row > :nth-child(1) .card, .row > :nth-child(1).card { animation-delay: 0.06s; }
-.row > :nth-child(2) .card, .row > :nth-child(2).card { animation-delay: 0.12s; }
-.row > :nth-child(3) .card, .row > :nth-child(3).card { animation-delay: 0.18s; }
-.row > :nth-child(4) .card, .row > :nth-child(4).card { animation-delay: 0.24s; }
 .nav-item { animation: slideIn 0.3s ease both; }
 
 .sidebar::-webkit-scrollbar { width: 4px; }
 .sidebar::-webkit-scrollbar-track { background: transparent; }
 .sidebar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
 
-/* ─── RANSOMWARE SHIELD SPECIFIC ─── */
-.status-banner {
+/* ─── SECURITY LOGS SPECIFIC ─── */
+.page-title-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02));
-  border: 1px solid rgba(16,185,129,0.2);
-  border-radius: var(--radius);
   margin-bottom: 16px;
 }
 
-.status-banner-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.status-shield {
-  width: 48px; height: 48px;
-  background: linear-gradient(135deg, var(--green), #059669);
-  border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
-}
-
-.status-title {
+.page-title {
   font-size: 18px;
   font-weight: 800;
-  color: var(--green);
-  letter-spacing: 0.5px;
-}
-
-.status-sub {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-.status-banner-right {
-  display: flex;
-  gap: 32px;
-  align-items: center;
-}
-
-.status-stat {
-  text-align: center;
-}
-
-.status-stat-val {
-  font-size: 14px;
-  font-weight: 700;
   color: var(--text-primary);
 }
 
-.status-stat-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-.stat-card-icon {
-  width: 40px; height: 40px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 12px;
-}
-
-.stat-card-icon.green { background: var(--green-bg); }
-.stat-card-icon.blue { background: var(--accent-light); }
-
-.stat-card-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-
-.stat-card-sub {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.stat-card-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--green);
-  background: var(--green-bg);
-  padding: 4px 10px;
-  border-radius: 6px;
-}
-
-/* Protected folders list */
-.folder-list { display: flex; flex-direction: column; gap: 8px; }
-
-.folder-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid var(--border);
-}
-
-.folder-item-left {
+.filter-bar {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-.folder-icon {
-  width: 28px; height: 28px;
-  background: var(--accent-light);
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-}
-
-.folder-icon svg { width: 14px; height: 14px; color: var(--accent); }
-
-.folder-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.folder-path { font-size: 10px; color: var(--text-muted); }
-
-.folder-item-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.folder-size { font-size: 11px; color: var(--text-muted); font-weight: 500; }
-
-.protected-badge-sm {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: var(--green-bg);
-  color: #16a34a;
-}
-
-.add-folder-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  border: 2px dashed var(--border);
-  border-radius: 8px;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-  background: transparent;
-  width: 100%;
-  margin-top: 8px;
-}
-
-.add-folder-btn:hover { border-color: var(--accent); background: var(--accent-light); }
-
-.folder-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  margin-top: 10px;
-  background: var(--accent-light);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-/* Detection rules */
-.rule-list { display: flex; flex-direction: column; gap: 8px; }
-
-.rule-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: #f8fafc;
+.filter-input, .filter-select {
+  padding: 8px 12px;
+  border-radius: 7px;
   border: 1px solid var(--border);
-}
-
-.rule-label {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: inherit;
+  background: var(--card);
   color: var(--text-primary);
+  transition: border-color 0.15s;
 }
 
-.toggle {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  border-radius: 10px;
-  background: var(--green);
+.filter-input:focus, .filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.filter-input { width: 200px; }
+.filter-select { min-width: 130px; cursor: pointer; }
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-primary);
+  transition: all 0.15s;
+  margin-left: auto;
 }
 
-.toggle::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 18px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  transition: left 0.2s;
-}
+.export-btn:hover { border-color: var(--accent); color: var(--accent); }
+.export-btn svg { width: 14px; height: 14px; }
 
-.toggle.off { background: #cbd5e1; }
-.toggle.off::after { left: 2px; }
-
-/* Threat history table */
-.threat-table {
+/* Log table */
+.log-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 11.5px;
 }
 
-.threat-table th {
+.log-table th {
   background: #f8fafc;
   padding: 10px 12px;
   text-align: left;
@@ -375,29 +204,109 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
-.threat-table td {
+.log-table td {
   padding: 10px 12px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
 }
 
-.threat-table tr:last-child td { border-bottom: none; }
-.threat-table tr:hover td { background: #fafbfc; }
+.log-table tr:last-child td { border-bottom: none; }
+.log-table tr:hover td { background: #fafbfc; }
 
-.action-badge {
+.severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 9px;
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.action-badge.blocked { background: var(--green-bg); color: #16a34a; }
-.action-badge.resolved { background: var(--accent-light); color: var(--accent); }
+.severity-badge.critical { background: var(--red-bg); color: var(--red); }
+.severity-badge.warning { background: var(--yellow-bg); color: #d97706; }
+.severity-badge.info { background: var(--accent-light); color: var(--accent); }
 
-/* Rollback card */
-.rollback-item {
+.severity-badge svg { width: 10px; height: 10px; }
+
+.log-event { font-weight: 600; color: var(--text-primary); }
+.log-source { font-size: 10px; color: var(--text-muted); }
+.log-details { font-size: 10px; color: var(--text-muted); max-width: 200px; }
+.log-timestamp { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+
+.category-tag {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: var(--text-secondary);
+}
+
+.test-id {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(37,150,190,0.08);
+  color: var(--accent);
+  font-family: 'Courier New', monospace;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.pagination-info {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.page-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-primary);
+}
+
+.page-btn:hover { border-color: var(--accent); color: var(--accent); }
+.page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.page-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Summary panel */
+.content-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+}
+
+.summary-card {
+  position: sticky;
+  top: calc(var(--header-h) + 20px);
+}
+
+.summary-stat {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -405,115 +314,48 @@ body {
   border-bottom: 1px solid #f1f5f9;
 }
 
-.rollback-item:last-child { border-bottom: none; }
+.summary-stat:last-child { border-bottom: none; }
 
-.rollback-label { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.rollback-value { font-size: 12px; font-weight: 700; color: var(--green); }
-.rollback-value.blue { color: var(--accent); }
+.summary-stat-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.summary-stat-value { font-size: 14px; font-weight: 800; color: var(--text-primary); }
 
-.rollback-btn {
+.summary-stat-value.critical { color: var(--red); }
+.summary-stat-value.warning { color: var(--yellow); }
+.summary-stat-value.info { color: var(--accent); }
+
+.category-bar {
+  margin-top: 16px;
+}
+
+.cat-bar-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  border: none;
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  color: #fff;
-  margin-top: 14px;
-  width: 100%;
-  box-shadow: 0 2px 8px rgba(37,150,190,0.25);
-  transition: all 0.2s;
+  gap: 10px;
+  padding: 6px 0;
 }
 
-.rollback-btn:hover { box-shadow: 0 4px 12px rgba(37,150,190,0.35); transform: translateY(-1px); }
-
-.restore-points {
-  margin-top: 14px;
-  padding: 12px 14px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-}
-
-.restore-points-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-
-.restore-point {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  font-size: 11px;
-  color: var(--text-primary);
-}
-
-.restore-point-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-}
+.cat-bar-label { font-size: 11px; color: var(--text-secondary); width: 90px; flex-shrink: 0; }
+.cat-bar-track { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+.cat-bar-fill { height: 100%; border-radius: 3px; }
+.cat-bar-count { font-size: 11px; font-weight: 700; color: var(--text-primary); width: 30px; text-align: right; }
 
 /* ─── RESPONSIVE ─── */
-@media (max-width: 1200px) { .row-4 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 1200px) {
+  .content-layout { grid-template-columns: 1fr; }
+  .summary-card { position: static; }
+}
 @media (max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
   .main, .header, .footer { margin-left: 0; left: 0; }
-  .row-4, .row-3, .row-2 { grid-template-columns: 1fr; }
   .header-status { display: none; }
-  .status-banner { flex-direction: column; gap: 12px; align-items: flex-start; }
-  .status-banner-right { gap: 16px; }
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-input { width: 100%; }
 }
 
 
 
 
 
-
-
-/* Toggle switches */
-.toggle-switch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-.toggle-slider {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: #cbd5e1;
-  border-radius: 20px;
-  transition: 0.3s;
-}
-.toggle-slider:before {
-  content: "";
-  position: absolute;
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  bottom: 2px;
-  background: white;
-  border-radius: 50%;
-  transition: 0.3s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.toggle-switch input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #10b981, #059669);
-}
-.toggle-switch input:checked + .toggle-slider:before {
-  transform: translateX(16px);
-}
-.layer-item { display: flex; align-items: center; gap: 10px; }
 
 /* Mobile hamburger menu */
 .mobile-hamburger {
@@ -682,8 +524,8 @@ body {
     <div class="nav-section">Security</div>
     <a class="nav-item" href="scan-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Scan &amp; Threat Protection</a>
     <a class="nav-item" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Real-Time Protection</a>
-    <a class="nav-item active" href="ransomware-shield.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Ransomware Shield</a>
-    <a class="nav-item" href="security-logs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Detection History</a>
+    <a class="nav-item" href="ransomware-shield.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Ransomware Shield</a>
+    <a class="nav-item active" href="security-logs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Detection History</a>
     <a class="nav-item" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Quarantine</a>
     <a class="nav-item" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
     <div class="nav-section">Compliance</div>
@@ -756,163 +598,270 @@ body {
 <!-- MAIN CONTENT -->
 <main class="main">
 
-  <!-- Top Status Banner -->
-  <div class="status-banner">
-    <div class="status-banner-left">
-      <div class="status-shield">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-      </div>
-      <div>
-        <div class="status-title">Ransomware Shield: Loading...</div>
-        <div class="status-sub">Connecting to device...</div>
-      </div>
-    </div>
-    <div class="status-banner-right">
-      <div class="status-stat">
-        <div class="status-stat-val">--</div>
-        <div class="status-stat-label">Last Threat Scan</div>
-      </div>
-      <div class="status-stat">
-        <div class="status-stat-val">--</div>
-        <div class="status-stat-label">Threats Detected (Last 30 Days)</div>
-      </div>
-    </div>
+  <!-- Page Title -->
+  <div class="page-title-bar">
+    <div class="page-title">Security &amp; Audit Logs</div>
   </div>
 
-  <!-- Row 1: 4 Status Cards -->
-  <div class="row row-4">
-    <!-- Behavior Monitoring -->
-    <div class="card">
-      <div class="stat-card-icon green">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      </div>
-      <div class="stat-card-title">Behavior Monitoring</div>
-      <div class="stat-card-sub">Loading protection status...</div>
-      <div class="stat-card-status">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-        Active
-      </div>
-    </div>
-
-    <!-- Protected Folders -->
-    <div class="card">
-      <div class="stat-card-icon blue">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-      </div>
-      <div class="stat-card-title">Protected Folders</div>
-      <div class="stat-card-sub">Loading folder list...</div>
-      <div class="stat-card-status">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-        --
-      </div>
-    </div>
-
-    <!-- Shadow Copy Protection -->
-    <div class="card">
-      <div class="stat-card-icon green">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/></svg>
-      </div>
-      <div class="stat-card-title">Shadow Copy Protection</div>
-      <div class="stat-card-sub">VSS snapshots protected from deletion</div>
-      <div class="stat-card-status">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-        Enabled
-      </div>
-    </div>
-
-    <!-- Honeypot Files -->
-    <div class="card">
-      <div class="stat-card-icon blue">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
-      </div>
-      <div class="stat-card-title">Honeypot Files</div>
-      <div class="stat-card-sub">Loading honeypot status...</div>
-      <div class="stat-card-status">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-        Active
-      </div>
-    </div>
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <input type="date" class="filter-input" value="2026-05-02" style="width:140px;">
+    <span style="font-size:11px; color:var(--text-muted);">to</span>
+    <input type="date" class="filter-input" value="2026-05-09" style="width:140px;">
+    <select class="filter-select">
+      <option>All Severities</option>
+      <option>Critical</option>
+      <option>Warning</option>
+      <option>Info</option>
+    </select>
+    <select class="filter-select">
+      <option>All Categories</option>
+      <option>Authentication</option>
+      <option>Firewall</option>
+      <option>Malware</option>
+      <option>Policy</option>
+      <option>Audit</option>
+      <option>System</option>
+      <option>Backup</option>
+    </select>
+    <input type="text" class="filter-input" placeholder="Search events..." style="width:180px;">
+    <button class="export-btn" onclick="alert('Log export will be available in the next update')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export Logs
+    </button>
   </div>
 
-  <!-- Row 2: Protected Folders + Detection Rules -->
-  <div class="row row-2">
-    <!-- Protected Folders Detail -->
-    <div class="card">
-      <div class="card-header"><span class="card-title">Protected Folders</span><span class="card-link">Manage</span></div>
-      <div class="folder-list">
-        <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">Loading protected folders...</div>
+  <!-- Content Layout: Table + Summary -->
+  <div class="content-layout">
+    <!-- Log Table -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+        <span class="card-title">Event Log</span>
       </div>
-      <button class="add-folder-btn" onclick="alert('Contact your administrator to add protected folders')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Folder
-      </button>
-      <div class="folder-total">
-        <span>Total Protected</span>
-        <span>--</span>
+      <div style="overflow-x: auto;">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Severity</th>
+              <th>Event</th>
+              <th>Source</th>
+              <th>Category</th>
+              <th>Details</th>
+              <th>Test ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="log-timestamp">May 9, 2:15 PM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">Security audit completed - 175 tests run</td>
+              <td class="log-source">PCPlus Agent</td>
+              <td><span class="category-tag">Audit</span></td>
+              <td class="log-details">142 passed, 26 warnings, 7 failed</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 9, 1:45 PM</td>
+              <td><span class="severity-badge warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> WARNING</span></td>
+              <td class="log-event">Suspicious PowerShell command detected</td>
+              <td class="log-source">Wazuh SIEM</td>
+              <td><span class="category-tag">Malware</span></td>
+              <td class="log-details">Encoded command blocked: -EncodedCommand...</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 9, 12:30 PM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">Windows Update KB5034441 installed</td>
+              <td class="log-source">Windows Update</td>
+              <td><span class="category-tag">System</span></td>
+              <td class="log-details"></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 9, 11:00 AM</td>
+              <td><span class="severity-badge warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> WARNING</span></td>
+              <td class="log-event">Failed login attempt (3 of 5)</td>
+              <td class="log-source">Windows Security</td>
+              <td><span class="category-tag">Authentication</span></td>
+              <td class="log-details">Account: Administrator, Source: 192.168.1.45</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 9, 10:15 AM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">Backup completed successfully</td>
+              <td class="log-source">UrBackup Agent</td>
+              <td><span class="category-tag">Backup</span></td>
+              <td class="log-details">Incremental, 245 MB</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 9, 9:00 AM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">Real-time protection definitions updated</td>
+              <td class="log-source">Windows Defender</td>
+              <td><span class="category-tag">Malware</span></td>
+              <td class="log-details">Version 1.411.234.0</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 8, 6:01 PM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">Full security scan completed</td>
+              <td class="log-source">PCPlus Agent</td>
+              <td><span class="category-tag">Audit</span></td>
+              <td class="log-details">No threats found</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 8, 5:30 PM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">Cloud backup completed</td>
+              <td class="log-source">UrBackup Agent</td>
+              <td><span class="category-tag">Backup</span></td>
+              <td class="log-details">1.2 GB uploaded</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 8, 5:12 PM</td>
+              <td><span class="severity-badge warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> WARNING</span></td>
+              <td class="log-event">PowerShell activity blocked</td>
+              <td class="log-source">Wazuh SIEM</td>
+              <td><span class="category-tag">Malware</span></td>
+              <td class="log-details">Behavior blocked, Medium Risk</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 8, 4:45 PM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">5 Windows updates installed</td>
+              <td class="log-source">Windows Update</td>
+              <td><span class="category-tag">System</span></td>
+              <td class="log-details"></td>
+              <td></td>
+            </tr>
+            <tr style="background: rgba(239,68,68,0.02);">
+              <td class="log-timestamp">May 8, 3:30 PM</td>
+              <td><span class="severity-badge critical"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> CRITICAL</span></td>
+              <td class="log-event">Tamper Protection disabled</td>
+              <td class="log-source">Windows Defender</td>
+              <td><span class="category-tag">Policy</span></td>
+              <td class="log-details">Security test - auto re-enabled</td>
+              <td><span class="test-id">SS-006</span></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 8, 2:00 PM</td>
+              <td><span class="severity-badge warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> WARNING</span></td>
+              <td class="log-event">USB storage device connected</td>
+              <td class="log-source">PCPlus Agent</td>
+              <td><span class="category-tag">Policy</span></td>
+              <td class="log-details">Device: SanDisk Cruzer, Policy: Monitor</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 8, 1:15 PM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">User Paul logged in</td>
+              <td class="log-source">Windows Security</td>
+              <td><span class="category-tag">Authentication</span></td>
+              <td class="log-details">Type: Interactive</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 8, 12:00 PM</td>
+              <td><span class="severity-badge warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> WARNING</span></td>
+              <td class="log-event">DMARC record not found</td>
+              <td class="log-source">PCPlus Agent</td>
+              <td><span class="category-tag">Audit</span></td>
+              <td class="log-details">Domain: modihome.ca</td>
+              <td><span class="test-id">EP-003</span></td>
+            </tr>
+            <tr>
+              <td class="log-timestamp">May 8, 11:30 AM</td>
+              <td><span class="severity-badge info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> INFO</span></td>
+              <td class="log-event">System optimization completed</td>
+              <td class="log-source">PCPlus Agent</td>
+              <td><span class="category-tag">System</span></td>
+              <td class="log-details">Freed 1.2 GB</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" style="padding: 0 20px 16px;">
+        <div class="pagination-info">Showing 1-15 of 234 events</div>
+        <div class="pagination-buttons">
+          <button class="page-btn disabled">&laquo; Prev</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">...</button>
+          <button class="page-btn">16</button>
+          <button class="page-btn">Next &raquo;</button>
+        </div>
       </div>
     </div>
 
-    <!-- Ransomware Detection Rules -->
-    <div class="card">
-      <div class="card-header"><span class="card-title">Ransomware Detection Rules</span><span class="card-link">Configure</span></div>
-      <div class="rule-list">
-        <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">Loading detection rules...</div>
-      </div>
-      <div class="rule-status-notice" style="margin-top:14px; padding:10px 14px; background:var(--green-bg); border-radius:8px; font-size:11px; color:#16a34a; font-weight:600; display:none;"></div>
-    </div>
-  </div>
-
-  <!-- Row 3: Threat History + Rollback & Recovery -->
-  <div class="row row-2">
-    <!-- Ransomware Threat History -->
-    <div class="card">
-      <div class="card-header"><span class="card-title">Ransomware Threat History</span><span class="card-link">Export</span></div>
-      <table class="threat-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Threat Name</th>
-            <th>Type</th>
-            <th>Action Taken</th>
-            <th>Files</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted); font-size:12px;">Loading threat history...</td></tr>
-        </tbody>
-      </table>
-      
-    </div>
-
-    <!-- Rollback & Recovery -->
-    <div class="card">
-      <div class="card-header"><span class="card-title">Rollback &amp; Recovery</span></div>
-      <div class="rollback-item">
-        <span class="rollback-label">File Version History</span>
-        <span class="rollback-value">Loading...</span>
-      </div>
-      <div class="rollback-item">
-        <span class="rollback-label">Automatic Rollback</span>
-        <span class="rollback-value">Loading...</span>
-      </div>
-      <div class="rollback-item">
-        <span class="rollback-label">Last Rollback Test</span>
-        <span class="rollback-value blue">--</span>
-      </div>
-      <div class="rollback-item">
-        <span class="rollback-label">Recovery Point Objective</span>
-        <span class="rollback-value">--</span>
+    <!-- Summary Panel -->
+    <div>
+      <div class="card summary-card" style="margin-bottom: 16px;">
+        <div class="card-header"><span class="card-title">Log Summary (Last 7 Days)</span></div>
+        <div class="summary-stat">
+          <span class="summary-stat-label">Total Events</span>
+          <span class="summary-stat-value">234</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-stat-label">Critical</span>
+          <span class="summary-stat-value critical">2</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-stat-label">Warning</span>
+          <span class="summary-stat-value warning">18</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-stat-label">Info</span>
+          <span class="summary-stat-value info">214</span>
+        </div>
       </div>
 
-      <button class="rollback-btn" onclick="if(confirm('Run a test rollback? This verifies backup integrity.'))sendDeviceCommand('test-rollback', this)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-        Test Rollback Now
-      </button>
-
-      <div class="restore-points">
-        <div class="restore-points-title">Shadow Copy Restore Points</div>
-        <div style="padding:4px 0; color:var(--text-muted); font-size:11px;">Data loaded from device snapshots</div>
+      <div class="card" style="animation-delay: 0.12s;">
+        <div class="card-header"><span class="card-title">Event Categories</span></div>
+        <div class="category-bar">
+          <div class="cat-bar-item">
+            <span class="cat-bar-label">System</span>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:35%; background:var(--accent);"></div></div>
+            <span class="cat-bar-count">82</span>
+          </div>
+          <div class="cat-bar-item">
+            <span class="cat-bar-label">Audit</span>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:25%; background:var(--green);"></div></div>
+            <span class="cat-bar-count">58</span>
+          </div>
+          <div class="cat-bar-item">
+            <span class="cat-bar-label">Backup</span>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:18%; background:#8b5cf6;"></div></div>
+            <span class="cat-bar-count">42</span>
+          </div>
+          <div class="cat-bar-item">
+            <span class="cat-bar-label">Malware</span>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:12%; background:var(--yellow);"></div></div>
+            <span class="cat-bar-count">28</span>
+          </div>
+          <div class="cat-bar-item">
+            <span class="cat-bar-label">Authentication</span>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:7%; background:var(--red);"></div></div>
+            <span class="cat-bar-count">16</span>
+          </div>
+          <div class="cat-bar-item">
+            <span class="cat-bar-label">Policy</span>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:3%; background:#64748b;"></div></div>
+            <span class="cat-bar-count">8</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -1,0 +1,2781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scan & Threat Protection - PC Plus Computing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sidebar: #0a1628;
+  --sidebar-hover: #0f1f38;
+  --sidebar-active: #2596be;
+  --content-bg: #f0f3f8;
+  --card: #ffffff;
+  --text-primary: #1a2332;
+  --text-secondary: #5a6b7f;
+  --text-muted: #8d9bb0;
+  --accent: #2596be;
+  --accent-dark: #1d7a9c;
+  --accent-light: #e6f3fa;
+  --green: #10b981;
+  --green-bg: #d1fae5;
+  --yellow: #f59e0b;
+  --yellow-bg: #fef3c7;
+  --red: #ef4444;
+  --red-bg: #fee2e2;
+  --blue: #3b82f6;
+  --border: #e5e9f0;
+  --shadow: 0 1px 3px rgba(10,22,40,0.06), 0 1px 2px rgba(10,22,40,0.04);
+  --shadow-md: 0 4px 16px rgba(10,22,40,0.08), 0 2px 6px rgba(10,22,40,0.04);
+  --shadow-lg: 0 8px 30px rgba(10,22,40,0.12), 0 4px 12px rgba(10,22,40,0.06);
+  --radius: 12px;
+  --sidebar-w: 232px;
+  --header-h: 64px;
+  --footer-h: 46px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: var(--content-bg);
+  background-image: radial-gradient(circle at 20% 50%, rgba(37,150,190,0.03) 0%, transparent 50%),
+                     radial-gradient(circle at 80% 20%, rgba(16,185,129,0.02) 0%, transparent 50%);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: linear-gradient(180deg, #0c1a2e 0%, #081422 100%);
+  color: #fff;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f transparent;
+}
+
+.sidebar-logo {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(37,150,190,0.05);
+}
+
+.logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #2596be 0%, #1d7a9c 100%);
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37,150,190,0.3);
+}
+
+.logo-text h2 { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.25; }
+.logo-text span { font-size: 9px; color: #5a7a94; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+
+.sidebar-nav { flex: 1; padding: 8px 0; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 18px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all 0.15s;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover { background: rgba(37,150,190,0.08); color: #c8d6e5; }
+
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(37,150,190,0.25) 0%, rgba(37,150,190,0.08) 100%);
+  color: #fff;
+  border-left-color: var(--accent);
+  font-weight: 600;
+  border-radius: 0 6px 6px 0;
+  margin-right: 8px;
+}
+
+.nav-section {
+  padding: 14px 18px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.nav-icon { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 1; }
+
+.sidebar-footer {
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: #64748b;
+}
+
+.sidebar-footer .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+/* ─── HEADER ─── */
+.header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--header-h);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 20px;
+  z-index: 90;
+}
+
+.device-info { display: flex; flex-direction: column; }
+.device-name { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+.device-os { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.device-os .online-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+.header-sync { font-size: 11px; color: var(--text-muted); }
+
+.header-status {
+  display: flex; align-items: center; gap: 10px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.protected-badge { display: flex; flex-direction: column; align-items: center; }
+.protected-text { font-size: 22px; font-weight: 800; color: var(--green); letter-spacing: 2px; text-shadow: 0 0 20px rgba(16,185,129,0.15); }
+.risk-text { font-size: 11px; color: var(--text-secondary); }
+.risk-text b { color: var(--yellow); font-weight: 700; }
+
+.tier-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.tier-badge.business { background: linear-gradient(135deg, rgba(37,150,190,0.12), rgba(37,150,190,0.06)); color: var(--accent); border: 1px solid rgba(37,150,190,0.2); }
+.tier-badge .tier-dot { width: 6px; height: 6px; border-radius: 50%; }
+.tier-badge.business .tier-dot { background: var(--accent); }
+
+.client-section { display: flex; align-items: center; gap: 12px; padding-left: 16px; border-left: 1px solid var(--border); }
+.client-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.client-company { font-size: 10px; color: var(--text-muted); }
+
+.header-actions { display: flex; gap: 8px; }
+
+.hdr-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-primary);
+  transition: all 0.15s;
+}
+
+.hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+.hdr-btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; border-color: transparent; box-shadow: 0 2px 8px rgba(37,150,190,0.25); }
+.hdr-btn.primary:hover { background: linear-gradient(135deg, var(--accent-dark), #16687f); box-shadow: 0 2px 12px rgba(37,150,190,0.35); }
+.hdr-btn svg { width: 14px; height: 14px; }
+
+.header-user {
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+.user-avatar {
+  width: 34px; height: 34px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+}
+
+.user-info { font-size: 11px; }
+.user-info .name { font-weight: 700; color: var(--text-primary); }
+.user-info .role { color: var(--text-muted); font-size: 10px; }
+
+/* ─── MAIN ─── */
+.main {
+  margin-left: var(--sidebar-w);
+  margin-top: var(--header-h);
+  padding: 20px 24px;
+  padding-bottom: calc(var(--footer-h) + 20px);
+  min-height: calc(100vh - var(--header-h));
+}
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover { box-shadow: var(--shadow-md); }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-title { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.badge.high { background: var(--red-bg); color: var(--red); }
+.badge.medium { background: var(--yellow-bg); color: var(--yellow); }
+.badge.low { background: var(--green-bg); color: #16a34a; }
+
+.fix-btn {
+  padding: 4px 12px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  transition: all 0.2s;
+  box-shadow: 0 1px 4px rgba(37,150,190,0.2);
+}
+
+.fix-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(37,150,190,0.3); }
+
+/* ─── FOOTER ─── */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--footer-h);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 24px;
+  z-index: 90;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
+}
+
+.footer-item { display: flex; align-items: center; gap: 8px; }
+.footer-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.footer-icon svg { width: 18px; height: 18px; }
+.footer-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+.footer-val { font-size: 11px; font-weight: 700; }
+.footer-val.green { color: var(--green); }
+.footer-val.blue { color: var(--accent); }
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+.card { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.nav-item { animation: slideIn 0.3s ease both; }
+
+/* ─── SCROLLBAR ─── */
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
+
+/* ─── SCAN RESULTS PAGE ─── */
+.summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 24px;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.summary-num {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.summary-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.summary-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--border);
+}
+
+.summary-last-scan {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.summary-last-scan b {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+
+.filter-bar select,
+.filter-bar input {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.filter-bar select:focus,
+.filter-bar input:focus {
+  border-color: var(--accent);
+}
+
+.filter-bar input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.filter-bar select {
+  min-width: 140px;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Category sections */
+.category-section {
+  margin-bottom: 12px;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #f8fafc, #f1f4f9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.category-header:hover {
+  background: linear-gradient(135deg, #f1f4f9, #e8ecf2);
+}
+
+.category-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  color: var(--text-muted);
+}
+
+.category-header.collapsed .category-toggle {
+  transform: rotate(-90deg);
+}
+
+.category-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.category-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.category-summary {
+  display: flex;
+  gap: 8px;
+}
+
+.cat-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.cat-badge.pass { background: var(--green-bg); color: #16a34a; }
+.cat-badge.warn { background: var(--yellow-bg); color: #d97706; }
+.cat-badge.fail { background: var(--red-bg); color: var(--red); }
+
+.category-body {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+}
+
+.category-header.collapsed + .category-body {
+  display: none;
+}
+
+/* Test results table */
+.test-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.test-table th {
+  background: #f8fafc;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.test-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.test-table tr:last-child td {
+  border-bottom: none;
+}
+
+.test-table tr:hover td {
+  background: #fafbfc;
+}
+
+.test-table tr.fail-row td {
+  background: rgba(239,68,68,0.02);
+}
+
+.test-table tr.warn-row td {
+  background: rgba(245,158,11,0.02);
+}
+
+.status-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-icon.pass { background: var(--green-bg); }
+.status-icon.warn { background: var(--yellow-bg); }
+.status-icon.fail { background: var(--red-bg); }
+
+.status-icon svg { width: 12px; height: 12px; }
+
+.test-id {
+  font-family: 'Plus Jakarta Sans', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.test-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.test-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 200px;
+}
+
+.compliance-tags {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.comp-tag {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--accent-light);
+  color: var(--accent);
+  letter-spacing: 0.3px;
+}
+
+.comp-tag.nist { background: #ede9fe; color: #7c3aed; }
+.comp-tag.cis { background: #fce7f3; color: #db2777; }
+.comp-tag.pipeda { background: #fef3c7; color: #d97706; }
+
+.priority-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.priority-badge.critical { background: var(--red-bg); color: var(--red); }
+.priority-badge.high { background: #fef3c7; color: #d97706; }
+.priority-badge.medium { background: var(--accent-light); color: var(--accent); }
+.priority-badge.low { background: #f1f5f9; color: var(--text-muted); }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  .main, .header, .footer { margin-left: 0; left: 0; }
+  .header-status { display: none; }
+  .summary-bar { flex-wrap: wrap; }
+  .filter-bar { flex-wrap: wrap; }
+}
+
+
+
+
+
+
+/* Mobile hamburger menu */
+.mobile-hamburger {
+  display: none;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 200;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #2596be, #1d7a9c);
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(37,150,190,0.4);
+}
+.mobile-hamburger svg { width: 22px; height: 22px; }
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 300;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.mobile-nav-overlay.open { display: block; opacity: 1; }
+.mobile-nav-panel {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 260px;
+  background: linear-gradient(180deg, #0c1a2e 0%, #081422 100%);
+  padding: 0;
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.3s;
+}
+.mobile-nav-overlay.open .mobile-nav-panel { transform: translateX(0); }
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+.mobile-nav-link {
+  display: block;
+  padding: 12px 16px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.mobile-nav-link:active { background: rgba(37,150,190,0.2); color: #fff; }
+
+@media (max-width: 768px) {
+  .mobile-hamburger { display: flex; }
+  .sidebar { display: none !important; }
+
+  .header {
+    position: relative !important;
+    left: 0 !important;
+    right: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    padding: 12px 12px 12px 56px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .main, .main-content {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    padding: 12px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .footer {
+    position: relative !important;
+    left: 0 !important;
+    right: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    flex-wrap: wrap !important;
+    padding: 12px !important;
+    gap: 8px !important;
+    justify-content: flex-start !important;
+  }
+  .footer-item {
+    min-width: calc(50% - 8px) !important;
+    flex: 0 0 calc(50% - 8px) !important;
+    padding: 4px 0 !important;
+  }
+  .footer-item .footer-label { font-size: 8px !important; }
+  .footer-item .footer-val { font-size: 11px !important; }
+  .footer-icon { display: none !important; }
+
+  .hdr-btn { font-size: 10px !important; padding: 4px 8px !important; }
+  .device-info { width: 100%; }
+  .header-status { margin: 0 !important; width: 100%; justify-content: center; }
+  .header-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 4px; }
+  .client-section { display: none !important; }
+  .header-user { display: none !important; }
+  .header-sync { width: 100%; }
+
+  table { min-width: 600px; }
+  .table-container, .category-body { overflow-x: auto; }
+  .row, .row-4, .row-2-1, .row-3 { grid-template-columns: 1fr !important; }
+  .grid-2, .grid-3, .grid-4, .stat-cards, .cards-grid { 
+    display: flex !important; flex-wrap: wrap !important; gap: 8px !important; 
+  }
+  .grid-2 > *, .grid-3 > *, .grid-4 > * { flex: 1 1 100% !important; min-width: 0 !important; }
+  .filter-bar { flex-wrap: wrap !important; gap: 6px !important; }
+  .filter-bar select, .filter-bar input { min-width: 120px; flex: 1; }
+}
+
+</style>
+</head>
+<body>
+<!-- Mobile Navigation -->
+<div class="mobile-hamburger" onclick="document.getElementById('mobileNav').classList.toggle('open')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</div>
+<div class="mobile-nav-overlay" id="mobileNav" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="mobile-nav-panel">
+    <div class="mobile-nav-header">
+      <span>PC Plus Computing</span>
+      <svg onclick="document.getElementById('mobileNav').classList.remove('open')" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="width:24px;height:24px;cursor:pointer"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <a class="mobile-nav-link" href="index.html">Dashboard</a>
+    <a class="mobile-nav-link" href="scan-results.html">Scan & Threat Protection</a>
+    <a class="mobile-nav-link" href="realtime-protection.html">Real-Time Protection</a>
+    <a class="mobile-nav-link" href="ransomware-shield.html">Ransomware Shield</a>
+    <a class="mobile-nav-link" href="security-logs.html">Detection History</a>
+    <a class="mobile-nav-link" href="ai-advisor.html">AI Threat Advisor</a>
+    <a class="mobile-nav-link" href="compliance-overview.html">Compliance Overview</a>
+    <a class="mobile-nav-link" href="backup-detail.html">Backup Health</a>
+    <a class="mobile-nav-link" href="network-security.html">Network Security</a>
+    <a class="mobile-nav-link" href="access-control.html">Access Control</a>
+    <a class="mobile-nav-link" href="reports.html">Reports</a>
+    <a class="mobile-nav-link" href="server-management.html">Server Management</a>
+    <a class="mobile-nav-link" href="settings.html">Settings</a>
+    <div style="border-top:1px solid rgba(255,255,255,0.1);margin:8px 0;"></div>
+    <a class="mobile-nav-link" href="https://support.pcpluscomputing.com/livechat.html" target="_blank">Live Chat</a>
+    <a class="mobile-nav-link" href="https://support.pcpluscomputing.com" target="_blank">Support Ticket</a>
+    <a class="mobile-nav-link" href="https://mesh.pcpluscomputing.com" target="_blank">Remote Support</a>
+  </div>
+</div>
+
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="logo-text">
+      <h2>PC PLUS<br>COMPUTING</h2>
+      <span>Endpoint Protection</span>
+    </div>
+  </div>
+
+    <nav class="sidebar-nav">
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Dashboard</a>
+    <div class="nav-section">Security</div>
+    <a class="nav-item active" href="scan-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Scan &amp; Threat Protection</a>
+    <a class="nav-item" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Real-Time Protection</a>
+    <a class="nav-item" href="ransomware-shield.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Ransomware Shield</a>
+    <a class="nav-item" href="security-logs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Detection History</a>
+    <a class="nav-item" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Quarantine</a>
+    <a class="nav-item" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
+    <div class="nav-section">Compliance</div>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Compliance Overview</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> CyberSecure Canada</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> NIST CSF 2.0</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> CIS Controls</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/></svg> Insurance Readiness</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg> Compliance Evidence</a>
+    <div class="nav-section">Backup &amp; Recovery</div>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Backup Health</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Recovery Readiness</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg> Restore Testing</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-4V4a2 2 0 00-4 0v6H6a2 2 0 00-2 2v1a7 7 0 0014 0v-1a2 2 0 00-2-2z"/></svg> Cloud Backup</a>
+    <div class="nav-section">Network</div>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/></svg> Network Security</a>
+    <a class="nav-item" href="network-security.html#firewall"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Firewall</a>
+    <a class="nav-item" href="network-security.html#open-ports"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg> Open Ports</a>
+    <a class="nav-item" href="network-security.html#wifi-security"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg> WiFi Security</a>
+    <a class="nav-item" href="network-security.html#network-map"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 009 9"/></svg> Network Map</a>
+    <div class="nav-section">Performance</div>
+    <a class="nav-item" href="index.html#system-health"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> System Health</a>
+    <a class="nav-item" href="index.html#optimization"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Optimization</a>
+    <a class="nav-item" href="index.html#startup-apps"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg> Startup Apps</a>
+    <div class="nav-section">Support</div>
+    <a class="nav-item" href="https://support.pcpluscomputing.com/livechat.html" target="_blank"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Live Chat</a>
+    <a class="nav-item" href="https://support.pcpluscomputing.com" target="_blank"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg> Support Ticket</a>
+    <a class="nav-item" href="https://mesh.pcpluscomputing.com" target="_blank"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Remote Support</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Screenshot Tool</a>
+    <div class="nav-section">Reports</div>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> Executive Reports</a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Security Reports</a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> Compliance Reports</a>
+    <div class="nav-section">Settings</div>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Policies</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Notifications</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Privacy Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="dot"></div>
+    <span>Agent v4.27.0</span>
+    <span style="margin-left:auto; color: var(--green); font-weight:600;">Up to date</span>
+  </div>
+</aside>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="device-info">
+    <span class="device-name" id="headerDeviceName">Select Device</span>
+    <span class="device-os"><span class="online-dot"></span> No device selected</span>
+  </div>
+  <div class="header-sync">Last sync: May 8, 2026 06:01 PM</div>
+
+  <div class="header-status">
+    <div class="protected-badge">
+      <span class="protected-text">PROTECTED</span>
+      <span class="risk-text">Risk Level: <b>Medium</b></span>
+    </div>
+  </div>
+
+  <div class="client-section">
+    <div>
+      <div class="client-name">Select Client</div>
+      <div class="client-company">Assigned Client</div>
+    </div>
+    <span class="tier-badge business"><span class="tier-dot"></span>Business</span>
+  </div>
+
+  <div class="header-actions">
+    <button class="hdr-btn primary" onclick="sendDeviceCommand('rescan', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      Quick Scan
+    </button>
+    <button class="hdr-btn" onclick="sendDeviceCommand(\'lockdown\', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Lockdown
+    </button>
+    <button class="hdr-btn" onclick="sendDeviceCommand(\'backup\', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Backup Now
+    </button>
+  </div>
+
+  <div class="header-user">
+    <div class="user-avatar">PP</div>
+    <div class="user-info">
+      <div class="name">PC Plus</div>
+      <div class="role">Managed by PC Plus Computing</div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- Summary Bar -->
+  <div class="summary-bar" style="animation: fadeUp 0.4s ease both;">
+    <div class="summary-stat">
+      <div class="summary-num" style="color: var(--accent);">175</div>
+      <div class="summary-label">Total Tests</div>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat">
+      <div class="summary-num" style="color: var(--green);">142</div>
+      <div class="summary-label">Passed</div>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat">
+      <div class="summary-num" style="color: var(--yellow);">26</div>
+      <div class="summary-label">Warning</div>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat">
+      <div class="summary-num" style="color: var(--red);">7</div>
+      <div class="summary-label">Failed</div>
+    </div>
+    <div class="summary-last-scan">Last Scan: <b>May 9, 2026 2:15 PM</b></div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar" style="animation: fadeUp 0.45s ease both;">
+    <span class="filter-label">Category:</span>
+    <select>
+      <option>All Categories</option>
+      <option>System Security</option>
+      <option>Email & User Protection</option>
+      <option>Asset Inventory</option>
+      <option>Privacy & Data Protection</option>
+      <option>Patch & Vulnerability</option>
+      <option>Logging & Visibility</option>
+      <option>Backup & Recovery</option>
+      <option>Network Security</option>
+      <option>Identity & Access</option>
+    </select>
+    <span class="filter-label">Status:</span>
+    <select>
+      <option>All</option>
+      <option>Passed</option>
+      <option>Warning</option>
+      <option>Failed</option>
+    </select>
+    <span class="filter-label">Priority:</span>
+    <select>
+      <option>All Priorities</option>
+      <option>Critical</option>
+      <option>High</option>
+      <option>Medium</option>
+      <option>Low</option>
+    </select>
+    <input type="text" placeholder="Search tests...">
+  </div>
+
+  <!-- Category: System Security -->
+  <div class="category-section" style="animation: fadeUp 0.5s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">System Security</span>
+      <div class="category-summary"><span class="cat-badge pass">23 Pass</span><span class="cat-badge warn">3 Warn</span><span class="cat-badge fail">1 Fail</span></div>
+      <span class="category-count">27 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-001</span></td>
+            <td><span class="test-name">Windows Firewall Enabled</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">All profiles enabled (Domain, Private, Public)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-002</span></td>
+            <td><span class="test-name">BitLocker Drive Encryption</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">C: drive encrypted, TPM + PIN active</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-003</span></td>
+            <td><span class="test-name">Windows Defender Active</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Real-time protection ON, defs updated May 9</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">SS-004</span></td>
+            <td><span class="test-name">UAC Level</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Set to level 3, recommended: Always Notify</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-005</span></td>
+            <td><span class="test-name">Secure Boot Enabled</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">UEFI Secure Boot active</span></td>
+            <td></td>
+          </tr>
+          <tr class="fail-row">
+            <td><div class="status-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></td>
+            <td><span class="test-id">SS-006</span></td>
+            <td><span class="test-name">Tamper Protection</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Tamper Protection is disabled in Defender</span></td>
+            <td><button class="fix-btn" onclick="sendDeviceCommand('fix-issue', this)">Fix Now</button></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">SS-007</span></td>
+            <td><span class="test-name">Exploit Protection</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">DEP enabled, ASLR partial coverage</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-008</span></td>
+            <td><span class="test-name">SMBv1 Disabled</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">SMBv1 protocol disabled as recommended</span></td>
+            <td></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-009</span></td>
+            <td><span class="test-name">Windows Defender Definitions</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Definitions updated within last 24 hours</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-010</span></td>
+            <td><span class="test-name">Secure Boot Status</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Secure Boot enabled in UEFI</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-011</span></td>
+            <td><span class="test-name">TPM 2.0 Present</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">TPM 2.0 module detected and active</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-012</span></td>
+            <td><span class="test-name">Windows Hello Configuration</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Biometric authentication available</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-013</span></td>
+            <td><span class="test-name">Code Integrity Policy</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">WDAC policy enforced</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">SS-014</span></td>
+            <td><span class="test-name">AppLocker Rules</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">AppLocker configured but 3 rules in audit-only mode</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-015</span></td>
+            <td><span class="test-name">Credential Guard</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Credential Guard enabled via Hyper-V</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-016</span></td>
+            <td><span class="test-name">Attack Surface Reduction</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">All 15 ASR rules in block mode</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-017</span></td>
+            <td><span class="test-name">Memory Integrity (HVCI)</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Hypervisor code integrity enabled</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-018</span></td>
+            <td><span class="test-name">System File Integrity</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">SFC scan passed, no integrity violations</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-019</span></td>
+            <td><span class="test-name">Tamper Protection</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">Defender tamper protection enabled</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">SS-020</span></td>
+            <td><span class="test-name">Exploit Protection Settings</span></td>
+            <td>System Security</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">DEP, ASLR, SEHOP all enabled</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">SS-021</span></td><td><span class="test-name">Windows Sandbox Isolation</span></td><td>System Security</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">Windows Sandbox available for testing</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">SS-022</span></td><td><span class="test-name">Application Guard</span></td><td>System Security</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">Edge Application Guard enabled</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">SS-023</span></td><td><span class="test-name">Network Protection</span></td><td>System Security</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">Network Protection blocking malicious IPs</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">SS-024</span></td><td><span class="test-name">Controlled Folder Access</span></td><td>System Security</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">Protected folders: Documents, Desktop, Pictures</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">SS-025</span></td><td><span class="test-name">Early Launch Anti-Malware</span></td><td>System Security</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">ELAM driver loaded at boot</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">SS-026</span></td><td><span class="test-name">Kernel DMA Protection</span></td><td>System Security</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">DMA port protection enabled</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">SS-027</span></td><td><span class="test-name">Windows Security Center</span></td><td>System Security</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span></div></td><td><span class="test-detail">All security providers registered</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Category: Email & User Protection -->
+  <div class="category-section" style="animation: fadeUp 0.55s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">Email & User Protection</span>
+      <div class="category-summary"><span class="cat-badge pass">14 Pass</span><span class="cat-badge warn">2 Warn</span><span class="cat-badge fail">2 Fail</span></div>
+      <span class="category-count">18 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EP-001</span></td>
+            <td><span class="test-name">SPF Record Configured</span></td>
+            <td>Email Protection</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">SPF record found: v=spf1 include:_spf.google.com ~all</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">EP-002</span></td>
+            <td><span class="test-name">DKIM Signing</span></td>
+            <td>Email Protection</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">DKIM configured but key rotation overdue (180+ days)</span></td>
+            <td></td>
+          </tr>
+          <tr class="fail-row">
+            <td><div class="status-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></td>
+            <td><span class="test-id">EP-003</span></td>
+            <td><span class="test-name">DMARC Policy</span></td>
+            <td>Email Protection</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">No DMARC record found for domain</span></td>
+            <td><button class="fix-btn" onclick="sendDeviceCommand('fix-issue', this)">Fix Now</button></td>
+          </tr>
+          <tr class="fail-row">
+            <td><div class="status-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></td>
+            <td><span class="test-id">EP-004</span></td>
+            <td><span class="test-name">Credential Guard</span></td>
+            <td>Email Protection</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Windows Credential Guard is not enabled</span></td>
+            <td><button class="fix-btn" onclick="sendDeviceCommand('fix-issue', this)">Fix Now</button></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-005</span></td>
+            <td><span class="test-name">Safe Links Policy</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">URL scanning enabled for all inbound email</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-006</span></td>
+            <td><span class="test-name">Safe Attachments Policy</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Dynamic delivery with sandbox analysis</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-007</span></td>
+            <td><span class="test-name">External Email Warning</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span></div></td>
+            <td><span class="test-detail">External sender banner enabled</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-008</span></td>
+            <td><span class="test-name">Mail Flow Rules Review</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">No bypass rules for spam filtering</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-009</span></td>
+            <td><span class="test-name">DMARC Record</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">DMARC policy set to reject</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-010</span></td>
+            <td><span class="test-name">SPF Record</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">SPF record configured correctly</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-011</span></td>
+            <td><span class="test-name">DKIM Signing</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">DKIM enabled for all outbound mail</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">EU-012</span></td>
+            <td><span class="test-name">Phishing Simulation</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">Last simulation: 15% click rate (target: <10%)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-013</span></td>
+            <td><span class="test-name">Browser Extension Audit</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">12 extensions reviewed, none flagged</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">EU-014</span></td>
+            <td><span class="test-name">Download Scanning</span></td>
+            <td>Email</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">SmartScreen filter enabled for downloads</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">EU-015</span></td><td><span class="test-name">Anti-Malware Policy</span></td><td>Email</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">Common attachment types blocked</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">EU-016</span></td><td><span class="test-name">Outbound Spam Filter</span></td><td>Email</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span></div></td><td><span class="test-detail">Outbound spam detection enabled</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">EU-017</span></td><td><span class="test-name">User Awareness Training</span></td><td>Email</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag ins">INS</span></div></td><td><span class="test-detail">Annual training completed by 100% of staff</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">EU-018</span></td><td><span class="test-name">Impersonation Protection</span></td><td>Email</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">Executive impersonation detection enabled</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Category: Asset Inventory -->
+  <div class="category-section" style="animation: fadeUp 0.6s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">Asset Inventory</span>
+      <div class="category-summary"><span class="cat-badge pass">14 Pass</span><span class="cat-badge warn">2 Warn</span><span class="cat-badge fail">1 Fail</span></div>
+      <span class="category-count">17 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="fail-row">
+            <td><div class="status-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></td>
+            <td><span class="test-id">AI-001</span></td>
+            <td><span class="test-name">Unauthorized Software Detected</span></td>
+            <td>Asset Inventory</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">TeamViewer (unlicensed), AnyDesk found installed</span></td>
+            <td><button class="fix-btn" onclick="sendDeviceCommand('fix-issue', this)">Fix Now</button></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">AI-002</span></td>
+            <td><span class="test-name">Remote Access Tools Audit</span></td>
+            <td>Asset Inventory</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">2 remote access tools found, 1 approved (MeshCentral)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-003</span></td>
+            <td><span class="test-name">Shared Account Detection</span></td>
+            <td>Asset Inventory</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">No shared accounts detected, all unique logins</span></td>
+            <td></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-004</span></td>
+            <td><span class="test-name">Hardware Inventory</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">All 8 devices registered and tracked</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-005</span></td>
+            <td><span class="test-name">Unauthorized Device Detection</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">No unauthorized devices detected in last 30 days</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-006</span></td>
+            <td><span class="test-name">USB Device Policy</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">USB storage devices blocked by policy</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-007</span></td>
+            <td><span class="test-name">Software License Compliance</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">All software properly licensed</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">AI-008</span></td>
+            <td><span class="test-name">End-of-Life Software</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">1 application nearing EOL (Adobe Reader 2020)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-009</span></td>
+            <td><span class="test-name">BIOS/UEFI Version</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">BIOS firmware up to date</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-010</span></td>
+            <td><span class="test-name">Driver Update Status</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge low">Low</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">All drivers current, no known vulnerabilities</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-011</span></td>
+            <td><span class="test-name">Peripheral Inventory</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge low">Low</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">6 peripherals tracked (printers, scanners)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-012</span></td>
+            <td><span class="test-name">Cloud Service Inventory</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">4 approved cloud services documented</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-013</span></td>
+            <td><span class="test-name">Mobile Device Registration</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">3 mobile devices enrolled in MDM</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-014</span></td>
+            <td><span class="test-name">Network Device Tracking</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Router, switch, AP all inventoried</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">AI-015</span></td>
+            <td><span class="test-name">Virtual Machine Inventory</span></td>
+            <td>Asset</td>
+            <td><span class="priority-badge low">Low</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">2 VMs registered and monitored</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">AI-016</span></td><td><span class="test-name">Printer Security Audit</span></td><td>Asset</td><td><span class="priority-badge low">Low</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">Network printers firmware current</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">AI-017</span></td><td><span class="test-name">IoT Device Inventory</span></td><td>Asset</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">4 IoT devices tracked and segmented</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Category: Privacy & Data Protection -->
+  <div class="category-section" style="animation: fadeUp 0.65s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">Privacy & Data Protection</span>
+      <div class="category-summary"><span class="cat-badge pass">16 Pass</span><span class="cat-badge warn">1 Warn</span><span class="cat-badge fail">0 Fail</span></div>
+      <span class="category-count">17 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-001</span></td>
+            <td><span class="test-name">Screenshot Consent Policy</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">User notified before screenshot capture</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">PD-002</span></td>
+            <td><span class="test-name">Clipboard Monitoring</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge low">Low</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">Clipboard history enabled, review data retention</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-003</span></td>
+            <td><span class="test-name">Removable Media Policy</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">USB storage blocked by policy</span></td>
+            <td></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-004</span></td>
+            <td><span class="test-name">Data Loss Prevention</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag nist">NIST</span><span class="comp-tag">CSC</span></div></td>
+            <td><span class="test-detail">DLP rules active for PII and financial data</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-005</span></td>
+            <td><span class="test-name">Removable Media Encryption</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">BitLocker To Go enforced on removable drives</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-006</span></td>
+            <td><span class="test-name">Data Classification Labels</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Sensitivity labels configured and applied</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-007</span></td>
+            <td><span class="test-name">Data Retention Policy</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">Retention schedules configured for all data types</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-008</span></td>
+            <td><span class="test-name">Privacy Impact Assessment</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">Annual PIA completed March 2026</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-009</span></td>
+            <td><span class="test-name">Consent Management</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">Customer consent tracking active</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-010</span></td>
+            <td><span class="test-name">Cross-Border Data Transfer</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">No unauthorized cross-border transfers detected</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-011</span></td>
+            <td><span class="test-name">Data Breach Response Plan</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag ins">INS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Breach notification plan tested Q1 2026</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-012</span></td>
+            <td><span class="test-name">Sensitive File Monitoring</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Monitoring active on 23 sensitive directories</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-013</span></td>
+            <td><span class="test-name">Database Encryption</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">TDE enabled on all production databases</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PD-014</span></td>
+            <td><span class="test-name">Email Encryption</span></td>
+            <td>Privacy</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">TLS enforced for all outbound mail</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">PD-015</span></td><td><span class="test-name">Right to Deletion Process</span></td><td>Privacy</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span></div></td><td><span class="test-detail">Data deletion workflow documented</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">PD-016</span></td><td><span class="test-name">Privacy Training</span></td><td>Privacy</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag ins">INS</span></div></td><td><span class="test-detail">Annual privacy awareness completed</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">PD-017</span></td><td><span class="test-name">Third-Party Data Agreements</span></td><td>Privacy</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span></div></td><td><span class="test-detail">All vendor DPAs current and reviewed</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Category: Patch & Vulnerability -->
+  <div class="category-section" style="animation: fadeUp 0.7s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">Patch & Vulnerability</span>
+      <div class="category-summary"><span class="cat-badge pass">15 Pass</span><span class="cat-badge warn">2 Warn</span><span class="cat-badge fail">1 Fail</span></div>
+      <span class="category-count">18 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">PV-001</span></td>
+            <td><span class="test-name">BIOS/UEFI Firmware</span></td>
+            <td>Patch Mgmt</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Firmware v1.12, latest is v1.15 (2 updates behind)</span></td>
+            <td></td>
+          </tr>
+          <tr class="fail-row">
+            <td><div class="status-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></td>
+            <td><span class="test-id">PV-002</span></td>
+            <td><span class="test-name">Windows Updates</span></td>
+            <td>Patch Mgmt</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">3 security updates pending, oldest 12 days</span></td>
+            <td><button class="fix-btn" onclick="sendDeviceCommand('fix-issue', this)">Fix Now</button></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-003</span></td>
+            <td><span class="test-name">3rd Party Patch Status</span></td>
+            <td>Patch Mgmt</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">All 3rd party apps up to date (Chrome, Adobe, 7-Zip)</span></td>
+            <td></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-004</span></td>
+            <td><span class="test-name">Critical Patch Compliance</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">All critical patches applied within 48 hours</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-005</span></td>
+            <td><span class="test-name">Browser Patch Status</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Chrome/Edge auto-update enabled and current</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-006</span></td>
+            <td><span class="test-name">Office Suite Updates</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Microsoft 365 apps updated to latest</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">PV-007</span></td>
+            <td><span class="test-name">Third-Party App Patching</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">1 third-party app pending update (7-Zip 23.01)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-008</span></td>
+            <td><span class="test-name">Vulnerability Scan Schedule</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">Weekly vulnerability scans configured</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-009</span></td>
+            <td><span class="test-name">CVE Database Currency</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">CVE database updated within last 24 hours</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-010</span></td>
+            <td><span class="test-name">Firmware Update Status</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">All firmware versions current</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-011</span></td>
+            <td><span class="test-name">Java Runtime Removal</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Legacy Java Runtime not installed</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-012</span></td>
+            <td><span class="test-name">Flash Player Removal</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Adobe Flash Player not present</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-013</span></td>
+            <td><span class="test-name">.NET Framework Updates</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">.NET Framework 4.8.1 current</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-014</span></td>
+            <td><span class="test-name">Windows Feature Updates</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Windows 11 23H2 installed</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">PV-015</span></td>
+            <td><span class="test-name">Security Baseline Compliance</span></td>
+            <td>Patch</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">CIS Benchmark Level 1 compliance: 94%</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">PV-016</span></td><td><span class="test-name">Vulnerability Remediation SLA</span></td><td>Patch</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag ins">INS</span></div></td><td><span class="test-detail">Critical: 48h, High: 7d, Medium: 30d</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">PV-017</span></td><td><span class="test-name">Patch Testing Process</span></td><td>Patch</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">Staging environment for patch validation</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">PV-018</span></td><td><span class="test-name">Zero-Day Response Plan</span></td><td>Patch</td><td><span class="priority-badge critical">Critical</span></td><td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td><td><span class="test-detail">Emergency patching process documented</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Category: Logging & Visibility -->
+  <div class="category-section" style="animation: fadeUp 0.75s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">Logging & Visibility</span>
+      <div class="category-summary"><span class="cat-badge pass">19 Pass</span><span class="cat-badge warn">1 Warn</span><span class="cat-badge fail">0 Fail</span></div>
+      <span class="category-count">20 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-001</span></td>
+            <td><span class="test-name">Time Synchronization</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">NTP synced to time.windows.com, drift &lt; 1s</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">LV-002</span></td>
+            <td><span class="test-name">Event Log Retention</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Security log set to 20 MB (recommended 128 MB+)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-003</span></td>
+            <td><span class="test-name">Audit Policy Configuration</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Logon/logoff, privilege use, policy change audited</span></td>
+            <td></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-004</span></td>
+            <td><span class="test-name">DNS Query Logging</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">DNS client logging enabled</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-005</span></td>
+            <td><span class="test-name">Process Creation Logging</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Process creation with command line auditing</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-006</span></td>
+            <td><span class="test-name">Network Connection Logging</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Firewall connection logging enabled</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-007</span></td>
+            <td><span class="test-name">Security Event Forwarding</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Events forwarded to SIEM within 60 seconds</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-008</span></td>
+            <td><span class="test-name">Log Retention Period</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">90-day log retention configured</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-009</span></td>
+            <td><span class="test-name">Failed Login Monitoring</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Alert on 3+ failed logins within 5 minutes</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-010</span></td>
+            <td><span class="test-name">File Access Auditing</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">Auditing on sensitive directories enabled</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-011</span></td>
+            <td><span class="test-name">Registry Change Monitoring</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Critical registry keys monitored</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-012</span></td>
+            <td><span class="test-name">Service Installation Logging</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">New service installation alerts configured</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-013</span></td>
+            <td><span class="test-name">Scheduled Task Monitoring</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Task creation/modification tracked</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-014</span></td>
+            <td><span class="test-name">Event Log Tampering Detection</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Log clearing generates immediate alert</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">LV-015</span></td>
+            <td><span class="test-name">Remote Access Logging</span></td>
+            <td>Logging</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">All RDP/VPN sessions logged with IP</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">LV-016</span></td><td><span class="test-name">SIEM Integration</span></td><td>Logging</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td><td><span class="test-detail">Wazuh SIEM collecting all endpoint logs</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">LV-017</span></td><td><span class="test-name">Alert Escalation Rules</span></td><td>Logging</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag ins">INS</span></div></td><td><span class="test-detail">Critical alerts → phone, High → email within 15 min</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">LV-018</span></td><td><span class="test-name">Compliance Audit Trail</span></td><td>Logging</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">All compliance-related actions logged immutably</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">LV-019</span></td><td><span class="test-name">PowerShell Script Block Logging</span></td><td>Logging</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">All script blocks logged to event log</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">LV-020</span></td><td><span class="test-name">WMI Activity Monitoring</span></td><td>Logging</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">WMI persistence monitoring enabled</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Category: Backup & Recovery -->
+  <div class="category-section" style="animation: fadeUp 0.8s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">Backup & Recovery</span>
+      <div class="category-summary"><span class="cat-badge pass">14 Pass</span><span class="cat-badge warn">2 Warn</span><span class="cat-badge fail">1 Fail</span></div>
+      <span class="category-count">17 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-001</span></td>
+            <td><span class="test-name">Backup Schedule Active</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Cloud + Local every 3 hours, last: May 9 12:30 PM</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">BR-002</span></td>
+            <td><span class="test-name">Shadow Copy Status</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">VSS enabled but only 2 restore points (recommend 5+)</span></td>
+            <td></td>
+          </tr>
+          <tr class="fail-row">
+            <td><div class="status-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></td>
+            <td><span class="test-id">BR-003</span></td>
+            <td><span class="test-name">Recovery Plan Tested</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Backup restore has never been tested</span></td>
+            <td><button class="fix-btn" onclick="sendDeviceCommand('fix-issue', this)">Fix Now</button></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-004</span></td>
+            <td><span class="test-name">Backup Encryption</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">AES-256 encryption on all backups</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-005</span></td>
+            <td><span class="test-name">Offsite Backup Verification</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">Cloud backup verified and accessible</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-006</span></td>
+            <td><span class="test-name">Backup Frequency</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">Incremental backups every 3 hours</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-007</span></td>
+            <td><span class="test-name">System Image Backup</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">Full system image taken weekly</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-008</span></td>
+            <td><span class="test-name">Backup Monitoring Alerts</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">Email alerts on backup failure configured</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-009</span></td>
+            <td><span class="test-name">Disaster Recovery Documentation</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">DR runbook last updated April 2026</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-010</span></td>
+            <td><span class="test-name">RTO/RPO Compliance</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag ins">INS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">RTO: 4hrs, RPO: 3hrs - within targets</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-011</span></td>
+            <td><span class="test-name">Backup Access Controls</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Backup admin access requires MFA</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-012</span></td>
+            <td><span class="test-name">Backup Integrity Checks</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Weekly integrity verification running</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">BR-013</span></td>
+            <td><span class="test-name">Bare Metal Recovery Test</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag ins">INS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Last bare metal test: 45 days ago (target: 30 days)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-014</span></td>
+            <td><span class="test-name">Application-Level Backup</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Exchange and SQL backups configured separately</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">BR-015</span></td>
+            <td><span class="test-name">Backup Retention Policy</span></td>
+            <td>Backup</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag pipeda">PIPEDA</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">30-day daily, 12-month monthly retention</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">BR-016</span></td><td><span class="test-name">Ransomware Recovery Plan</span></td><td>Backup</td><td><span class="priority-badge critical">Critical</span></td><td><div class="compliance-tags"><span class="comp-tag ins">INS</span><span class="comp-tag nist">NIST</span><span class="comp-tag">CSC</span></div></td><td><span class="test-detail">Air-gapped backup available for recovery</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">BR-017</span></td><td><span class="test-name">Backup Network Isolation</span></td><td>Backup</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">Backup VLAN isolated from production</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Category: Network Security -->
+  <div class="category-section" style="animation: fadeUp 0.85s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">Network Security</span>
+      <div class="category-summary"><span class="cat-badge pass">18 Pass</span><span class="cat-badge warn">1 Warn</span><span class="cat-badge fail">1 Fail</span></div>
+      <span class="category-count">20 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-001</span></td>
+            <td><span class="test-name">Firewall Rules Audit</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">No overly permissive rules found</span></td>
+            <td></td>
+          </tr>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">NS-002</span></td>
+            <td><span class="test-name">Open Ports Scan</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">3 open ports detected: 3389, 445, 5985</span></td>
+            <td></td>
+          </tr>
+          <tr class="fail-row">
+            <td><div class="status-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></td>
+            <td><span class="test-id">NS-003</span></td>
+            <td><span class="test-name">RDP Security</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">RDP enabled without MFA, NLA required but weak</span></td>
+            <td><button class="fix-btn" onclick="sendDeviceCommand('fix-issue', this)">Fix Now</button></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-004</span></td>
+            <td><span class="test-name">WiFi Security Protocol</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">WPA3 Personal configured on active network</span></td>
+            <td></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-005</span></td>
+            <td><span class="test-name">DNS Security (DoH/DoT)</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">DNS-over-HTTPS enabled via Cloudflare</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-006</span></td>
+            <td><span class="test-name">Network Segmentation</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Guest and IoT networks isolated</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-007</span></td>
+            <td><span class="test-name">Intrusion Detection</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">Network IDS monitoring active</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-008</span></td>
+            <td><span class="test-name">VPN Configuration</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Tailscale VPN with WireGuard protocol</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-009</span></td>
+            <td><span class="test-name">TLS Certificate Validity</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">All certificates valid, 180+ days until expiry</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-010</span></td>
+            <td><span class="test-name">SMB Signing Enforcement</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">SMB signing required on all connections</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-011</span></td>
+            <td><span class="test-name">LLMNR/NBT-NS Disabled</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">LLMNR and NetBIOS disabled</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-012</span></td>
+            <td><span class="test-name">IPv6 Configuration</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge low">Low</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">IPv6 disabled on internal interfaces</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-013</span></td>
+            <td><span class="test-name">Network Time Protocol</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">NTP synced to time.windows.com</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-014</span></td>
+            <td><span class="test-name">ARP Spoofing Protection</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Static ARP entries for gateway configured</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-015</span></td>
+            <td><span class="test-name">Outbound Traffic Filtering</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Egress filtering blocks unauthorized ports</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">NS-016</span></td>
+            <td><span class="test-name">SSL/TLS Protocol Versions</span></td>
+            <td>Network</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">TLS 1.0/1.1 disabled, TLS 1.2+ only</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">NS-017</span></td><td><span class="test-name">BGP/Route Monitoring</span></td><td>Network</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">ISP route changes monitored</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">NS-018</span></td><td><span class="test-name">MAC Address Filtering</span></td><td>Network</td><td><span class="priority-badge low">Low</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">MAC filtering enabled on critical segments</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">NS-019</span></td><td><span class="test-name">Proxy Configuration</span></td><td>Network</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">Web proxy configured with content filtering</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">NS-020</span></td><td><span class="test-name">GeoIP Blocking</span></td><td>Network</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag ins">INS</span></div></td><td><span class="test-detail">Inbound from high-risk countries blocked</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Category: Identity & Access -->
+  <div class="category-section" style="animation: fadeUp 0.9s ease both;">
+    <div class="category-header" onclick="this.classList.toggle('collapsed')">
+      <div class="category-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <span class="category-name">Identity & Access</span>
+      <div class="category-summary"><span class="cat-badge pass">19 Pass</span><span class="cat-badge warn">1 Warn</span><span class="cat-badge fail">1 Fail</span></div>
+      <span class="category-count">21 tests</span>
+    </div>
+    <div class="category-body">
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Status</th>
+            <th style="width:70px">Test ID</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th style="width:70px">Priority</th>
+            <th>Compliance</th>
+            <th>Detail</th>
+            <th style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="warn-row">
+            <td><div class="status-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></td>
+            <td><span class="test-id">IA-001</span></td>
+            <td><span class="test-name">Admin Account Count</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">2 admin accounts found (recommended: 1 active)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-002</span></td>
+            <td><span class="test-name">Password Policy Complexity</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Complexity requirements enabled</span></td>
+            <td></td>
+          </tr>
+          <tr class="fail-row">
+            <td><div class="status-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></td>
+            <td><span class="test-id">IA-003</span></td>
+            <td><span class="test-name">Multi-Factor Authentication</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">MFA not enabled for any user account</span></td>
+            <td><button class="fix-btn" onclick="sendDeviceCommand('fix-issue', this)">Fix Now</button></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-004</span></td>
+            <td><span class="test-name">Screen Lock Policy</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Auto-lock after 5 minutes of inactivity</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-005</span></td>
+            <td><span class="test-name">Account Lockout Policy</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Lockout after 5 failed attempts, 30 min duration</span></td>
+            <td></td>
+          </tr>
+                  <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-006</span></td>
+            <td><span class="test-name">Service Account Review</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">All service accounts reviewed quarterly</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-007</span></td>
+            <td><span class="test-name">Privileged Access Workstation</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Admin tasks restricted to designated workstations</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-008</span></td>
+            <td><span class="test-name">Password Expiration Policy</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">90-day password rotation enforced</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-009</span></td>
+            <td><span class="test-name">Session Timeout Configuration</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Idle session timeout: 15 minutes</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-010</span></td>
+            <td><span class="test-name">Shared Account Prohibition</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span><span class="comp-tag pipeda">PIPEDA</span></div></td>
+            <td><span class="test-detail">No shared accounts detected</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-011</span></td>
+            <td><span class="test-name">Remote Access Authentication</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge critical">Critical</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag ins">INS</span></div></td>
+            <td><span class="test-detail">VPN requires certificate + password</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-012</span></td>
+            <td><span class="test-name">Admin Group Membership</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Local admin group: 2 members (reviewed)</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-013</span></td>
+            <td><span class="test-name">LAPS Configuration</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge high">High</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Local admin passwords rotated every 30 days</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-014</span></td>
+            <td><span class="test-name">Kerberos Configuration</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">AES-256 encryption for Kerberos tickets</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-015</span></td>
+            <td><span class="test-name">Windows Credential Caching</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Cached logons limited to 2</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-016</span></td>
+            <td><span class="test-name">Smart Card Support</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge low">Low</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span></div></td>
+            <td><span class="test-detail">Smart card infrastructure available</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+            <td><span class="test-id">IA-017</span></td>
+            <td><span class="test-name">Just-In-Time Access</span></td>
+            <td>Identity</td>
+            <td><span class="priority-badge medium">Medium</span></td>
+            <td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td>
+            <td><span class="test-detail">Temporary admin elevation via approved workflow</span></td>
+            <td></td>
+          </tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">IA-018</span></td><td><span class="test-name">Break-Glass Account</span></td><td>Identity</td><td><span class="priority-badge critical">Critical</span></td><td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span></div></td><td><span class="test-detail">Emergency admin sealed and monitored</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">IA-019</span></td><td><span class="test-name">Access Review Cadence</span></td><td>Identity</td><td><span class="priority-badge medium">Medium</span></td><td><div class="compliance-tags"><span class="comp-tag nist">NIST</span><span class="comp-tag cis">CIS</span><span class="comp-tag pipeda">PIPEDA</span></div></td><td><span class="test-detail">Quarterly access reviews completed</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">IA-020</span></td><td><span class="test-name">Offboarding Checklist</span></td><td>Identity</td><td><span class="priority-badge high">High</span></td><td><div class="compliance-tags"><span class="comp-tag">CSC</span><span class="comp-tag cis">CIS</span><span class="comp-tag pipeda">PIPEDA</span></div></td><td><span class="test-detail">Automated deprovisioning within 24 hours</span></td><td></td></tr>
+          <tr><td><div class="status-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td><td><span class="test-id">IA-021</span></td><td><span class="test-name">Biometric Policy</span></td><td>Identity</td><td><span class="priority-badge low">Low</span></td><td><div class="compliance-tags"><span class="comp-tag nist">NIST</span></div></td><td><span class="test-detail">Windows Hello biometric enrollment available</span></td><td></td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+    <div>
+      <div class="footer-label">AGENT STATUS</div>
+      <div class="footer-val green">Up to Date</div>
+      <div class="footer-label">v4.27.0</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg></div>
+    <div>
+      <div class="footer-label">RMM CONNECTION</div>
+      <div class="footer-val blue">Connected</div>
+      <div class="footer-label">PC Plus RMM</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+    <div>
+      <div class="footer-label">POLICY STATUS</div>
+      <div class="footer-val green">Compliant</div>
+      <div class="footer-label">All policies active</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <div>
+      <div class="footer-label">LICENSE</div>
+      <div class="footer-val green">Active</div>
+      <div class="footer-label">Expires: Dec 31, 2026</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 22V2"/></svg></div>
+    <div>
+      <div class="footer-label">VPN</div>
+      <div class="footer-val green">Available</div>
+      <div class="footer-label">Secure Tunnel</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+    <div>
+      <div class="footer-label">REMOTE SUPPORT</div>
+      <div class="footer-val blue">RustDesk</div>
+      <div class="footer-label">Coming Soon</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+    <div>
+      <div class="footer-label">NEXT REPORT</div>
+      <div class="footer-val">May 15, 2026</div>
+      <div class="footer-label">Scheduled</div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/dashboard-api.js"></script>
+<script src="js/device-persistence.js"></script>
+<script src="js/page-loader.js"></script>
+<script>
+if(!window.sendDeviceCommand){window.sendDeviceCommand=async function(command,btn){var devSel=document.getElementById("deviceSelect");var deviceId=devSel?devSel.value:"";if(!deviceId){alert("Select a device first");return;}if(command==="lockdown"&&!confirm("Activate emergency lockdown on this device?"))return;var origText=btn.textContent;btn.textContent="Sending...";btn.style.opacity="0.6";btn.style.pointerEvents="none";try{await DashboardAPI.dashboard.sendCommand(deviceId,command);btn.textContent="Sent!";setTimeout(function(){btn.textContent=origText;btn.style.opacity="1";btn.style.pointerEvents="auto";},3000);}catch(e){btn.textContent="Failed";setTimeout(function(){btn.textContent=origText;btn.style.opacity="1";btn.style.pointerEvents="auto";},3000);}}}
+</script>
+<script>
+(function(){
+  const filterBar = document.querySelector('.filter-bar');
+  if(!filterBar) return;
+  const selects = filterBar.querySelectorAll('select');
+  const searchInput = filterBar.querySelector('input[type="text"]');
+  const catSelect = selects[0];
+  const statusSelect = selects[1];
+  const prioritySelect = selects[2];
+
+  function applyFilters(){
+    const cat = catSelect.value;
+    const status = statusSelect.value;
+    const priority = prioritySelect.value;
+    const search = searchInput.value.toLowerCase().trim();
+
+    document.querySelectorAll('.category-section').forEach(function(section){
+      const catName = section.querySelector('.category-name');
+      if(!catName) return;
+      const sectionName = catName.textContent.trim();
+      const catMatch = (cat === 'All Categories' || sectionName === cat);
+
+      let visibleRows = 0;
+      let passCount = 0, warnCount = 0, failCount = 0;
+      section.querySelectorAll('tbody tr').forEach(function(row){
+        const statusIcon = row.querySelector('.status-icon');
+        let rowStatus = 'Passed';
+        if(statusIcon){
+          if(statusIcon.classList.contains('fail')) rowStatus = 'Failed';
+          else if(statusIcon.classList.contains('warn')) rowStatus = 'Warning';
+        }
+        const priBadge = row.querySelector('.priority-badge');
+        const rowPriority = priBadge ? priBadge.textContent.trim() : '';
+        const rowText = row.textContent.toLowerCase();
+        const statusMatch = (status === 'All' || rowStatus === status);
+        const priMatch = (priority === 'All Priorities' || rowPriority === priority);
+        const searchMatch = (!search || rowText.indexOf(search) !== -1);
+
+        if(catMatch && statusMatch && priMatch && searchMatch){
+          row.style.display = '';
+          visibleRows++;
+          if(rowStatus === 'Passed') passCount++;
+          else if(rowStatus === 'Warning') warnCount++;
+          else if(rowStatus === 'Failed') failCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      if(!catMatch || visibleRows === 0){
+        section.style.display = 'none';
+      } else {
+        section.style.display = '';
+        var countEl = section.querySelector('.category-count');
+        if(countEl) countEl.textContent = visibleRows + ' tests';
+        var summaryBadges = section.querySelectorAll('.category-summary .cat-badge');
+        if(summaryBadges.length >= 3){
+          summaryBadges[0].textContent = passCount + ' Pass';
+          summaryBadges[1].textContent = warnCount + ' Warn';
+          summaryBadges[2].textContent = failCount + ' Fail';
+        }
+      }
+    });
+
+    // Update total counter
+    var totalEl = document.querySelector('.total-tests');
+    if(totalEl){
+      var visible = document.querySelectorAll('.category-section[style=""] tbody tr[style=""], .category-section:not([style]) tbody tr:not([style*="none"])');
+      totalEl.textContent = visible.length + ' Tests';
+    }
+  }
+
+  catSelect.addEventListener('change', applyFilters);
+  statusSelect.addEventListener('change', applyFilters);
+  prioritySelect.addEventListener('change', applyFilters);
+  searchInput.addEventListener('input', applyFilters);
+})();
+</script>
+</body>
+</html>

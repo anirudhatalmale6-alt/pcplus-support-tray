@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PC Plus Computing - AI Threat Advisor</title>
+<title>PC Plus Computing - Settings & Policy Management</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -232,12 +232,6 @@ body {
   min-height: calc(100vh - var(--header-h));
 }
 
-/* ─── GRID ─── */
-.row { display: grid; gap: 16px; margin-bottom: 16px; }
-.row-3 { grid-template-columns: repeat(3, 1fr); }
-.row-2 { grid-template-columns: 1.2fr 1fr; }
-.row-1 { grid-template-columns: 1fr; }
-
 /* ─── CARDS ─── */
 .card {
   background: var(--card);
@@ -246,6 +240,7 @@ body {
   padding: 20px;
   box-shadow: var(--shadow);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
+  margin-bottom: 16px;
 }
 
 .card:hover {
@@ -263,269 +258,271 @@ body {
 .card-link { font-size: 11px; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.15s; }
 .card-link:hover { color: var(--accent-dark); }
 
-/* ─── AI SUMMARY CARD ─── */
-.ai-summary-card {
-  background: linear-gradient(135deg, #0c1f3d 0%, #153652 50%, #0f2847 100%);
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 4px 20px rgba(10,22,40,0.2);
-  padding: 28px;
+/* ─── PAGE TITLE ─── */
+.page-title-section {
+  margin-bottom: 20px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.page-subtitle {
+  font-size: 12.5px;
+  color: var(--text-secondary);
 }
 
-.ai-summary-header {
+/* ─── TAB BAR ─── */
+.tab-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
 }
-
-.ai-summary-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.ai-summary-icon {
-  width: 48px; height: 48px;
-  background: rgba(37,150,190,0.25);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 20px rgba(37,150,190,0.2);
-}
-
-.ai-summary-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
-.ai-summary-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-
-.risk-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 14px;
-  border-radius: 6px;
+.tab-item {
+  padding: 10px 20px;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  text-decoration: none;
 }
-.risk-badge.medium { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-.risk-badge.medium .badge-dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; animation: pulse 2s infinite; }
-
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-.ai-summary-details {
-  display: flex;
-  gap: 24px;
-  font-size: 12px;
-  color: #94a3b8;
+.tab-item:hover { color: var(--text-primary); }
+.tab-item.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
-.ai-summary-details span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* ─── SECTION ANCHOR ─── */
+.section-anchor {
+  scroll-margin-top: calc(var(--header-h) + 20px);
 }
 
-.ai-summary-details svg { width: 14px; height: 14px; opacity: 0.7; }
-
-/* ─── RISK CATEGORY CARDS ─── */
-.risk-cat-card {
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-}
-
-.risk-cat-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 4px;
-}
-
-.risk-cat-card.high::before { background: linear-gradient(90deg, var(--red), #f97316); }
-.risk-cat-card.low::before { background: linear-gradient(90deg, var(--green), #22d3ee); }
-.risk-cat-card.medium-risk::before { background: linear-gradient(90deg, var(--yellow), #f97316); }
-
-.risk-cat-header {
+/* ─── TOGGLE SWITCH ─── */
+.toggle-wrap {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.toggle-wrap:last-child { border-bottom: none; }
+
+.toggle-info { flex: 1; min-width: 0; }
+.toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  display: flex; align-items: center; gap: 8px;
+}
+.toggle-desc {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
-.risk-cat-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.toggle-switch {
+  position: relative;
+  width: 38px; height: 20px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #cbd5e1;
+  border-radius: 20px;
+  transition: 0.2s;
+}
+.toggle-slider:before {
+  content: "";
+  position: absolute;
+  height: 16px; width: 16px;
+  left: 2px; bottom: 2px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--green); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
+.toggle-switch input:disabled + .toggle-slider { background: #e2e8f0; cursor: not-allowed; opacity: 0.6; }
 
-.risk-cat-level {
+/* ─── DROPDOWN SELECT ─── */
+.settings-select {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+.settings-select:focus { outline: none; border-color: var(--accent); }
+
+/* ─── STATUS BADGES ─── */
+.status-yes {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-size: 10px;
   font-weight: 700;
-  padding: 3px 10px;
+  background: var(--green-bg);
+  color: #16a34a;
+}
+.status-no {
+  display: inline-block;
+  padding: 2px 8px;
   border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--red-bg);
+  color: var(--red);
+}
+.status-warning {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--yellow-bg);
+  color: #d97706;
+}
+.status-badge-inline {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ─── POLICY WARNING ─── */
+.policy-warning {
+  font-size: 10px;
+  color: var(--yellow);
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* ─── COMPLIANCE OVERRIDE NOTE ─── */
+.override-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-top: 12px;
+  border-left: 3px solid var(--yellow);
+}
+
+/* ─── NOTIFICATION TABLE ─── */
+.notif-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.notif-table thead th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
 }
-.risk-cat-level.high { background: var(--red-bg); color: var(--red); }
-.risk-cat-level.low { background: var(--green-bg); color: #16a34a; }
-.risk-cat-level.medium { background: var(--yellow-bg); color: #d97706; }
-
-.risk-cat-desc {
-  font-size: 11.5px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-/* ─── AI RECOMMENDATIONS ─── */
-.ai-rec-list { display: flex; flex-direction: column; gap: 14px; }
-
-.ai-rec-item {
-  padding: 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: linear-gradient(145deg, #fafbfc, #fff);
-  position: relative;
-}
-
-.ai-rec-item::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  border-radius: 4px 0 0 4px;
-}
-
-.ai-rec-item.critical::before { background: var(--red); }
-.ai-rec-item.high-priority::before { background: var(--yellow); }
-.ai-rec-item.medium-priority::before { background: var(--accent); }
-
-.ai-rec-header {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 8px;
-}
-
-.ai-rec-badge {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-.ai-rec-badge.critical { background: var(--red-bg); color: var(--red); }
-.ai-rec-badge.high-priority { background: var(--yellow-bg); color: #d97706; }
-.ai-rec-badge.medium-priority { background: var(--accent-light); color: var(--accent); }
-
-.ai-rec-num { font-size: 10px; color: var(--text-muted); font-weight: 600; }
-
-.ai-rec-text {
-  font-size: 12px;
+.notif-table tbody td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #f1f5f9;
   color: var(--text-primary);
+  font-weight: 500;
+}
+.notif-table tbody tr:hover { background: #fafbfc; }
+
+.btn-add-recipient {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-primary);
+  transition: all 0.15s;
+  margin-top: 12px;
+}
+.btn-add-recipient:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ─── PRIVACY NOTICE ─── */
+.privacy-notice {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--accent-light);
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-top: 14px;
+  border-left: 3px solid var(--accent);
   line-height: 1.7;
-  margin-bottom: 12px;
 }
-
-.ai-rec-meta {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.ai-rec-meta-item {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 10.5px;
-  padding: 4px 10px;
-  border-radius: 5px;
-  background: #f1f5f9;
-}
-
-.ai-rec-meta-item .label { color: var(--text-muted); font-weight: 500; }
-.ai-rec-meta-item .value { color: var(--text-primary); font-weight: 600; }
-.ai-rec-meta-item .value.green { color: var(--green); }
-.ai-rec-meta-item .value.blue { color: var(--accent); }
-
-/* ─── THREAT INTELLIGENCE ─── */
-.threat-intel-list { display: flex; flex-direction: column; gap: 6px; }
-
-.threat-intel-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #fafbfc;
-  border: 1px solid var(--border);
-}
-
-.threat-intel-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--red);
-  margin-top: 4px;
-  flex-shrink: 0;
-  animation: pulse 3s infinite;
-}
-
-.threat-intel-content { flex: 1; }
-.threat-intel-text { font-size: 11.5px; color: var(--text-primary); font-weight: 500; line-height: 1.5; }
-.threat-intel-date { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
-
-/* ─── SCORE PROJECTION ─── */
-.projection-chart {
-  padding: 10px 0;
-}
-
-.projection-bar-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.projection-label {
-  width: 140px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.projection-bar-wrap {
-  flex: 1;
-  height: 28px;
-  background: #f1f5f9;
-  border-radius: 6px;
-  position: relative;
-  overflow: hidden;
-}
-
-.projection-bar {
-  height: 100%;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.projection-bar.current { background: linear-gradient(90deg, #f59e0b, #f97316); width: 44.5%; }
-.projection-bar.phase1 { background: linear-gradient(90deg, #10b981, #2596be); width: 56%; }
-.projection-bar.phase2 { background: linear-gradient(90deg, #10b981, #22d3ee); width: 61.7%; }
-.projection-bar.target { background: linear-gradient(90deg, #10b981, #059669); width: 69.1%; }
-
-.projection-score {
-  width: 60px;
-  text-align: right;
-  font-size: 12px;
-  font-weight: 700;
+.privacy-notice strong {
   color: var(--text-primary);
-  flex-shrink: 0;
+  font-weight: 700;
 }
 
-.projection-note {
-  margin-top: 16px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  background: var(--green-bg);
-  border-left: 4px solid var(--green);
-  font-size: 12px;
-  color: #166534;
-  font-weight: 500;
+/* ─── AGENT CONFIG ─── */
+.config-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
+.config-row:last-child { border-bottom: none; }
+.config-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.config-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.config-val.green { color: var(--green); }
+
+.btn-save {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 20px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(37,150,190,0.25);
+  margin-top: 16px;
+}
+.btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,150,190,0.35); }
+
+.btn-reset-link {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  margin-left: 16px;
+  transition: color 0.15s;
+}
+.btn-reset-link:hover { color: var(--red); }
 
 /* ─── FOOTER ─── */
 .footer {
@@ -556,9 +553,6 @@ body {
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
 .card { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.row > :nth-child(1) .card, .row > :nth-child(1).card { animation-delay: 0.06s; }
-.row > :nth-child(2) .card, .row > :nth-child(2).card { animation-delay: 0.12s; }
-.row > :nth-child(3) .card, .row > :nth-child(3).card { animation-delay: 0.18s; }
 .nav-item { animation: slideIn 0.3s ease both; }
 .nav-section ~ .nav-item:nth-child(2) { animation-delay: 0.02s; }
 .nav-section ~ .nav-item:nth-child(3) { animation-delay: 0.04s; }
@@ -569,15 +563,9 @@ body {
 .sidebar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
 
 /* ─── RESPONSIVE ─── */
-@media (max-width: 1200px) {
-  .row-3 { grid-template-columns: 1fr 1fr; }
-  .row-2 { grid-template-columns: 1fr; }
-}
-
 @media (max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
   .main, .header, .footer { margin-left: 0; left: 0; }
-  .row-3, .row-2, .row-1 { grid-template-columns: 1fr; }
   .header-status { display: none; }
 }
 
@@ -742,7 +730,7 @@ body {
 </div>
 
 
-<!-- SIDEBAR -->
+<!-- ═══════ SIDEBAR ═══════ -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">
@@ -762,7 +750,7 @@ body {
     <a class="nav-item" href="ransomware-shield.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Ransomware Shield</a>
     <a class="nav-item" href="security-logs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Detection History</a>
     <a class="nav-item" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Quarantine</a>
-    <a class="nav-item active" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
+    <a class="nav-item" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
     <div class="nav-section">Compliance</div>
     <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Compliance Overview</a>
     <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> CyberSecure Canada</a>
@@ -795,7 +783,7 @@ body {
     <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Security Reports</a>
     <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> Compliance Reports</a>
     <div class="nav-section">Settings</div>
-    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Policies</a>
+    <a class="nav-item active" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Policies</a>
     <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Notifications</a>
     <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Privacy Settings</a>
   </nav>
@@ -807,13 +795,13 @@ body {
   </div>
 </aside>
 
-<!-- HEADER -->
+<!-- ═══════ HEADER ═══════ -->
 <header class="header">
   <div class="device-info">
     <span class="device-name" id="headerDeviceName">Select Device</span>
     <span class="device-os"><span class="online-dot"></span> No device selected</span>
   </div>
-  <div class="header-sync">Last sync: May 9, 2026 02:15 PM</div>
+  <div class="header-sync">Last sync: May 8, 2026 06:01 PM</div>
 
   <div class="header-status">
     <div class="protected-badge">
@@ -831,7 +819,7 @@ body {
   </div>
 
   <div class="header-actions">
-    <button class="hdr-btn primary" onclick="sendDeviceCommand('rescan', this)">
+    <button class="hdr-btn primary" onclick="sendDeviceCommand(\'rescan\', this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
       Quick Scan
     </button>
@@ -854,224 +842,426 @@ body {
   </div>
 </header>
 
-<!-- MAIN CONTENT -->
+<!-- ═══════ MAIN CONTENT ═══════ -->
 <main class="main">
 
-  <!-- TOP: AI Analysis Summary -->
-  <div class="row row-1">
-    <div class="card ai-summary-card">
-      <div class="ai-summary-header">
-        <div class="ai-summary-left">
-          <div class="ai-summary-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg>
-          </div>
-          <div>
-            <div class="ai-summary-title">AI Threat Analysis Report</div>
-            <div class="ai-summary-sub">Generated: May 9, 2026 2:15 PM</div>
-          </div>
-        </div>
-        <div class="risk-badge medium">
-          <span class="badge-dot"></span>
-          Overall Risk: MEDIUM
-        </div>
+  <!-- Page Title -->
+  <div class="page-title-section">
+    <h1 class="page-title">Settings & Policy Management</h1>
+    <p class="page-subtitle">Configure security policies, notifications, and privacy settings</p>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <a class="tab-item active" href="#policies">Policies</a>
+    <a class="tab-item" href="#notifications">Notifications</a>
+    <a class="tab-item" href="#privacy">Privacy</a>
+    <a class="tab-item" href="#agent-settings">Agent Settings</a>
+  </div>
+
+  <!-- ═══════ SECTION 1: POLICIES ═══════ -->
+  <div id="policies" class="section-anchor"></div>
+
+  <!-- Security Policies -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Security Policies</span></div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">USB Storage Policy: Block</div>
+        <div class="toggle-desc">Block USB mass storage devices</div>
       </div>
-      <div class="ai-summary-details">
-        <span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          Based on 175-point security audit
-        </span>
-        <span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          Wazuh SIEM events analyzed
-        </span>
-        <span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Endpoint telemetry correlated
-        </span>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">PowerShell Execution Policy: Restricted</div>
+        <div class="toggle-desc">Block encoded/obfuscated PowerShell</div>
       </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Remote Desktop: NLA Required</div>
+        <div class="toggle-desc">Require Network Level Authentication for RDP</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Screen Lock Timeout</div>
+        <div class="toggle-desc">Auto-lock screen after inactivity</div>
+      </div>
+      <select class="settings-select">
+        <option selected>15 minutes</option>
+        <option>5 minutes</option>
+        <option>10 minutes</option>
+        <option>30 minutes</option>
+      </select>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Password Minimum Length <span class="policy-warning">Below recommended 12+</span></div>
+        <div class="toggle-desc">Minimum password character requirement</div>
+      </div>
+      <select class="settings-select">
+        <option selected>8 characters</option>
+        <option>10 characters</option>
+        <option>12 characters</option>
+        <option>14 characters</option>
+        <option>16 characters</option>
+      </select>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Account Lockout Threshold</div>
+        <div class="toggle-desc">Lock account after failed attempts</div>
+      </div>
+      <select class="settings-select">
+        <option>3 attempts</option>
+        <option selected>5 attempts</option>
+        <option>10 attempts</option>
+      </select>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">BitLocker Enforcement: Required</div>
+        <div class="toggle-desc">Require full disk encryption</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Windows Update Policy: Auto-install</div>
+        <div class="toggle-desc">Automatic security updates</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Firewall Policy: Enabled</div>
+        <div class="toggle-desc">All profiles enforced</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Application Whitelisting: Disabled</div>
+        <div class="toggle-desc">Only allow approved applications</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
     </div>
   </div>
 
-  <!-- ROW 1: Three Risk Category Cards -->
-  <div class="row row-3">
-    <div class="card risk-cat-card high">
-      <div class="risk-cat-header">
-        <span class="risk-cat-name">Identity &amp; Access Risk</span>
-        <span class="risk-cat-level high">HIGH</span>
+  <!-- Compliance Policy Overrides -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Compliance Policy Overrides</span></div>
+    <p style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 14px;">Manual compliance toggles for items that require human verification</p>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Acceptable Use Policy in place <span class="status-yes">YES</span></div>
       </div>
-      <div class="risk-cat-desc">MFA disabled, 3 breached passwords detected, 1 shared account identified. Immediate action required to prevent unauthorized access.</div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
     </div>
-    <div class="card risk-cat-card low">
-      <div class="risk-cat-header">
-        <span class="risk-cat-name">Infrastructure Risk</span>
-        <span class="risk-cat-level low">LOW</span>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Incident Response Plan documented <span class="status-no">NO</span></div>
       </div>
-      <div class="risk-cat-desc">Firewall active and properly configured, disk encryption enabled, OS patches current. Infrastructure posture is strong.</div>
+      <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
     </div>
-    <div class="card risk-cat-card medium-risk">
-      <div class="risk-cat-header">
-        <span class="risk-cat-name">Data Protection Risk</span>
-        <span class="risk-cat-level medium">MEDIUM</span>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Security awareness training completed <span class="status-no">NO</span></div>
       </div>
-      <div class="risk-cat-desc">Backup untested for recovery, DMARC policy missing for email domain, USB device policy not enforced via Group Policy.</div>
+      <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Vendor risk assessments performed <span class="status-warning">NO</span></div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Business continuity plan documented <span class="status-no">NO</span></div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Data classification policy exists <span class="status-yes">YES</span></div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Privacy impact assessment completed <span class="status-yes">YES</span></div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Change management process defined <span class="status-warning">NO</span></div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="override-note">These manual toggles affect your compliance score. Set to YES only when evidence exists.</div>
+  </div>
+
+  <!-- ═══════ SECTION 2: NOTIFICATIONS ═══════ -->
+  <div id="notifications" class="section-anchor"></div>
+
+  <!-- Alert Preferences -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Alert Preferences</span></div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Critical threats <span class="status-badge-inline" style="background: var(--red-bg); color: var(--red);">Email + Dashboard</span></div>
+        <div class="toggle-desc">Cannot be disabled - always active</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked disabled><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Failed login attempts <span class="status-badge-inline" style="background: #f8fafc; color: var(--text-secondary); border: 1px solid var(--border);">Dashboard</span></div>
+        <div class="toggle-desc">Alert on failed login attempts</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Backup failures <span class="status-badge-inline" style="background: var(--red-bg); color: var(--red);">Email + Dashboard</span></div>
+        <div class="toggle-desc">Notify when backup jobs fail</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Compliance score changes <span class="status-badge-inline" style="background: #f8fafc; color: var(--text-secondary); border: 1px solid var(--border);">Dashboard</span></div>
+        <div class="toggle-desc">Alert when compliance score changes</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Windows update available <span class="status-badge-inline" style="background: #f8fafc; color: var(--text-secondary); border: 1px solid var(--border);">Dashboard</span></div>
+        <div class="toggle-desc">Notify about available Windows updates</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">New device connected <span class="status-badge-inline" style="background: var(--accent-light); color: var(--accent);">Email + Dashboard</span></div>
+        <div class="toggle-desc">Alert when new device connects to network</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Scan completed <span class="status-badge-inline" style="background: #f8fafc; color: var(--text-secondary); border: 1px solid var(--border);">Dashboard only</span></div>
+        <div class="toggle-desc">Notification when security scan finishes</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Policy violations <span class="status-badge-inline" style="background: var(--accent-light); color: var(--accent);">Email + Dashboard</span></div>
+        <div class="toggle-desc">Alert on security policy violations</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
     </div>
   </div>
 
-  <!-- ROW 2: AI Recommendations + Threat Intelligence -->
-  <div class="row row-2">
+  <!-- Notification Recipients -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Notification Recipients</span></div>
+    <table class="notif-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Receives</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Paul Modi</td>
+          <td>paul@modihome.ca</td>
+          <td>Admin</td>
+          <td>All alerts</td>
+        </tr>
+        <tr>
+          <td>PC Plus Support</td>
+          <td>support@pcpluscomputing.com</td>
+          <td>MSP</td>
+          <td>Critical only</td>
+        </tr>
+      </tbody>
+    </table>
+    <button class="btn-add" onclick="alert(\'Enter recipient email in the field above\')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Recipient
+    </button>
+  </div>
 
-    <!-- AI Recommendations -->
-    <div class="card">
-      <div class="card-header"><span class="card-title">AI-Generated Recommendations</span><span style="font-size:9px; font-weight:700; color:var(--accent); background:rgba(37,150,190,0.08); padding:2px 8px; border-radius:10px;">PRIORITIZED</span></div>
+  <!-- ═══════ SECTION 3: PRIVACY ═══════ -->
+  <div id="privacy" class="section-anchor"></div>
 
-      <div class="ai-rec-list">
-        <div class="ai-rec-item critical">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge critical">Critical</span>
-            <strong>Enable Multi-Factor Authentication</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">MFA is not enabled on any user account. This is the single highest-impact security improvement available. Enable MFA via Windows Hello, authenticator app, or hardware key to block 99.9% of account compromise attacks.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item critical">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge critical">Critical</span>
-            <strong>Test Backup Restore Process</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">Backup restore has never been tested. Without verified restores, backups may fail when needed most. Schedule a quarterly test restore to verify data integrity and measure recovery time.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item high-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge high-priority">High</span>
-            <strong>Configure DMARC Email Authentication</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">SPF/DKIM/DMARC are not fully configured for the domain. This leaves the organization vulnerable to email spoofing and phishing. Implementing DMARC with a reject policy would bring the compliance score above 85%.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item high-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge high-priority">High</span>
-            <strong>Disable RDP or Enforce NLA + MFA</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">RDP is enabled without MFA. NLA is required but weak. RDP is the #1 attack vector for ransomware. Disable RDP entirely or enforce Network Level Authentication with certificate-based MFA.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item high-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge high-priority">High</span>
-            <strong>Increase Shadow Copy Restore Points</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">Only 2 VSS restore points exist (recommended 5+). Increase Volume Shadow Copy storage allocation to maintain at least 5 restore points for faster file-level recovery.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item medium-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge medium-priority">Medium</span>
-            <strong>Enable Tamper Protection</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">Windows Defender tamper protection is disabled. Malware can modify Defender settings. Enable tamper protection to prevent unauthorized changes to security software configuration.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
-        <div class="ai-rec-item medium-priority">
-          <div class="ai-rec-header">
-            <span class="ai-rec-badge medium-priority">Medium</span>
-            <strong>Reduce Phishing Click Rate</strong>
-          </div>
-          <p style="margin:6px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.6;">Last phishing simulation showed a 15% click rate (target is below 10%). Schedule monthly micro-training sessions focusing on identifying suspicious links and attachments. Consider gamification to improve engagement.</p>
-          <a href="https://pcpluscomputing.com" target="_blank" style="font-size:11px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block;">More Info &rarr;</a>
-        </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Data Collection & Privacy</span></div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Telemetry data collection</div>
+        <div class="toggle-desc">Share anonymous usage data to improve protection</div>
       </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
     </div>
 
-    <!-- Threat Intelligence Feed -->
-    <div class="card">
-      <div class="card-header"><span class="card-title">Threat Intelligence Feed</span><span style="font-size:9px; font-weight:700; color:var(--red); background:var(--red-bg); padding:2px 8px; border-radius:10px;">LIVE</span></div>
-      <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:14px; font-weight:500;">Threats Relevant to Your Environment</p>
-
-      <div class="threat-intel-list">
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">Ransomware targeting Canadian businesses increased 40% in Q1 2026. Small businesses without MFA are primary targets.</div>
-            <div class="threat-intel-date">May 8, 2026</div>
-          </div>
-        </div>
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot" style="background:var(--yellow);"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">New PowerShell-based attack bypasses AMSI - ensure Script Block Logging is enabled on all endpoints.</div>
-            <div class="threat-intel-date">May 7, 2026</div>
-          </div>
-        </div>
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">Critical Windows vulnerability CVE-2026-21551 - patch available in latest update. Remote code execution risk.</div>
-            <div class="threat-intel-date">May 6, 2026</div>
-          </div>
-        </div>
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot" style="background:var(--yellow);"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">Phishing campaigns targeting Office 365 users with fake MFA prompts. Verify all MFA requests through official channels.</div>
-            <div class="threat-intel-date">May 5, 2026</div>
-          </div>
-        </div>
-        <div class="threat-intel-item">
-          <div class="threat-intel-dot"></div>
-          <div class="threat-intel-content">
-            <div class="threat-intel-text">New variant of LockBit ransomware targets unpatched RDP services. Ensure RDP is disabled or protected behind VPN.</div>
-            <div class="threat-intel-date">May 3, 2026</div>
-          </div>
-        </div>
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Screenshot on threat detection</div>
+        <div class="toggle-desc">Capture screen when threat is detected for analysis</div>
       </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Browser history monitoring</div>
+        <div class="toggle-desc">Monitor browsing for malicious sites</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label" style="opacity: 0.5;">Keystroke logging</div>
+        <div class="toggle-desc" style="opacity: 0.5;">Disabled - requires explicit employee consent</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" disabled><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">Network traffic logging</div>
+        <div class="toggle-desc">Log network connections for threat analysis</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-label">File access audit</div>
+        <div class="toggle-desc">Track file access patterns for ransomware detection</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="privacy-notice">
+      <strong>PIPEDA Compliance Notice:</strong> All data collection complies with PIPEDA requirements. Personal data is encrypted at rest and in transit. Data retention: 90 days for logs, 365 days for audit records.
     </div>
   </div>
 
-  <!-- ROW 3: Security Score Projection -->
-  <div class="row row-1">
-    <div class="card">
-      <div class="card-header"><span class="card-title">Security Score Projection</span><span style="font-size:9px; font-weight:700; color:var(--green); background:var(--green-bg); padding:2px 8px; border-radius:10px;">IMPROVEMENT PATH</span></div>
+  <!-- ═══════ SECTION 4: AGENT SETTINGS ═══════ -->
+  <div id="agent-settings" class="section-anchor"></div>
 
-      <div class="projection-chart">
-        <div class="projection-bar-group">
-          <div class="projection-label">Current Score</div>
-          <div class="projection-bar-wrap">
-            <div class="projection-bar current">78 / 175</div>
-          </div>
-          <div class="projection-score">78 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade B</span></div>
-        </div>
-        <div class="projection-bar-group">
-          <div class="projection-label">After Phase 1 <span style="font-size:9px;color:var(--text-muted);">(+MFA, +DMARC)</span></div>
-          <div class="projection-bar-wrap">
-            <div class="projection-bar phase1">98 / 175</div>
-          </div>
-          <div class="projection-score">98 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade B+</span></div>
-        </div>
-        <div class="projection-bar-group">
-          <div class="projection-label">After Phase 2 <span style="font-size:9px;color:var(--text-muted);">(+Backup, +Passwords)</span></div>
-          <div class="projection-bar-wrap">
-            <div class="projection-bar phase2">108 / 175</div>
-          </div>
-          <div class="projection-score">108 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade A-</span></div>
-        </div>
-        <div class="projection-bar-group">
-          <div class="projection-label">All Recommendations</div>
-          <div class="projection-bar-wrap">
-            <div class="projection-bar target">121 / 175</div>
-          </div>
-          <div class="projection-score">121 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade A-</span></div>
-        </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Agent Configuration</span></div>
+
+    <div class="config-row">
+      <span class="config-label">Agent Version</span>
+      <span class="config-val green">v4.27.0 (Up to Date)</span>
+    </div>
+
+    <div class="config-row">
+      <span class="config-label">Check for Updates</span>
+      <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+
+    <div class="config-row">
+      <span class="config-label">Report Interval</span>
+      <select class="settings-select">
+        <option>Every 5 minutes</option>
+        <option selected>Every 15 minutes</option>
+        <option>Every 30 minutes</option>
+        <option>Every 60 minutes</option>
+      </select>
+    </div>
+
+    <div class="config-row">
+      <span class="config-label">Scan Schedule</span>
+      <select class="settings-select">
+        <option>Daily 12:00 PM</option>
+        <option selected>Daily 2:00 PM</option>
+        <option>Daily 4:00 PM</option>
+        <option>Daily 6:00 PM</option>
+      </select>
+    </div>
+
+    <div class="config-row">
+      <span class="config-label">Full Scan Schedule</span>
+      <select class="settings-select">
+        <option>Weekly Saturday 11:00 PM</option>
+        <option selected>Weekly Sunday 11:00 PM</option>
+        <option>Weekly Monday 2:00 AM</option>
+      </select>
+    </div>
+
+    <div class="config-row">
+      <span class="config-label">Log Level</span>
+      <select class="settings-select">
+        <option>Debug</option>
+        <option selected>Info</option>
+        <option>Warning</option>
+        <option>Error</option>
+      </select>
+    </div>
+
+    <div class="config-row">
+      <span class="config-label">Self-Protection</span>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 11px; color: var(--green); font-weight: 600;">Enabled</span>
+        <span style="font-size: 10px; color: var(--text-muted);">Prevents uninstall without admin password</span>
       </div>
+    </div>
 
-      <div class="projection-note">Following all recommendations would raise your score from 78 (Grade B) to 121 (Grade A-), representing a 55% improvement in your security posture.</div>
+    <div style="display: flex; align-items: center; margin-top: 16px;">
+      <button class="btn-save" onclick="this.textContent='Saving...';var b=this;setTimeout(function(){b.textContent='Saved!';setTimeout(function(){b.textContent='Save Settings'},2000)},1000)">Save Settings</button>
+      <a class="btn-reset-link" href="javascript:void(0)" onclick="alert('Settings reset coming soon')">Reset to Defaults</a>
     </div>
   </div>
 
 </main>
 
-<!-- FOOTER -->
+<!-- ═══════ FOOTER ═══════ -->
 <footer class="footer">
   <div class="footer-item">
     <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
