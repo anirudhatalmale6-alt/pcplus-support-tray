@@ -112,6 +112,28 @@ namespace PCPlus.Dashboard.Controllers
             if (!string.IsNullOrEmpty(request.WifiConnectedSsid))
                 device.WifiConnectedSsid = request.WifiConnectedSsid;
 
+            // MAC address
+            if (!string.IsNullOrEmpty(request.MacAddress))
+                device.MacAddress = request.MacAddress;
+
+            // Network data → NetworkSecurityData table
+            if (request.NetworkData != null)
+            {
+                var netData = await _db.NetworkSecurityData.FirstOrDefaultAsync(n => n.DeviceId == request.DeviceId);
+                if (netData == null)
+                {
+                    netData = new NetworkSecurityData { DeviceId = request.DeviceId, Hostname = request.Hostname };
+                    _db.NetworkSecurityData.Add(netData);
+                }
+                netData.FirewallEnabled = request.NetworkData.FirewallEnabled;
+                netData.FirewallProfilesJson = JsonSerializer.Serialize(request.NetworkData.FirewallProfiles);
+                netData.OpenPortsJson = JsonSerializer.Serialize(request.NetworkData.OpenPorts);
+                netData.ActiveConnections = request.NetworkData.ActiveConnections;
+                netData.RdpEnabled = request.NetworkData.RdpEnabled;
+                netData.DnsServersJson = JsonSerializer.Serialize(request.NetworkData.DnsServers);
+                netData.LastUpdated = DateTime.UtcNow;
+            }
+
             await _db.SaveChangesAsync();
 
             // Check for pending config pushes

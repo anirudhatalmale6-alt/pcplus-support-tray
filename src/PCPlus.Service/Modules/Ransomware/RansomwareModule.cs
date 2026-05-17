@@ -190,8 +190,8 @@ namespace PCPlus.Service.Modules.Ransomware
             _hardening = new SystemHardening();
             _hardening.Start(_context);
 
-            // Process monitoring every 3 seconds
-            _processMonitor = new Timer(MonitorProcesses, null, 0, 3000);
+            // Process monitoring every 15 seconds (was 3s, but WMI queries overload low-resource VMs)
+            _processMonitor = new Timer(MonitorProcesses, null, 0, 15000);
 
             // Reconciliation scan every 30 seconds (catches what FSW misses)
             _reconciliationScan = new Timer(ReconciliationScan, null, 15000, 30000);
@@ -365,6 +365,7 @@ namespace PCPlus.Service.Modules.Ransomware
                 Metrics = new()
                 {
                     ["detectionCount"] = _detections.Count,
+                    ["threatsBlocked"] = _detections.Count,
                     ["lockdownActive"] = _lockdownState.IsActive,
                     ["honeypotCount"] = _honeypotFiles.Count,
                     ["activeThreats"] = _scoring.GetActiveThreats().Count,

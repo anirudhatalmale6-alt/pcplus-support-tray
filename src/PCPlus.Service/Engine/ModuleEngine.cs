@@ -147,6 +147,11 @@ namespace PCPlus.Service.Engine
 
         public async Task BroadcastEventAsync(ModuleEvent evt)
         {
+            if (evt.EventType == ModuleEvent.THREAT_DETECTED)
+                _ = _ipcServer.BroadcastAsync(IpcNotification.THREAT_DETECTED, evt.Data);
+            else if (evt.EventType == ModuleEvent.LOCKDOWN_ACTIVATED || evt.EventType == ModuleEvent.LOCKDOWN_DEACTIVATED)
+                _ = _ipcServer.BroadcastAsync(IpcNotification.LOCKDOWN_CHANGED, evt.Data);
+
             foreach (var (_, module) in _modules)
             {
                 if (module.IsRunning && module.Id != evt.SourceModule)

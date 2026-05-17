@@ -43,7 +43,7 @@ namespace PCPlus.Service.Engine
             _http = new HttpClient
             {
                 BaseAddress = new Uri(dashboardUrl.TrimEnd('/')),
-                Timeout = TimeSpan.FromSeconds(10)
+                Timeout = TimeSpan.FromSeconds(30)
             };
 
             var token = _config.DashboardApiToken;
@@ -264,23 +264,39 @@ namespace PCPlus.Service.Engine
 
         private async void ForwardAlert(Alert alert)
         {
-            if (_http == null) return;
+            var report = new
+            {
+                deviceId = _config.DeviceId,
+                hostname = Environment.MachineName,
+                moduleId = alert.ModuleId,
+                title = alert.Title,
+                message = alert.Message,
+                severity = alert.Severity.ToString(),
+                category = alert.Category,
+                metadata = alert.Metadata
+            };
 
+            WriteAlertToQueue(report);
+
+            if (_http == null) return;
             try
             {
-                var report = new
-                {
-                    deviceId = _config.DeviceId,
-                    hostname = Environment.MachineName,
-                    moduleId = alert.ModuleId,
-                    title = alert.Title,
-                    message = alert.Message,
-                    severity = alert.Severity.ToString(),
-                    category = alert.Category,
-                    metadata = alert.Metadata
-                };
-
                 await _http.PostAsJsonAsync("/api/endpoint/alert", report);
+            }
+            catch { }
+        }
+
+        private void WriteAlertToQueue(object alertReport)
+        {
+            try
+            {
+                var queueDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "PCPlusEndpoint", "alert-queue");
+                Directory.CreateDirectory(queueDir);
+                var fileName = $"alert_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}.json";
+                File.WriteAllText(Path.Combine(queueDir, fileName),
+                    JsonSerializer.Serialize(alertReport));
             }
             catch { }
         }

@@ -207,6 +207,31 @@ namespace PCPlus.Dashboard.Models
         public int WifiNetworks { get; set; }
         public int WifiUnsecure { get; set; }
         public string WifiConnectedSsid { get; set; } = "";
+
+        // Network data
+        public string MacAddress { get; set; } = "";
+        public NetworkDataReport? NetworkData { get; set; }
+    }
+
+    public class NetworkDataReport
+    {
+        public bool FirewallEnabled { get; set; }
+        public List<FirewallProfileReport> FirewallProfiles { get; set; } = new();
+        public List<OpenPortReport> OpenPorts { get; set; } = new();
+        public int ActiveConnections { get; set; }
+        public bool RdpEnabled { get; set; }
+        public List<string> DnsServers { get; set; } = new();
+    }
+
+    public class FirewallProfileReport
+    {
+        public string Name { get; set; } = "";
+        public bool Enabled { get; set; }
+    }
+
+    public class OpenPortReport
+    {
+        public int Port { get; set; }
     }
 
     public class BitLockerKeyReport
