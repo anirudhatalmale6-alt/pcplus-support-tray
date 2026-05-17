@@ -144,6 +144,7 @@ namespace PCPlus.Tray.Forms
             AddNavItem(navPanel, "history", "Detection History", "\u2630", ref y);
             AddNavItem(navPanel, "lockdown", "Lockdown Mode", "\u26A0", ref y);
             AddNavItem(navPanel, "advisor", "Trusted Advisor", "\u2605", ref y);
+            AddNavItem(navPanel, "vulnerability", "Vulnerability", "\u26a0", ref y);
             AddNavItem(navPanel, "wifi", "WiFi Security", "\u2637", ref y);
             AddNavItem(navPanel, "policies", "Policy Engine", "\u2692", ref y);
             y += 10; // spacer
@@ -244,6 +245,7 @@ namespace PCPlus.Tray.Forms
                 case "history": BuildHistoryView(); break;
                 case "lockdown": BuildLockdownView(); break;
                 case "advisor": BuildAdvisorView(); break;
+                case "vulnerability": BuildVulnerabilityView(); break;
                 case "wifi": BuildWifiView(); break;
                 case "policies": BuildPoliciesView(); break;
                 case "support": BuildSupportView(); break;
@@ -1576,6 +1578,253 @@ namespace PCPlus.Tray.Forms
                     }
                 }
             }
+        }
+
+        #endregion
+
+        #region Vulnerability View
+
+        private void BuildVulnerabilityView()
+        {
+            int y = 0;
+            int m = 16;
+            int contentW = _contentArea.Width - m * 2;
+
+            // Title
+            var titleLabel = new Label
+            {
+                Text = "Vulnerability Scanner",
+                Font = new Font("Segoe UI", 18, FontStyle.Bold),
+                ForeColor = TextDark,
+                Location = new Point(m, y),
+                AutoSize = true
+            };
+            _contentArea.Controls.Add(titleLabel);
+
+            var subLabel = new Label
+            {
+                Text = "Powered by OpenVAS/Greenbone - Network vulnerability assessment",
+                Font = new Font("Segoe UI", 9),
+                ForeColor = TextMuted,
+                Location = new Point(m, y + 32),
+                AutoSize = true
+            };
+            _contentArea.Controls.Add(subLabel);
+            y += 68;
+
+            // Status card
+            var statusCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 120), CardBg, CardBorder);
+
+            // Shield icon area
+            var shieldPanel = new Panel
+            {
+                Location = new Point(20, 16),
+                Size = new Size(88, 88),
+                BackColor = Color.Transparent
+            };
+            shieldPanel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var bgBrush = new SolidBrush(Color.FromArgb(20, AccentGreen));
+                using var bgPath = RoundedRect(new Rectangle(0, 0, 88, 88), 16);
+                g.FillPath(bgBrush, bgPath);
+                using var shieldBrush = new SolidBrush(AccentGreen);
+                var sp = new GraphicsPath();
+                sp.AddArc(24, 14, 10, 10, 180, 90);
+                sp.AddArc(54, 14, 10, 10, 270, 90);
+                sp.AddLine(64, 19, 64, 44);
+                sp.AddLine(64, 44, 44, 68);
+                sp.AddLine(44, 68, 24, 44);
+                sp.AddLine(24, 44, 24, 19);
+                sp.CloseFigure();
+                g.FillPath(shieldBrush, sp);
+                using var checkPen = new Pen(Color.White, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                g.DrawLine(checkPen, 36, 42, 42, 50);
+                g.DrawLine(checkPen, 42, 50, 54, 34);
+            };
+            statusCard.Controls.Add(shieldPanel);
+
+            var statusText = new Label
+            {
+                Text = "Awaiting First Scan",
+                Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                ForeColor = TextDark,
+                Location = new Point(120, 22),
+                AutoSize = true
+            };
+            statusCard.Controls.Add(statusText);
+
+            var statusSub = new Label
+            {
+                Text = "OpenVAS is initializing. Run your first vulnerability scan to see results.",
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = TextMuted,
+                Location = new Point(120, 54),
+                Size = new Size(contentW - 160, 40)
+            };
+            statusCard.Controls.Add(statusSub);
+
+            _contentArea.Controls.Add(statusCard);
+            y += 136;
+
+            // Severity summary cards
+            var cardW = (contentW - m * 3) / 4;
+            var severities = new[] {
+                ("Critical", "0", AccentRed, "CVSS 9.0-10.0"),
+                ("High", "0", AccentOrange, "CVSS 7.0-8.9"),
+                ("Medium", "0", AccentBlue, "CVSS 4.0-6.9"),
+                ("Low", "0", AccentGreen, "CVSS 0.1-3.9")
+            };
+
+            for (int i = 0; i < 4; i++)
+            {
+                var (label, count, color, range) = severities[i];
+                var card = CreateRoundedPanel(new Rectangle(m + i * (cardW + m), y, cardW, 100), CardBg, CardBorder);
+
+                // Left accent bar
+                var accentBar = new Panel
+                {
+                    Location = new Point(0, 0),
+                    Size = new Size(4, 100),
+                    BackColor = color
+                };
+                card.Controls.Add(accentBar);
+
+                var countLabel = new Label
+                {
+                    Text = "--",
+                    Font = new Font("Segoe UI", 28, FontStyle.Bold),
+                    ForeColor = color,
+                    Location = new Point(16, 8),
+                    AutoSize = true
+                };
+                card.Controls.Add(countLabel);
+
+                var nameLabel = new Label
+                {
+                    Text = label,
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    ForeColor = TextDark,
+                    Location = new Point(16, 58),
+                    AutoSize = true
+                };
+                card.Controls.Add(nameLabel);
+
+                var rangeLabel = new Label
+                {
+                    Text = range,
+                    Font = new Font("Segoe UI", 8),
+                    ForeColor = TextMuted,
+                    Location = new Point(16, 78),
+                    AutoSize = true
+                };
+                card.Controls.Add(rangeLabel);
+
+                _contentArea.Controls.Add(card);
+            }
+            y += 116;
+
+            // Scan details card
+            var detailCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 200), CardBg, CardBorder);
+
+            var detailTitle = new Label
+            {
+                Text = "Scan Details",
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                ForeColor = TextDark,
+                Location = new Point(20, 14),
+                AutoSize = true
+            };
+            detailCard.Controls.Add(detailTitle);
+
+            var details = new[] {
+                ("Last Scan", "Pending first scan"),
+                ("Duration", "--"),
+                ("Hosts Scanned", "--"),
+                ("Next Scheduled", "Sunday 2:00 AM"),
+                ("Scanner Version", "OpenVAS 22.x"),
+                ("Feed Status", "Updating...")
+            };
+
+            for (int i = 0; i < details.Length; i++)
+            {
+                var (key, val) = details[i];
+                var keyLabel = new Label
+                {
+                    Text = key,
+                    Font = new Font("Segoe UI", 9.5f),
+                    ForeColor = TextMuted,
+                    Location = new Point(20, 46 + i * 24),
+                    AutoSize = true
+                };
+                detailCard.Controls.Add(keyLabel);
+
+                var valColor = key == "Feed Status" ? AccentGreen : TextDark;
+                var valLabel = new Label
+                {
+                    Text = val,
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    ForeColor = valColor,
+                    Location = new Point(200, 46 + i * 24),
+                    AutoSize = true
+                };
+                detailCard.Controls.Add(valLabel);
+            }
+
+            _contentArea.Controls.Add(detailCard);
+            y += 216;
+
+            // Action buttons
+            var scanBtn = new Panel
+            {
+                Location = new Point(m, y),
+                Size = new Size(180, 44),
+                BackColor = AccentTeal,
+                Cursor = Cursors.Hand
+            };
+            scanBtn.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                using var path = RoundedRect(new Rectangle(0, 0, scanBtn.Width, scanBtn.Height), 10);
+                using var brush = new SolidBrush(AccentTeal);
+                g.FillPath(brush, path);
+                using var font = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var textBrush = new SolidBrush(Color.White);
+                g.DrawString("⛨  Run Scan Now", font, textBrush, 20, 12);
+            };
+            scanBtn.Click += (s, e) =>
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://openvas.pcpluscomputing.com", UseShellExecute = true }); } catch { }
+            };
+            _contentArea.Controls.Add(scanBtn);
+
+            var reportBtn = new Panel
+            {
+                Location = new Point(m + 196, y),
+                Size = new Size(200, 44),
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand
+            };
+            reportBtn.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                using var path = RoundedRect(new Rectangle(0, 0, reportBtn.Width, reportBtn.Height), 10);
+                using var pen = new Pen(CardBorder, 1.5f);
+                g.DrawPath(pen, path);
+                using var font = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var textBrush = new SolidBrush(TextDark);
+                g.DrawString("↗  View Full Report", font, textBrush, 20, 12);
+            };
+            reportBtn.Click += (s, e) =>
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://dashboard.pcpluscomputing.com/vulnerability-scanner.html", UseShellExecute = true }); } catch { }
+            };
+            _contentArea.Controls.Add(reportBtn);
         }
 
         #endregion

@@ -119,6 +119,7 @@ namespace PCPlus.Tray
             "System Health|CPU temperature normal. All drives healthy.",
             "Compliance Check|CyberSecure Canada compliance: 75% - 3 items need attention.",
             "Backup Monitor|Last backup completed successfully. 847 recovery points available.",
+            "Vulnerability Scanner|Network scan complete. No critical vulnerabilities detected.",
         };
         private int _alertIndex;
 
