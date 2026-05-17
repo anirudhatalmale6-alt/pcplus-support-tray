@@ -1797,7 +1797,7 @@ namespace PCPlus.Tray.Forms
             };
             scanBtn.Click += (s, e) =>
             {
-                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://dashboard.pcpluscomputing.com/openvas/", UseShellExecute = true }); } catch { }
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://openvas.pcpluscomputing.com", UseShellExecute = true }); } catch { }
             };
             _contentArea.Controls.Add(scanBtn);
 
