@@ -146,6 +146,7 @@ namespace PCPlus.Tray.Forms
             AddNavItem(navPanel, "advisor", "Trusted Advisor", "\u2605", ref y);
             AddNavItem(navPanel, "vulnerability", "Vulnerability", "\u26a0", ref y);
             AddNavItem(navPanel, "wifi", "WiFi Security", "\u2637", ref y);
+            AddNavItem(navPanel, "dns", "DNS Protection", "\u2691", ref y);
             AddNavItem(navPanel, "policies", "Policy Engine", "\u2692", ref y);
             y += 10; // spacer
             AddNavItem(navPanel, "support", "Support Center", "\u2709", ref y);
@@ -247,6 +248,7 @@ namespace PCPlus.Tray.Forms
                 case "advisor": BuildAdvisorView(); break;
                 case "vulnerability": BuildVulnerabilityView(); break;
                 case "wifi": BuildWifiView(); break;
+                case "dns": BuildDnsProtectionView(); break;
                 case "policies": BuildPoliciesView(); break;
                 case "support": BuildSupportView(); break;
                 case "system": BuildSystemView(); break;
@@ -2012,6 +2014,173 @@ namespace PCPlus.Tray.Forms
                 _contentArea.Controls.Add(errLabel);
             }
             } catch { }
+        }
+
+        #endregion
+
+        #region DNS Protection View
+
+        private void BuildDnsProtectionView()
+        {
+            int y = 0;
+            int m = 16;
+            int contentW = _contentArea.Width - m * 2;
+
+            var titleLabel = new Label
+            {
+                Text = "DNS Protection",
+                Font = new Font("Segoe UI", 18, FontStyle.Bold),
+                ForeColor = TextDark,
+                Location = new Point(m, y),
+                AutoSize = true
+            };
+            _contentArea.Controls.Add(titleLabel);
+
+            var subLabel = new Label
+            {
+                Text = "Powered by AdGuard Home - Network-level phishing & malware blocking",
+                Font = new Font("Segoe UI", 9),
+                ForeColor = TextMuted,
+                Location = new Point(m, y + 32),
+                AutoSize = true
+            };
+            _contentArea.Controls.Add(subLabel);
+            y += 68;
+
+            // Status card
+            var statusCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 100), CardBg, CardBorder);
+
+            var shieldPanel = new Panel
+            {
+                Location = new Point(20, 12),
+                Size = new Size(76, 76),
+                BackColor = Color.Transparent
+            };
+            shieldPanel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var bgBrush = new SolidBrush(Color.FromArgb(20, AccentBlue));
+                using var bgPath = RoundedRect(new Rectangle(0, 0, 76, 76), 14);
+                g.FillPath(bgBrush, bgPath);
+                using var pen = new Pen(AccentBlue, 2.5f);
+                g.DrawEllipse(pen, 18, 18, 40, 40);
+                using var checkPen = new Pen(AccentGreen, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                g.DrawLine(checkPen, 30, 38, 36, 46);
+                g.DrawLine(checkPen, 36, 46, 48, 30);
+            };
+            statusCard.Controls.Add(shieldPanel);
+
+            statusCard.Controls.Add(new Label
+            {
+                Text = "DNS Filtering Active",
+                Font = new Font("Segoe UI", 14, FontStyle.Bold),
+                ForeColor = AccentGreen,
+                Location = new Point(108, 18),
+                AutoSize = true
+            });
+            statusCard.Controls.Add(new Label
+            {
+                Text = "443,000+ phishing & malware domains blocked at network level.\nAll DNS queries are filtered before reaching your browser.",
+                Font = new Font("Segoe UI", 9),
+                ForeColor = TextMuted,
+                Location = new Point(108, 46),
+                Size = new Size(contentW - 140, 40)
+            });
+            _contentArea.Controls.Add(statusCard);
+            y += 116;
+
+            // Stats row
+            var cardW = (contentW - m * 2) / 3;
+            var stats = new[]
+            {
+                ("Threats Blocked", "Real-time", AccentRed),
+                ("Filter Rules", "443,408", AccentBlue),
+                ("Response Time", "<100ms", AccentGreen)
+            };
+            for (int i = 0; i < 3; i++)
+            {
+                var (label, val, color) = stats[i];
+                var card = CreateRoundedPanel(new Rectangle(m + i * (cardW + m), y, cardW, 80), CardBg, CardBorder);
+                card.Controls.Add(new Label
+                {
+                    Text = label,
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                    ForeColor = TextMuted,
+                    Location = new Point(12, 12),
+                    AutoSize = true
+                });
+                card.Controls.Add(new Label
+                {
+                    Text = val,
+                    Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                    ForeColor = color,
+                    Location = new Point(12, 34),
+                    AutoSize = true
+                });
+                _contentArea.Controls.Add(card);
+            }
+            y += 96;
+
+            // Protection layers info
+            var infoCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 160), CardBg, CardBorder);
+            infoCard.Controls.Add(new Label
+            {
+                Text = "WHAT'S PROTECTED",
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = TextMuted,
+                Location = new Point(14, 12),
+                AutoSize = true
+            });
+
+            var protections = new[]
+            {
+                "Phishing websites (fake login pages, scam sites)",
+                "Malware download domains (ransomware, trojans)",
+                "Command & Control servers (botnet communication)",
+                "Cryptomining scripts (unauthorized CPU usage)",
+                "Ad trackers & fingerprinting (privacy threats)",
+                "Known malicious URLs from 6 threat intelligence feeds"
+            };
+            for (int i = 0; i < protections.Length; i++)
+            {
+                infoCard.Controls.Add(new Label
+                {
+                    Text = "✔ " + protections[i],
+                    Font = new Font("Segoe UI", 9),
+                    ForeColor = TextDark,
+                    Location = new Point(14, 36 + i * 20),
+                    AutoSize = true
+                });
+            }
+            _contentArea.Controls.Add(infoCard);
+            y += 176;
+
+            // Open console button
+            var consoleBtn = new Panel
+            {
+                Location = new Point(m, y),
+                Size = new Size(contentW, 40),
+                BackColor = AccentBlue,
+                Cursor = Cursors.Hand
+            };
+            consoleBtn.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using var path = RoundedRect(new Rectangle(0, 0, consoleBtn.Width, consoleBtn.Height), 8);
+                using var brush = new SolidBrush(AccentBlue);
+                e.Graphics.FillPath(brush, path);
+                using var font = new Font("Segoe UI", 10, FontStyle.Bold);
+                var text = "Open DNS Filtering Console";
+                var sz = e.Graphics.MeasureString(text, font);
+                using var tb = new SolidBrush(Color.White);
+                e.Graphics.DrawString(text, font, tb, (consoleBtn.Width - sz.Width) / 2, (consoleBtn.Height - sz.Height) / 2);
+            };
+            consoleBtn.Click += (s, e) =>
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://dns.pcpluscomputing.com", UseShellExecute = true }); } catch { }
+            };
+            _contentArea.Controls.Add(consoleBtn);
         }
 
         #endregion
