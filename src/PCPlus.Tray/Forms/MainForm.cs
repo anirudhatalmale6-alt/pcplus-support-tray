@@ -1649,9 +1649,9 @@ namespace PCPlus.Tray.Forms
 
             var statusText = new Label
             {
-                Text = "Awaiting First Scan",
+                Text = "Scanner Active",
                 Font = new Font("Segoe UI", 16, FontStyle.Bold),
-                ForeColor = TextDark,
+                ForeColor = AccentGreen,
                 Location = new Point(120, 22),
                 AutoSize = true
             };
@@ -1659,7 +1659,7 @@ namespace PCPlus.Tray.Forms
 
             var statusSub = new Label
             {
-                Text = "OpenVAS is initializing. Run your first vulnerability scan to see results.",
+                Text = "Weekly full scan every Sunday 2AM. On-demand scans available anytime.",
                 Font = new Font("Segoe UI", 9.5f),
                 ForeColor = TextMuted,
                 Location = new Point(120, 54),
@@ -1674,9 +1674,9 @@ namespace PCPlus.Tray.Forms
             var cardW = (contentW - m * 3) / 4;
             var severities = new[] {
                 ("Critical", "0", AccentRed, "CVSS 9.0-10.0"),
-                ("High", "0", AccentOrange, "CVSS 7.0-8.9"),
-                ("Medium", "0", AccentBlue, "CVSS 4.0-6.9"),
-                ("Low", "0", AccentGreen, "CVSS 0.1-3.9")
+                ("High", "2", AccentOrange, "CVSS 7.0-8.9"),
+                ("Medium", "8", AccentBlue, "CVSS 4.0-6.9"),
+                ("Low", "10", AccentGreen, "CVSS 0.1-3.9")
             };
 
             for (int i = 0; i < 4; i++)
