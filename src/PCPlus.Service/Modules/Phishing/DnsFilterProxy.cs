@@ -21,7 +21,9 @@ namespace PCPlus.Service.Modules.Phishing
         private IModuleContext _context = null!;
         private UdpClient? _listener;
         private CancellationTokenSource? _cts;
-        private Task? _listenTask;
+        #pragma warning disable CS0414
+        private Thread? _listenThread;
+        #pragma warning restore CS0414
         private Task? _watchdogTask;
         private Task? _cacheCleanupTask;
         private bool _isActive;
@@ -145,9 +147,8 @@ namespace PCPlus.Service.Modules.Phishing
         {
             _listener = new UdpClient(new IPEndPoint(IPAddress.Loopback, DnsPort));
             _listener.Client.ReceiveBufferSize = 65536;
+            _listener.Client.ReceiveTimeout = 500;
 
-            // Disable SIO_UDP_CONNRESET - prevents "connection forcibly closed" errors
-            // when ICMP Port Unreachable is received on Windows
             try
             {
                 const int SIO_UDP_CONNRESET = unchecked((int)0x9800000C);
@@ -155,24 +156,26 @@ namespace PCPlus.Service.Modules.Phishing
             }
             catch { }
 
-            _listenTask = Task.Run(ListenLoop);
+            var thread = new Thread(ListenLoopSync) { IsBackground = true, Priority = ThreadPriority.AboveNormal };
+            thread.Start();
         }
 
         private DateTime _lastListenErrorLog = DateTime.MinValue;
         private long _listenErrorCount;
 
-        private async Task ListenLoop()
+        private void ListenLoopSync()
         {
             while (!_cts!.Token.IsCancellationRequested)
             {
                 try
                 {
-                    var result = await _listener!.ReceiveAsync(_cts.Token);
-                    _ = Task.Run(() => ProcessQuerySafe(result.Buffer, result.RemoteEndPoint));
+                    var remoteEp = new IPEndPoint(IPAddress.Any, 0);
+                    byte[] buffer;
+                    try { buffer = _listener!.Receive(ref remoteEp); }
+                    catch (SocketException) { continue; }
+                    ProcessQuerySafe(buffer, remoteEp);
                 }
-                catch (OperationCanceledException) { break; }
                 catch (ObjectDisposedException) { break; }
-                catch (SocketException) { Interlocked.Increment(ref _listenErrorCount); }
                 catch (Exception ex)
                 {
                     Interlocked.Increment(ref _listenErrorCount);
@@ -469,7 +472,7 @@ namespace PCPlus.Service.Modules.Phishing
                 try
                 {
                     using var forwarder = new UdpClient();
-                    forwarder.Client.ReceiveTimeout = 3000;
+                    forwarder.Client.ReceiveTimeout = 1500;
                     forwarder.Send(query, query.Length, secondary);
                     var remoteEp = new IPEndPoint(IPAddress.Any, 0);
                     return forwarder.Receive(ref remoteEp);
