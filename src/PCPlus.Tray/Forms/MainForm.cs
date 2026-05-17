@@ -3138,6 +3138,26 @@ namespace PCPlus.Tray.Forms
             };
         }
 
+        private Panel CreateRoundedPanel(Rectangle bounds, Color bgColor, Color borderColor)
+        {
+            var panel = new Panel
+            {
+                Location = bounds.Location, Size = bounds.Size,
+                BackColor = bgColor
+            };
+            panel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var bgBrush = new SolidBrush(bgColor);
+                using var bgPath = RoundedRect(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), 10);
+                g.FillPath(bgBrush, bgPath);
+                using var pen = new Pen(borderColor);
+                g.DrawPath(pen, bgPath);
+            };
+            return panel;
+        }
+
         private Panel CreateCard(Point location, Size size)
         {
             var card = new Panel
