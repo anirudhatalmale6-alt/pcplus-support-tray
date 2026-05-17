@@ -13,7 +13,11 @@ var dbPath = Path.Combine(dataDir, "dashboard.db");
 builder.Services.AddDbContext<DashboardDb>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
