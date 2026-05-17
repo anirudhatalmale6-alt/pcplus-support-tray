@@ -505,6 +505,21 @@ namespace PCPlus.Dashboard.Controllers
             ["vulnerability_scanning"] = new() { "NIST_CSF", "Insurance" },
             ["endpoint_detection"] = new() { "NIST_CSF", "Insurance" },
             ["network_segmentation"] = new() { "NIST_CSF", "Insurance" },
+            // Legacy heartbeat ID aliases
+            ["antivirus"] = new() { "CyberSecure", "NIST_CSF", "CIS", "Insurance" },
+            ["firewall"] = new() { "CyberSecure", "NIST_CSF", "CIS" },
+            ["defender_rt"] = new() { "CyberSecure", "NIST_CSF", "CIS", "Insurance" },
+            ["uac"] = new() { "CyberSecure", "NIST_CSF", "CIS" },
+            ["bitlocker"] = new() { "CyberSecure", "NIST_CSF", "CIS", "PIPEDA", "Insurance" },
+            ["windows_update"] = new() { "CyberSecure", "NIST_CSF", "CIS", "Insurance" },
+            ["autologin"] = new() { "CyberSecure", "CIS" },
+            ["guest"] = new() { "CyberSecure", "NIST_CSF", "CIS" },
+            ["rdp"] = new() { "CyberSecure", "NIST_CSF", "CIS", "Insurance" },
+            ["password_length"] = new() { "CyberSecure", "NIST_CSF", "CIS", "PIPEDA" },
+            ["screen_lock"] = new() { "CyberSecure", "CIS" },
+            ["cfa"] = new() { "Insurance", "NIST_CSF" },
+            ["smbv1"] = new() { "CyberSecure", "NIST_CSF", "CIS" },
+            ["ps_logging"] = new() { "NIST_CSF", "CIS" },
         };
 
         private static readonly Dictionary<string, string> FrameworkNames = new()

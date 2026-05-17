@@ -74,12 +74,12 @@ try {
             if ($av) {
                 $activeAv = $av | Where-Object { ($_.productState -band 0x1000) -ne 0 } | Select-Object -First 1
                 $avName = if ($activeAv) { $activeAv.displayName } else { $av[0].displayName }
-                [void]$checks.Add(@{ Id="antivirus"; Name="Antivirus Protection"; Category="Protection"; Passed=$($null -ne $activeAv); Detail="Active: $avName"; Recommendation=""; Weight=15 })
+                [void]$checks.Add(@{ Id="antivirus_active"; Name="Antivirus Protection"; Category="Protection"; Passed=$($null -ne $activeAv); Detail="Active: $avName"; Recommendation=""; Weight=15 })
             } else {
-                [void]$checks.Add(@{ Id="antivirus"; Name="Antivirus Protection"; Category="Protection"; Passed=$false; Detail="No antivirus detected"; Recommendation="Install antivirus software"; Weight=15 })
+                [void]$checks.Add(@{ Id="antivirus_active"; Name="Antivirus Protection"; Category="Protection"; Passed=$false; Detail="No antivirus detected"; Recommendation="Install antivirus software"; Weight=15 })
             }
         } catch {
-            [void]$checks.Add(@{ Id="antivirus"; Name="Antivirus Protection"; Category="Protection"; Passed=$false; Detail="Unable to check"; Recommendation=""; Weight=15 })
+            [void]$checks.Add(@{ Id="antivirus_active"; Name="Antivirus Protection"; Category="Protection"; Passed=$false; Detail="Unable to check"; Recommendation=""; Weight=15 })
         }
 
         # Firewall
@@ -87,52 +87,52 @@ try {
             $fw = Get-NetFirewallProfile -ErrorAction SilentlyContinue
             $fwEnabled = ($fw | Where-Object { $_.Enabled }).Count
             $fwTotal = ($fw | Measure-Object).Count
-            [void]$checks.Add(@{ Id="firewall"; Name="Windows Firewall"; Category="Protection"; Passed=$($fwEnabled -eq $fwTotal); Detail="Firewall enabled on $fwEnabled/$fwTotal profiles"; Recommendation=""; Weight=15 })
+            [void]$checks.Add(@{ Id="firewall_enabled"; Name="Windows Firewall"; Category="Protection"; Passed=$($fwEnabled -eq $fwTotal); Detail="Firewall enabled on $fwEnabled/$fwTotal profiles"; Recommendation=""; Weight=15 })
         } catch {
-            [void]$checks.Add(@{ Id="firewall"; Name="Windows Firewall"; Category="Protection"; Passed=$false; Detail="Unable to check"; Recommendation=""; Weight=15 })
+            [void]$checks.Add(@{ Id="firewall_enabled"; Name="Windows Firewall"; Category="Protection"; Passed=$false; Detail="Unable to check"; Recommendation=""; Weight=15 })
         }
 
         # Defender RT
         try {
             $def = Get-MpPreference -ErrorAction SilentlyContinue
             $rtEnabled = if ($def) { -not $def.DisableRealtimeMonitoring } else { $false }
-            [void]$checks.Add(@{ Id="defender_rt"; Name="Real-time Protection"; Category="Protection"; Passed=$rtEnabled; Detail=$(if ($rtEnabled) {"Real-time protection active"} else {"Real-time protection disabled"}); Recommendation=""; Weight=5 })
+            [void]$checks.Add(@{ Id="realtime_protection"; Name="Real-time Protection"; Category="Protection"; Passed=$rtEnabled; Detail=$(if ($rtEnabled) {"Real-time protection active"} else {"Real-time protection disabled"}); Recommendation=""; Weight=5 })
         } catch {
-            [void]$checks.Add(@{ Id="defender_rt"; Name="Real-time Protection"; Category="Protection"; Passed=$false; Detail="Unable to check"; Recommendation=""; Weight=5 })
+            [void]$checks.Add(@{ Id="realtime_protection"; Name="Real-time Protection"; Category="Protection"; Passed=$false; Detail="Unable to check"; Recommendation=""; Weight=5 })
         }
 
         # UAC
         try {
             $uac = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ErrorAction SilentlyContinue).EnableLUA
-            [void]$checks.Add(@{ Id="uac"; Name="User Account Control"; Category="Protection"; Passed=$($uac -eq 1); Detail=$(if ($uac -eq 1) {"UAC enabled"} else {"UAC disabled"}); Recommendation=""; Weight=10 })
+            [void]$checks.Add(@{ Id="uac_enabled"; Name="User Account Control"; Category="Protection"; Passed=$($uac -eq 1); Detail=$(if ($uac -eq 1) {"UAC enabled"} else {"UAC disabled"}); Recommendation=""; Weight=10 })
         } catch {}
 
         # BitLocker
         try {
             $bl = Get-BitLockerVolume -MountPoint "C:" -ErrorAction SilentlyContinue
             $blOn = $bl -and $bl.ProtectionStatus -eq "On"
-            [void]$checks.Add(@{ Id="bitlocker"; Name="BitLocker Encryption"; Category="Encryption"; Passed=$blOn; Detail=$(if ($blOn) {"C: drive encrypted"} else {"C: drive not encrypted"}); Recommendation="Enable BitLocker on system drive"; Weight=10 })
+            [void]$checks.Add(@{ Id="bitlocker_enabled"; Name="BitLocker Encryption"; Category="Encryption"; Passed=$blOn; Detail=$(if ($blOn) {"C: drive encrypted"} else {"C: drive not encrypted"}); Recommendation="Enable BitLocker on system drive"; Weight=10 })
         } catch {
-            [void]$checks.Add(@{ Id="bitlocker"; Name="BitLocker Encryption"; Category="Encryption"; Passed=$false; Detail="Unable to check BitLocker"; Recommendation=""; Weight=10 })
+            [void]$checks.Add(@{ Id="bitlocker_enabled"; Name="BitLocker Encryption"; Category="Encryption"; Passed=$false; Detail="Unable to check BitLocker"; Recommendation=""; Weight=10 })
         }
 
         # Windows Update
         try {
             $upd = Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 1
             $daysSince = if ($upd -and $upd.InstalledOn) { ((Get-Date) - $upd.InstalledOn).Days } else { 999 }
-            [void]$checks.Add(@{ Id="windows_update"; Name="Windows Updates"; Category="Patching"; Passed=$($daysSince -le 30); Detail="Last update: $daysSince days ago"; Recommendation="Install latest Windows updates"; Weight=10 })
+            [void]$checks.Add(@{ Id="windows_update_enabled"; Name="Windows Updates"; Category="Patching"; Passed=$($daysSince -le 30); Detail="Last update: $daysSince days ago"; Recommendation="Install latest Windows updates"; Weight=10 })
         } catch {}
 
         # AutoLogin
         try {
             $al = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -ErrorAction SilentlyContinue).AutoAdminLogon
-            [void]$checks.Add(@{ Id="autologin"; Name="Auto-Login"; Category="Access"; Passed=$($al -ne "1"); Detail=$(if ($al -eq "1") {"Auto-login configured - security risk"} else {"Auto-login not configured"}); Recommendation="Disable auto-login"; Weight=5 })
+            [void]$checks.Add(@{ Id="auto_login_disabled"; Name="Auto-Login"; Category="Access"; Passed=$($al -ne "1"); Detail=$(if ($al -eq "1") {"Auto-login configured - security risk"} else {"Auto-login not configured"}); Recommendation="Disable auto-login"; Weight=5 })
         } catch {}
 
         # Guest Account
         try {
             $guest = Get-LocalUser -Name "Guest" -ErrorAction SilentlyContinue
-            [void]$checks.Add(@{ Id="guest"; Name="Guest Account"; Category="Access"; Passed=$($guest -and -not $guest.Enabled); Detail=$(if ($guest -and -not $guest.Enabled) {"Guest account disabled"} else {"Guest account enabled"}); Recommendation="Disable guest account"; Weight=5 })
+            [void]$checks.Add(@{ Id="guest_account_disabled"; Name="Guest Account"; Category="Access"; Passed=$($guest -and -not $guest.Enabled); Detail=$(if ($guest -and -not $guest.Enabled) {"Guest account disabled"} else {"Guest account enabled"}); Recommendation="Disable guest account"; Weight=5 })
         } catch {}
 
         # RDP
@@ -140,7 +140,7 @@ try {
             $rdp = (Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -ErrorAction SilentlyContinue).fDenyTSConnections
             $rdpEnabled = ($rdp -eq 0)
             $nla = (Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -ErrorAction SilentlyContinue).UserAuthentication
-            [void]$checks.Add(@{ Id="rdp"; Name="Remote Desktop"; Category="Network"; Passed=$(-not $rdpEnabled -or $nla -eq 1); Detail=$(if (-not $rdpEnabled) {"RDP disabled"} else { if ($nla -eq 1) {"RDP enabled with NLA"} else {"RDP enabled without NLA - security risk"} }); Recommendation="Enable NLA for RDP"; Weight=10 })
+            [void]$checks.Add(@{ Id="rdp_disabled"; Name="Remote Desktop"; Category="Network"; Passed=$(-not $rdpEnabled -or $nla -eq 1); Detail=$(if (-not $rdpEnabled) {"RDP disabled"} else { if ($nla -eq 1) {"RDP enabled with NLA"} else {"RDP enabled without NLA - security risk"} }); Recommendation="Enable NLA for RDP"; Weight=10 })
         } catch {}
 
         # Password Policy
@@ -148,32 +148,32 @@ try {
             $netAcc = net accounts 2>&1
             $minLen = ($netAcc | Select-String "Minimum password length").ToString() -replace "\D",""
             if ($minLen) {
-                [void]$checks.Add(@{ Id="password_length"; Name="Password Length Policy"; Category="Access"; Passed=$([int]$minLen -ge 8); Detail="Minimum length: $minLen characters"; Recommendation="Set minimum password length to 8+"; Weight=5 })
+                [void]$checks.Add(@{ Id="password_complexity"; Name="Password Length Policy"; Category="Access"; Passed=$([int]$minLen -ge 8); Detail="Minimum length: $minLen characters"; Recommendation="Set minimum password length to 8+"; Weight=5 })
             }
         } catch {}
 
         # Screen Lock
         try {
             $sl = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ErrorAction SilentlyContinue).InactivityTimeoutSecs
-            [void]$checks.Add(@{ Id="screen_lock"; Name="Screen Lock Timeout"; Category="Protection"; Passed=$($sl -and $sl -le 600); Detail=$(if ($sl) {"Lock after $([math]::Round($sl/60)) minutes"} else {"No lock timeout configured"}); Recommendation="Set screen lock to 10 minutes or less"; Weight=5 })
+            [void]$checks.Add(@{ Id="screensaver_lock"; Name="Screen Lock Timeout"; Category="Protection"; Passed=$($sl -and $sl -le 600); Detail=$(if ($sl) {"Lock after $([math]::Round($sl/60)) minutes"} else {"No lock timeout configured"}); Recommendation="Set screen lock to 10 minutes or less"; Weight=5 })
         } catch {}
 
         # Controlled Folder Access
         try {
             $cfa = (Get-MpPreference -ErrorAction SilentlyContinue).EnableControlledFolderAccess
-            [void]$checks.Add(@{ Id="cfa"; Name="Controlled Folder Access"; Category="Ransomware Protection"; Passed=$($cfa -eq 1); Detail=$(if ($cfa -eq 1) {"Controlled folder access enabled"} else {"Controlled folder access disabled"}); Recommendation="Enable CFA for ransomware protection"; Weight=10 })
+            [void]$checks.Add(@{ Id="ransomware_protection"; Name="Controlled Folder Access"; Category="Ransomware Protection"; Passed=$($cfa -eq 1); Detail=$(if ($cfa -eq 1) {"Controlled folder access enabled"} else {"Controlled folder access disabled"}); Recommendation="Enable CFA for ransomware protection"; Weight=10 })
         } catch {}
 
         # SMBv1
         try {
             $smb1 = (Get-SmbServerConfiguration -ErrorAction SilentlyContinue).EnableSMB1Protocol
-            [void]$checks.Add(@{ Id="smbv1"; Name="SMBv1 Protocol"; Category="Network"; Passed=$(-not $smb1); Detail=$(if ($smb1) {"SMBv1 enabled - vulnerability risk"} else {"SMBv1 disabled"}); Recommendation="Disable SMBv1"; Weight=10 })
+            [void]$checks.Add(@{ Id="smb1_disabled"; Name="SMBv1 Protocol"; Category="Network"; Passed=$(-not $smb1); Detail=$(if ($smb1) {"SMBv1 enabled - vulnerability risk"} else {"SMBv1 disabled"}); Recommendation="Disable SMBv1"; Weight=10 })
         } catch {}
 
         # PowerShell Logging
         try {
             $psLog = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -ErrorAction SilentlyContinue).EnableScriptBlockLogging
-            [void]$checks.Add(@{ Id="ps_logging"; Name="PowerShell Logging"; Category="Logging"; Passed=$($psLog -eq 1); Detail=$(if ($psLog -eq 1) {"Script block logging enabled"} else {"Script block logging disabled"}); Recommendation="Enable PowerShell script block logging"; Weight=5 })
+            [void]$checks.Add(@{ Id="powershell_logging"; Name="PowerShell Logging"; Category="Logging"; Passed=$($psLog -eq 1); Detail=$(if ($psLog -eq 1) {"Script block logging enabled"} else {"Script block logging disabled"}); Recommendation="Enable PowerShell script block logging"; Weight=5 })
         } catch {}
 
         # Calculate score

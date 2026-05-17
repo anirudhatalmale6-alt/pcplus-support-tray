@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC Plus Computing - Real-Time Protection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sidebar: #0a1628;
+  --sidebar-hover: #0f1f38;
+  --sidebar-active: #2596be;
+  --content-bg: #f0f3f8;
+  --card: #ffffff;
+  --text-primary: #1a2332;
+  --text-secondary: #5a6b7f;
+  --text-muted: #8d9bb0;
+  --accent: #2596be;
+  --accent-dark: #1d7a9c;
+  --accent-light: #e6f3fa;
+  --green: #10b981;
+  --green-bg: #d1fae5;
+  --yellow: #f59e0b;
+  --yellow-bg: #fef3c7;
+  --red: #ef4444;
+  --red-bg: #fee2e2;
+  --blue: #3b82f6;
+  --border: #e5e9f0;
+  --shadow: 0 1px 3px rgba(10,22,40,0.06), 0 1px 2px rgba(10,22,40,0.04);
+  --shadow-md: 0 4px 16px rgba(10,22,40,0.08), 0 2px 6px rgba(10,22,40,0.04);
+  --shadow-lg: 0 8px 30px rgba(10,22,40,0.12), 0 4px 12px rgba(10,22,40,0.06);
+  --radius: 12px;
+  --sidebar-w: 232px;
+  --header-h: 64px;
+  --footer-h: 46px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: var(--content-bg);
+  background-image: radial-gradient(circle at 20% 50%, rgba(37,150,190,0.03) 0%, transparent 50%),
+                     radial-gradient(circle at 80% 20%, rgba(16,185,129,0.02) 0%, transparent 50%);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: linear-gradient(180deg, #0c1a2e 0%, #081422 100%);
+  color: #fff;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f transparent;
+}
+
+.sidebar-logo {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(37,150,190,0.05);
+}
+
+.logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #2596be 0%, #1d7a9c 100%);
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37,150,190,0.3);
+}
+
+.logo-text h2 { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.25; }
+.logo-text span { font-size: 9px; color: #5a7a94; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+
+.sidebar-nav { flex: 1; padding: 8px 0; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 18px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all 0.15s;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover { background: rgba(37,150,190,0.08); color: #c8d6e5; }
+
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(37,150,190,0.25) 0%, rgba(37,150,190,0.08) 100%);
+  color: #fff;
+  border-left-color: var(--accent);
+  font-weight: 600;
+  border-radius: 0 6px 6px 0;
+  margin-right: 8px;
+}
+
+.nav-section {
+  padding: 14px 18px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.nav-icon { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 1; }
+
+.sidebar-footer {
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: #64748b;
+}
+
+.sidebar-footer .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+/* ─── HEADER ─── */
+.header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--header-h);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 20px;
+  z-index: 90;
+}
+
+.device-info { display: flex; flex-direction: column; }
+.device-name { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+.device-os { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.device-os .online-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+.header-sync { font-size: 11px; color: var(--text-muted); }
+
+.header-status {
+  display: flex; align-items: center; gap: 10px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.protected-badge {
+  display: flex; flex-direction: column; align-items: center;
+}
+
+.protected-text { font-size: 22px; font-weight: 800; color: var(--green); letter-spacing: 2px; text-shadow: 0 0 20px rgba(16,185,129,0.15); }
+.risk-text { font-size: 11px; color: var(--text-secondary); }
+.risk-text b { color: var(--yellow); font-weight: 700; }
+
+.tier-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.tier-badge.business { background: linear-gradient(135deg, rgba(37,150,190,0.12), rgba(37,150,190,0.06)); color: var(--accent); border: 1px solid rgba(37,150,190,0.2); }
+.tier-badge.home { background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06)); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+.tier-badge .tier-dot { width: 6px; height: 6px; border-radius: 50%; }
+.tier-badge.business .tier-dot { background: var(--accent); }
+.tier-badge.home .tier-dot { background: var(--green); }
+
+.client-section { display: flex; align-items: center; gap: 12px; padding-left: 16px; border-left: 1px solid var(--border); }
+.client-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.client-company { font-size: 10px; color: var(--text-muted); }
+
+.header-actions { display: flex; gap: 8px; }
+
+.hdr-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-primary);
+  transition: all 0.15s;
+}
+
+.hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+.hdr-btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; border-color: transparent; box-shadow: 0 2px 8px rgba(37,150,190,0.25); }
+.hdr-btn.primary:hover { background: linear-gradient(135deg, var(--accent-dark), #16687f); box-shadow: 0 2px 12px rgba(37,150,190,0.35); }
+.hdr-btn svg { width: 14px; height: 14px; }
+
+.header-user {
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+.user-avatar {
+  width: 34px; height: 34px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+}
+
+.user-info { font-size: 11px; }
+.user-info .name { font-weight: 700; color: var(--text-primary); }
+.user-info .role { color: var(--text-muted); font-size: 10px; }
+
+/* ─── MAIN ─── */
+.main {
+  margin-left: var(--sidebar-w);
+  margin-top: var(--header-h);
+  padding: 20px 24px;
+  padding-bottom: calc(var(--footer-h) + 20px);
+  min-height: calc(100vh - var(--header-h));
+}
+
+/* ─── GRID ─── */
+.row { display: grid; gap: 16px; margin-bottom: 16px; }
+.row-1 { grid-template-columns: 1fr; }
+.row-2 { grid-template-columns: 1fr 1fr; }
+.row-3 { grid-template-columns: 1.2fr 1.4fr 1fr; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-title { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; }
+.card-link { font-size: 11px; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.15s; }
+.card-link:hover { color: var(--accent-dark); }
+
+/* ─── STATUS BANNER ─── */
+.status-banner {
+  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+  border-radius: var(--radius);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(16,185,129,0.25);
+  animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.status-banner-left { display: flex; align-items: center; gap: 14px; }
+
+.status-banner-icon {
+  width: 48px; height: 48px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.status-banner-text h2 { font-size: 18px; font-weight: 800; letter-spacing: 0.5px; }
+.status-banner-text p { font-size: 12px; opacity: 0.9; font-weight: 500; margin-top: 2px; }
+
+.status-banner-right { text-align: right; }
+.status-banner-right .label { font-size: 10px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.status-banner-right .value { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+/* ─── PRODUCT CARDS ─── */
+.product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+.product-card {
+  background: #fafbfc;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 20px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.product-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.product-card.active-product {
+  border-color: var(--green);
+  background: linear-gradient(135deg, rgba(16,185,129,0.03) 0%, rgba(16,185,129,0.01) 100%);
+  box-shadow: 0 0 0 1px var(--green), 0 4px 16px rgba(16,185,129,0.12);
+}
+
+.product-card.passive-product {
+  border-color: var(--blue);
+  background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(59,130,246,0.01) 100%);
+}
+
+.product-card.ondemand-product {
+  border-color: var(--yellow);
+  background: linear-gradient(135deg, rgba(245,158,11,0.02) 0%, rgba(245,158,11,0.01) 100%);
+}
+
+.product-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+
+.product-icon {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.product-icon.active-icon { background: var(--green-bg); }
+.product-icon.passive-icon { background: rgba(59,130,246,0.1); }
+.product-icon.ondemand-icon { background: var(--yellow-bg); }
+
+.product-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.product-version-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+.role-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.role-badge.active-role {
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(16,185,129,0.4), 0 0 4px rgba(16,185,129,0.2);
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+.role-badge.passive-role {
+  background: rgba(59,130,246,0.12);
+  color: var(--blue);
+  border: 1px solid rgba(59,130,246,0.3);
+}
+
+.role-badge.ondemand-role {
+  background: rgba(245,158,11,0.12);
+  color: #b45309;
+  border: 1px solid rgba(245,158,11,0.3);
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(16,185,129,0.4), 0 0 4px rgba(16,185,129,0.2); }
+  50% { box-shadow: 0 0 20px rgba(16,185,129,0.6), 0 0 8px rgba(16,185,129,0.3); }
+}
+
+.product-details { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+.product-detail-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+}
+
+.product-detail-row:last-child { border-bottom: none; }
+
+.detail-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+.detail-value { font-size: 11px; font-weight: 600; color: var(--text-primary); }
+.detail-value.on { color: var(--green); }
+.detail-value.off { color: var(--text-muted); }
+
+.product-status {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.product-status.active-status {
+  background: var(--green-bg);
+  color: #059669;
+}
+
+.product-status.passive-status {
+  background: rgba(59,130,246,0.08);
+  color: #2563eb;
+}
+
+.product-status.ondemand-status {
+  background: var(--yellow-bg);
+  color: #b45309;
+}
+
+.shield-features { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+
+.shield-feature {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 500;
+}
+
+.shield-feature .check { color: var(--green); font-weight: 700; }
+
+/* ─── PROTECTION LAYERS ─── */
+.layer-list { display: flex; flex-direction: column; gap: 6px; }
+
+.layer-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fafbfc;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+
+.layer-item:hover { background: #f5f7fa; }
+
+.layer-item.warning {
+  background: var(--red-bg);
+  border-color: rgba(239,68,68,0.2);
+}
+
+.layer-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.layer-dot.active { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+.layer-dot.disabled { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+
+.layer-info { flex: 1; min-width: 0; }
+.layer-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.layer-desc { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+.layer-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.layer-status.on { color: var(--green); }
+.layer-status.off { color: var(--red); }
+
+.fix-btn {
+  padding: 5px 14px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, var(--red), #dc2626);
+  color: #fff;
+  transition: all 0.2s;
+  box-shadow: 0 1px 4px rgba(239,68,68,0.2);
+  margin-left: 8px;
+}
+
+.fix-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(239,68,68,0.3); }
+
+/* ─── SCAN HISTORY ─── */
+.scan-list { display: flex; flex-direction: column; gap: 10px; }
+
+.scan-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fafbfc;
+  border: 1px solid var(--border);
+}
+
+.scan-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.scan-icon.clean { background: var(--green-bg); }
+.scan-icon.found { background: var(--yellow-bg); }
+
+.scan-info { flex: 1; }
+.scan-type { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.scan-date { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+.scan-result { font-size: 10px; font-weight: 700; text-align: right; }
+.scan-result.clean { color: var(--green); }
+.scan-result.found { color: var(--yellow); }
+
+.scan-schedule {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--accent-light);
+  border: 1px solid rgba(37,150,190,0.15);
+}
+
+.scan-schedule-title { font-size: 11px; font-weight: 700; color: var(--accent-dark); margin-bottom: 6px; }
+.scan-schedule-item { font-size: 11px; color: var(--text-secondary); padding: 2px 0; }
+
+.scan-buttons { display: flex; gap: 8px; margin-top: 14px; }
+
+.scan-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.scan-btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37,150,190,0.25);
+}
+
+.scan-btn.primary:hover { box-shadow: 0 4px 12px rgba(37,150,190,0.35); transform: translateY(-1px); }
+
+.scan-btn.secondary {
+  background: var(--card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.scan-btn.secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ─── QUARANTINE TABLE ─── */
+.quarantine-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.quarantine-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  background: #fafbfc;
+}
+
+.quarantine-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.quarantine-table tr:last-child td { border-bottom: none; }
+
+.quarantine-table .threat-name { font-weight: 600; color: var(--text-primary); font-size: 11px; }
+
+.type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.type-badge.pup { background: var(--yellow-bg); color: #b45309; }
+.type-badge.adware { background: rgba(168,85,247,0.1); color: #7c3aed; }
+.type-badge.hacktool { background: var(--red-bg); color: var(--red); }
+
+.status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.status-badge.safe { background: var(--green-bg); color: #059669; }
+.status-badge.resolved { background: rgba(59,130,246,0.08); color: var(--blue); }
+
+.quarantine-buttons { display: flex; gap: 8px; margin-top: 14px; }
+
+/* ─── EXCLUSIONS ─── */
+.exclusion-list { display: flex; flex-direction: column; gap: 6px; }
+
+.exclusion-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #fafbfc;
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.exclusion-num {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+  flex-shrink: 0;
+}
+
+.exclusion-path { flex: 1; font-family: 'Courier New', monospace; font-size: 11px; color: var(--text-primary); font-weight: 500; }
+.exclusion-type { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; }
+
+.exclusion-note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(37,150,190,0.05);
+  border: 1px solid rgba(37,150,190,0.1);
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ─── FOOTER ─── */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--footer-h);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 24px;
+  z-index: 90;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
+}
+
+.footer-item { display: flex; align-items: center; gap: 8px; }
+.footer-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.footer-icon svg { width: 18px; height: 18px; }
+.footer-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+.footer-val { font-size: 11px; font-weight: 700; }
+.footer-val.green { color: var(--green); }
+.footer-val.blue { color: var(--accent); }
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+.card { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.row > :nth-child(1) .card, .row > :nth-child(1).card { animation-delay: 0.06s; }
+.row > :nth-child(2) .card, .row > :nth-child(2).card { animation-delay: 0.12s; }
+.row > :nth-child(3) .card, .row > :nth-child(3).card { animation-delay: 0.18s; }
+.nav-item { animation: slideIn 0.3s ease both; }
+.nav-section ~ .nav-item:nth-child(2) { animation-delay: 0.02s; }
+.nav-section ~ .nav-item:nth-child(3) { animation-delay: 0.04s; }
+
+/* ─── SCROLLBAR ─── */
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1200px) {
+  .product-grid { grid-template-columns: 1fr 1fr; }
+  .row-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  .main, .header, .footer { margin-left: 0; left: 0; }
+  .product-grid { grid-template-columns: 1fr; }
+  .row-2 { grid-template-columns: 1fr; }
+  .header-status { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ SIDEBAR ═══════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="logo-text">
+      <h2>PC PLUS<br>COMPUTING</h2>
+      <span>Endpoint Protection</span>
+    </div>
+  </div>
+
+    <nav class="sidebar-nav">
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Dashboard</a>
+    <div class="nav-section">Security</div>
+    <a class="nav-item" href="scan-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Scan &amp; Threat Protection</a>
+    <a class="nav-item active" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Real-Time Protection</a>
+    <a class="nav-item" href="ransomware-shield.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Ransomware Shield</a>
+    <a class="nav-item" href="security-logs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Detection History</a>
+    <a class="nav-item" href="scan-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Quarantine</a>
+    <a class="nav-item" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
+    <div class="nav-section">Compliance</div>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Compliance Overview</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> CyberSecure Canada</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> NIST CSF 2.0</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> CIS Controls</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/></svg> Insurance Readiness</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg> Compliance Evidence</a>
+    <div class="nav-section">Backup &amp; Recovery</div>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Backup Health</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Recovery Readiness</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg> Restore Testing</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-4V4a2 2 0 00-4 0v6H6a2 2 0 00-2 2v1a7 7 0 0014 0v-1a2 2 0 00-2-2z"/></svg> Cloud Backup</a>
+    <div class="nav-section">Network</div>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/></svg> Network Security</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Firewall</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg> Open Ports</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg> WiFi Security</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 009 9"/></svg> Network Map</a>
+    <div class="nav-section">Performance</div>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> System Health</a>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Optimization</a>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg> Startup Apps</a>
+    <div class="nav-section">Support</div>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Live Chat</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg> Support Ticket</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Remote Support</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Screenshot Tool</a>
+    <div class="nav-section">Reports</div>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> Executive Reports</a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Security Reports</a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> Compliance Reports</a>
+    <div class="nav-section">Settings</div>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Policies</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Notifications</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Privacy Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="dot"></div>
+    <span>Agent v4.27.0</span>
+    <span style="margin-left:auto; color: var(--green); font-weight:600;">Up to date</span>
+  </div>
+</aside>
+
+<!-- ═══════ HEADER ═══════ -->
+<header class="header">
+  <div class="device-info">
+    <span class="device-name" id="headerDeviceName">Select Device</span>
+    <span class="device-os"><span class="online-dot"></span> No device selected</span>
+  </div>
+  <div class="header-sync">Last sync: May 9, 2026 09:15 AM</div>
+
+  <div class="header-status">
+    <div class="protected-badge">
+      <span class="protected-text">PROTECTED</span>
+      <span class="risk-text">Risk Level: <b>Medium</b></span>
+    </div>
+  </div>
+
+  <div class="client-section">
+    <div>
+      <div class="client-name">Select Client</div>
+      <div class="client-company">Assigned Client</div>
+    </div>
+    <span class="tier-badge business"><span class="tier-dot"></span>Business</span>
+  </div>
+
+  <div class="header-actions">
+    <button class="hdr-btn primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      Quick Scan
+    </button>
+    <button class="hdr-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Lockdown
+    </button>
+    <button class="hdr-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Backup Now
+    </button>
+  </div>
+
+  <div class="header-user">
+    <div class="user-avatar">PP</div>
+    <div class="user-info">
+      <div class="name">PC Plus</div>
+      <div class="role">Managed by PC Plus Computing</div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════ MAIN CONTENT ═══════ -->
+<main class="main">
+
+  <!-- STATUS BANNER -->
+  <div class="status-banner">
+    <div class="status-banner-left">
+      <div class="status-banner-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div class="status-banner-text">
+        <h2>Real-Time Protection: Loading...</h2>
+        <p>Connecting to device...</p>
+      </div>
+    </div>
+    <div class="status-banner-right">
+      <div class="label">Last Definition Update</div>
+      <div class="value">--</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Installed Security Products -->
+  <div class="row row-1">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Installed Security Products</span>
+        <span style="font-size:9px; font-weight:700; color:var(--accent); background:rgba(37,150,190,0.08); padding:2px 8px; border-radius:10px; letter-spacing:0.3px;">UNIFIED SECURITY VIEW</span>
+      </div>
+      <div class="product-grid">
+        <div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-muted); font-size:13px;">
+          Loading security products...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Protection Layers + Scan History -->
+  <div class="row row-2">
+
+    <!-- Protection Layers -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Protection Layers</span><a class="card-link">Configure</a></div>
+      <div class="layer-list">
+        <div class="layer-item">
+          <div class="layer-dot active"></div>
+          <div class="layer-info">
+            <div class="layer-name">File System Protection</div>
+            <div class="layer-desc">Scans files on access, download, and execution</div>
+          </div>
+          <span class="layer-status on">Active</span>
+        </div>
+        <div class="layer-item">
+          <div class="layer-dot active"></div>
+          <div class="layer-info">
+            <div class="layer-name">Email Protection</div>
+            <div class="layer-desc">Scans incoming/outgoing email attachments</div>
+          </div>
+          <span class="layer-status on">Active</span>
+        </div>
+        <div class="layer-item">
+          <div class="layer-dot active"></div>
+          <div class="layer-info">
+            <div class="layer-name">Web Protection</div>
+            <div class="layer-desc">Blocks malicious URLs and downloads</div>
+          </div>
+          <span class="layer-status on">Active</span>
+        </div>
+        <div class="layer-item">
+          <div class="layer-dot active"></div>
+          <div class="layer-info">
+            <div class="layer-name">Behavior Monitoring</div>
+            <div class="layer-desc">Detects suspicious process behavior</div>
+          </div>
+          <span class="layer-status on">Active</span>
+        </div>
+        <div class="layer-item">
+          <div class="layer-dot active"></div>
+          <div class="layer-info">
+            <div class="layer-name">Network Protection</div>
+            <div class="layer-desc">Monitors network traffic for threats</div>
+          </div>
+          <span class="layer-status on">Active</span>
+        </div>
+        <div class="layer-item">
+          <div class="layer-dot active"></div>
+          <div class="layer-info">
+            <div class="layer-name">Script Protection</div>
+            <div class="layer-desc">Blocks malicious scripts (PowerShell, VBS, JS)</div>
+          </div>
+          <span class="layer-status on">Active</span>
+        </div>
+        <div class="layer-item">
+          <div class="layer-dot active"></div>
+          <div class="layer-info">
+            <div class="layer-name">Exploit Protection</div>
+            <div class="layer-desc">DEP, ASLR, CFG enabled</div>
+          </div>
+          <span class="layer-status on">Active</span>
+        </div>
+        <div class="layer-item warning">
+          <div class="layer-dot disabled"></div>
+          <div class="layer-info">
+            <div class="layer-name">Tamper Protection</div>
+            <div class="layer-desc">Warning: Defender settings can be modified</div>
+          </div>
+          <span class="layer-status off">DISABLED</span>
+          <button class="fix-btn">Fix Now</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan History -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Scan History</span><a class="card-link">View All</a></div>
+      <div class="scan-list">
+        <div class="scan-item">
+          <div class="scan-icon clean">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="scan-info">
+            <div class="scan-type">Last Quick Scan</div>
+            <div class="scan-date">May 9, 2026 2:15 PM</div>
+          </div>
+          <div class="scan-result clean">Clean (0 threats)</div>
+        </div>
+        <div class="scan-item">
+          <div class="scan-icon clean">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="scan-info">
+            <div class="scan-type">Last Full Scan</div>
+            <div class="scan-date">May 5, 2026 11:00 PM</div>
+          </div>
+          <div class="scan-result clean">Clean (0 threats)</div>
+        </div>
+        <div class="scan-item">
+          <div class="scan-icon found">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="scan-info">
+            <div class="scan-type">Last Custom Scan</div>
+            <div class="scan-date">May 3, 2026</div>
+          </div>
+          <div class="scan-result found">1 PUP detected (quarantined)</div>
+        </div>
+      </div>
+
+      <div class="scan-schedule">
+        <div class="scan-schedule-title">Scheduled Scans</div>
+        <div class="scan-schedule-item">&#8226; Quick scan daily at 2:00 PM</div>
+        <div class="scan-schedule-item">&#8226; Full scan weekly on Sunday at 11:00 PM</div>
+      </div>
+
+      <div class="scan-buttons">
+        <button class="scan-btn primary">Run Quick Scan</button>
+        <button class="scan-btn secondary">Run Full Scan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Quarantine + Exclusions -->
+  <div class="row row-2">
+
+    <!-- Quarantine -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Quarantine</span><span class="quarantine-count" style="font-size:9px; font-weight:700; color:var(--text-muted); background:#f1f5f9; padding:2px 8px; border-radius:10px;">-- Items</span></div>
+      <div style="overflow-x:auto;">
+        <table class="quarantine-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Threat Name</th>
+              <th>Type</th>
+              <th>Source</th>
+              <th>Action</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">Loading quarantine data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:10px; color:var(--text-muted); margin-top:8px; font-style:italic;">Note: HackTool.Mimikatz is likely a security testing tool</div>
+      <div class="quarantine-buttons">
+        <button class="scan-btn primary" style="flex:0; padding:8px 18px;">Delete All</button>
+        <button class="scan-btn secondary" style="flex:0; padding:8px 18px;">Restore Selected</button>
+      </div>
+    </div>
+
+    <!-- Exclusions -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Scan Exclusions</span><span style="font-size:9px; font-weight:700; color:var(--text-muted); background:#f1f5f9; padding:2px 8px; border-radius:10px;">6 Rules</span></div>
+      <div class="exclusion-list">
+        <div class="exclusion-item">
+          <span class="exclusion-num">1</span>
+          <span class="exclusion-path">C:\ProgramData\PCPlusEndpoint\*</span>
+          <span class="exclusion-type">Process &amp; Path</span>
+        </div>
+        <div class="exclusion-item">
+          <span class="exclusion-num">2</span>
+          <span class="exclusion-path">C:\Program Files\PC Plus\*</span>
+          <span class="exclusion-type">Path</span>
+        </div>
+        <div class="exclusion-item">
+          <span class="exclusion-num">3</span>
+          <span class="exclusion-path">C:\Program Files\TacticalAgent\*</span>
+          <span class="exclusion-type">Path</span>
+        </div>
+        <div class="exclusion-item">
+          <span class="exclusion-num">4</span>
+          <span class="exclusion-path">C:\ProgramData\TacticalRMM\*</span>
+          <span class="exclusion-type">Path</span>
+        </div>
+        <div class="exclusion-item">
+          <span class="exclusion-num">5</span>
+          <span class="exclusion-path">PCPlusTray.exe</span>
+          <span class="exclusion-type">Process</span>
+        </div>
+        <div class="exclusion-item">
+          <span class="exclusion-num">6</span>
+          <span class="exclusion-path">*\pcplusservice.sys</span>
+          <span class="exclusion-type">Path</span>
+        </div>
+      </div>
+      <div class="exclusion-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        Managed by Avast Business Hub policy
+      </div>
+      <div style="margin-top:14px;">
+        <button class="scan-btn secondary" style="width:100%;">Request Exclusion Change</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer class="footer">
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+    <div>
+      <div class="footer-label">AGENT STATUS</div>
+      <div class="footer-val green">Up to Date</div>
+      <div class="footer-label">v4.27.0</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg></div>
+    <div>
+      <div class="footer-label">RMM CONNECTION</div>
+      <div class="footer-val blue">Connected</div>
+      <div class="footer-label">PC Plus RMM</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+    <div>
+      <div class="footer-label">POLICY STATUS</div>
+      <div class="footer-val green">Compliant</div>
+      <div class="footer-label">All policies active</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <div>
+      <div class="footer-label">LICENSE</div>
+      <div class="footer-val green">Active</div>
+      <div class="footer-label">Expires: Dec 31, 2026</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 22V2"/></svg></div>
+    <div>
+      <div class="footer-label">VPN</div>
+      <div class="footer-val green">Available</div>
+      <div class="footer-label">Secure Tunnel</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+    <div>
+      <div class="footer-label">REMOTE SUPPORT</div>
+      <div class="footer-val blue">RustDesk</div>
+      <div class="footer-label">Coming Soon</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+    <div>
+      <div class="footer-label">NEXT REPORT</div>
+      <div class="footer-val">May 15, 2026</div>
+      <div class="footer-label">Scheduled</div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/dashboard-api.js"></script>
+<script src="js/device-persistence.js"></script>
+<script src="js/page-loader.js"></script>
+</body>
+</html>

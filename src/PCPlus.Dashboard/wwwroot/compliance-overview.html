@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC Plus Computing - Compliance Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sidebar: #0a1628;
+  --sidebar-hover: #0f1f38;
+  --sidebar-active: #2596be;
+  --content-bg: #f0f3f8;
+  --card: #ffffff;
+  --text-primary: #1a2332;
+  --text-secondary: #5a6b7f;
+  --text-muted: #8d9bb0;
+  --accent: #2596be;
+  --accent-dark: #1d7a9c;
+  --accent-light: #e6f3fa;
+  --green: #10b981;
+  --green-bg: #d1fae5;
+  --yellow: #f59e0b;
+  --yellow-bg: #fef3c7;
+  --red: #ef4444;
+  --red-bg: #fee2e2;
+  --blue: #3b82f6;
+  --border: #e5e9f0;
+  --shadow: 0 1px 3px rgba(10,22,40,0.06), 0 1px 2px rgba(10,22,40,0.04);
+  --shadow-md: 0 4px 16px rgba(10,22,40,0.08), 0 2px 6px rgba(10,22,40,0.04);
+  --shadow-lg: 0 8px 30px rgba(10,22,40,0.12), 0 4px 12px rgba(10,22,40,0.06);
+  --radius: 12px;
+  --sidebar-w: 232px;
+  --header-h: 64px;
+  --footer-h: 46px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: var(--content-bg);
+  background-image: radial-gradient(circle at 20% 50%, rgba(37,150,190,0.03) 0%, transparent 50%),
+                     radial-gradient(circle at 80% 20%, rgba(16,185,129,0.02) 0%, transparent 50%);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: linear-gradient(180deg, #0c1a2e 0%, #081422 100%);
+  color: #fff;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f transparent;
+}
+
+.sidebar-logo {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(37,150,190,0.05);
+}
+
+.logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #2596be 0%, #1d7a9c 100%);
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37,150,190,0.3);
+}
+
+.logo-text h2 { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.25; }
+.logo-text span { font-size: 9px; color: #5a7a94; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+
+.sidebar-nav { flex: 1; padding: 8px 0; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 18px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all 0.15s;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover { background: rgba(37,150,190,0.08); color: #c8d6e5; }
+
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(37,150,190,0.25) 0%, rgba(37,150,190,0.08) 100%);
+  color: #fff;
+  border-left-color: var(--accent);
+  font-weight: 600;
+  border-radius: 0 6px 6px 0;
+  margin-right: 8px;
+}
+
+.nav-section {
+  padding: 14px 18px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.nav-icon { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 1; }
+
+.sidebar-footer {
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: #64748b;
+}
+
+.sidebar-footer .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+/* ─── HEADER ─── */
+.header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--header-h);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 20px;
+  z-index: 90;
+}
+
+.device-info { display: flex; flex-direction: column; }
+.device-name { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+.device-os { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.device-os .online-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+.header-sync { font-size: 11px; color: var(--text-muted); }
+
+.header-status {
+  display: flex; align-items: center; gap: 10px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.protected-badge {
+  display: flex; flex-direction: column; align-items: center;
+}
+
+.protected-text { font-size: 22px; font-weight: 800; color: var(--green); letter-spacing: 2px; text-shadow: 0 0 20px rgba(16,185,129,0.15); }
+.risk-text { font-size: 11px; color: var(--text-secondary); }
+.risk-text b { color: var(--yellow); font-weight: 700; }
+
+.tier-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.tier-badge.business { background: linear-gradient(135deg, rgba(37,150,190,0.12), rgba(37,150,190,0.06)); color: var(--accent); border: 1px solid rgba(37,150,190,0.2); }
+.tier-badge .tier-dot { width: 6px; height: 6px; border-radius: 50%; }
+.tier-badge.business .tier-dot { background: var(--accent); }
+
+.client-section { display: flex; align-items: center; gap: 12px; padding-left: 16px; border-left: 1px solid var(--border); }
+.client-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.client-company { font-size: 10px; color: var(--text-muted); }
+
+.header-actions { display: flex; gap: 8px; }
+
+.hdr-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-primary);
+  transition: all 0.15s;
+}
+
+.hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+.hdr-btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; border-color: transparent; box-shadow: 0 2px 8px rgba(37,150,190,0.25); }
+.hdr-btn.primary:hover { background: linear-gradient(135deg, var(--accent-dark), #16687f); box-shadow: 0 2px 12px rgba(37,150,190,0.35); }
+.hdr-btn svg { width: 14px; height: 14px; }
+
+.header-user {
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+.user-avatar {
+  width: 34px; height: 34px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+}
+
+.user-info { font-size: 11px; }
+.user-info .name { font-weight: 700; color: var(--text-primary); }
+.user-info .role { color: var(--text-muted); font-size: 10px; }
+
+/* ─── MAIN ─── */
+.main {
+  margin-left: var(--sidebar-w);
+  margin-top: var(--header-h);
+  padding: 20px 24px;
+  padding-bottom: calc(var(--footer-h) + 20px);
+  min-height: calc(100vh - var(--header-h));
+}
+
+/* ─── GRID ─── */
+.row { display: grid; gap: 16px; margin-bottom: 16px; }
+.row-5 { grid-template-columns: repeat(5, 1fr); }
+.row-2 { grid-template-columns: 1fr 1fr; }
+.row-1 { grid-template-columns: 1fr; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-title { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; }
+.card-link { font-size: 11px; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.15s; }
+.card-link:hover { color: var(--accent-dark); }
+
+/* ─── OVERALL COMPLIANCE CARD ─── */
+.overall-compliance {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.compliance-ring {
+  position: relative;
+  width: 140px; height: 140px;
+  flex-shrink: 0;
+}
+
+.compliance-ring svg { width: 140px; height: 140px; transform: rotate(-90deg); }
+.compliance-ring .bg { fill: none; stroke: #e8ecf2; stroke-width: 8; }
+.compliance-ring .fg { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+.compliance-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+
+.compliance-ring-num { font-size: 36px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+.compliance-ring-grade { font-size: 14px; font-weight: 700; color: var(--yellow); margin-top: 4px; }
+
+.compliance-summary h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+.compliance-summary p { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px; }
+.compliance-summary .date { font-size: 11px; color: var(--text-muted); }
+
+/* ─── FRAMEWORK SCORECARD ─── */
+.framework-card {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 20px 14px;
+}
+
+.framework-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px;
+}
+
+.framework-icon.cyber { background: linear-gradient(135deg, rgba(37,150,190,0.15), rgba(37,150,190,0.05)); }
+.framework-icon.nist { background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.05)); }
+.framework-icon.cis { background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05)); }
+.framework-icon.pipeda { background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05)); }
+.framework-icon.insurance { background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05)); }
+
+.framework-name { font-size: 11.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
+
+.mini-ring {
+  position: relative;
+  width: 70px; height: 70px;
+  margin-bottom: 10px;
+}
+
+.mini-ring svg { width: 70px; height: 70px; transform: rotate(-90deg); }
+.mini-ring .bg { fill: none; stroke: #e8ecf2; stroke-width: 6; }
+.mini-ring .fg { fill: none; stroke-width: 6; stroke-linecap: round; }
+
+.mini-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 800; color: var(--text-primary);
+}
+
+.framework-stats { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.framework-stats .passed { font-weight: 600; color: var(--green); }
+.framework-stats .gaps { font-weight: 600; color: var(--red); }
+.framework-stats.warning .gaps { color: var(--red); }
+
+.framework-link { font-size: 11px; color: var(--accent); font-weight: 600; margin-top: 10px; cursor: pointer; text-decoration: none; }
+.framework-link:hover { color: var(--accent-dark); }
+
+/* ─── GAPS LIST ─── */
+.gap-section { margin-bottom: 16px; }
+.gap-section-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.gap-section-header .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.gap-section-header .dot.critical { background: var(--red); }
+.gap-section-header .dot.high { background: var(--yellow); }
+.gap-section-header .dot.low { background: var(--accent); }
+.gap-section-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.gap-section-count { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 10px; }
+.gap-section-count.critical { background: var(--red-bg); color: var(--red); }
+.gap-section-count.high { background: var(--yellow-bg); color: var(--yellow); }
+.gap-section-count.low { background: var(--accent-light); color: var(--accent); }
+
+.gap-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  color: var(--text-primary);
+  background: #fafbfc;
+  border: 1px solid var(--border);
+}
+
+.gap-item .icon { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.gap-item .icon.critical { background: var(--red); }
+.gap-item .icon.high { background: var(--yellow); }
+.gap-item .icon.low { background: var(--accent); }
+
+/* ─── EVIDENCE LIBRARY ─── */
+.evidence-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: #fafbfc;
+  border: 1px solid var(--border);
+}
+
+.evidence-item .info { display: flex; align-items: center; gap: 10px; }
+.evidence-item .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.evidence-item .status-dot.uploaded { background: var(--green); }
+.evidence-item .status-dot.missing { background: var(--red); }
+.evidence-item .status-dot.recommended { background: var(--yellow); }
+.evidence-item .doc-name { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
+.evidence-item .doc-status { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+.evidence-item .doc-status.uploaded { background: var(--green-bg); color: #16a34a; }
+.evidence-item .doc-status.missing { background: var(--red-bg); color: var(--red); }
+.evidence-item .doc-status.recommended { background: var(--yellow-bg); color: #d97706; }
+.evidence-item .doc-date { font-size: 10px; color: var(--text-muted); margin-left: 8px; }
+
+.upload-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  margin-top: 12px;
+  box-shadow: 0 2px 8px rgba(37,150,190,0.25);
+  transition: all 0.2s;
+}
+.upload-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,150,190,0.35); }
+.upload-btn svg { width: 14px; height: 14px; }
+
+.evidence-note {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid var(--accent);
+}
+
+/* ─── ROADMAP ─── */
+.roadmap-timeline {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.roadmap-phase {
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: linear-gradient(145deg, #f8fafc, #ffffff);
+  position: relative;
+}
+
+.roadmap-phase::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+  transform: rotate(45deg) translateY(-50%);
+}
+
+.roadmap-phase:last-child::after { display: none; }
+
+.phase-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+
+.phase-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.phase-badge.immediate { background: var(--red-bg); color: var(--red); }
+.phase-badge.short { background: var(--yellow-bg); color: #d97706; }
+.phase-badge.medium { background: var(--accent-light); color: var(--accent); }
+
+.phase-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.phase-duration { font-size: 10px; color: var(--text-muted); margin-bottom: 10px; }
+
+.phase-tasks { list-style: none; margin-bottom: 12px; }
+.phase-tasks li {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+  padding-left: 14px;
+  position: relative;
+}
+.phase-tasks li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+.phase-impact {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--green-bg);
+  color: #16a34a;
+}
+
+/* ─── FOOTER ─── */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--footer-h);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 24px;
+  z-index: 90;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
+}
+
+.footer-item { display: flex; align-items: center; gap: 8px; }
+.footer-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.footer-icon svg { width: 18px; height: 18px; }
+.footer-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+.footer-val { font-size: 11px; font-weight: 700; }
+.footer-val.green { color: var(--green); }
+.footer-val.blue { color: var(--accent); }
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+.card { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.row > :nth-child(1) .card, .row > :nth-child(1).card { animation-delay: 0.06s; }
+.row > :nth-child(2) .card, .row > :nth-child(2).card { animation-delay: 0.12s; }
+.row > :nth-child(3) .card, .row > :nth-child(3).card { animation-delay: 0.18s; }
+.row > :nth-child(4) .card, .row > :nth-child(4).card { animation-delay: 0.24s; }
+.row > :nth-child(5) .card, .row > :nth-child(5).card { animation-delay: 0.30s; }
+.nav-item { animation: slideIn 0.3s ease both; }
+.nav-section ~ .nav-item:nth-child(2) { animation-delay: 0.02s; }
+.nav-section ~ .nav-item:nth-child(3) { animation-delay: 0.04s; }
+
+/* ─── SCROLLBAR ─── */
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1400px) {
+  .row-5 { grid-template-columns: repeat(3, 1fr); }
+  .roadmap-timeline { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 1200px) {
+  .row-5 { grid-template-columns: repeat(2, 1fr); }
+  .row-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  .main, .header, .footer { margin-left: 0; left: 0; }
+  .row-5, .row-2, .row-1 { grid-template-columns: 1fr; }
+  .header-status { display: none; }
+  .roadmap-timeline { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="logo-text">
+      <h2>PC PLUS<br>COMPUTING</h2>
+      <span>Endpoint Protection</span>
+    </div>
+  </div>
+
+    <nav class="sidebar-nav">
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Dashboard</a>
+    <div class="nav-section">Security</div>
+    <a class="nav-item" href="scan-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Scan &amp; Threat Protection</a>
+    <a class="nav-item" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Real-Time Protection</a>
+    <a class="nav-item" href="ransomware-shield.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Ransomware Shield</a>
+    <a class="nav-item" href="security-logs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Detection History</a>
+    <a class="nav-item" href="scan-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Quarantine</a>
+    <a class="nav-item" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
+    <div class="nav-section">Compliance</div>
+    <a class="nav-item active" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Compliance Overview</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> CyberSecure Canada</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> NIST CSF 2.0</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> CIS Controls</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/></svg> Insurance Readiness</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg> Compliance Evidence</a>
+    <div class="nav-section">Backup &amp; Recovery</div>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Backup Health</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Recovery Readiness</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg> Restore Testing</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-4V4a2 2 0 00-4 0v6H6a2 2 0 00-2 2v1a7 7 0 0014 0v-1a2 2 0 00-2-2z"/></svg> Cloud Backup</a>
+    <div class="nav-section">Network</div>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/></svg> Network Security</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Firewall</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg> Open Ports</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg> WiFi Security</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 009 9"/></svg> Network Map</a>
+    <div class="nav-section">Performance</div>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> System Health</a>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Optimization</a>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg> Startup Apps</a>
+    <div class="nav-section">Support</div>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Live Chat</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg> Support Ticket</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Remote Support</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Screenshot Tool</a>
+    <div class="nav-section">Reports</div>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> Executive Reports</a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Security Reports</a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> Compliance Reports</a>
+    <div class="nav-section">Settings</div>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Policies</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Notifications</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Privacy Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="dot"></div>
+    <span>Agent v4.27.0</span>
+    <span style="margin-left:auto; color: var(--green); font-weight:600;">Up to date</span>
+  </div>
+</aside>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="device-info">
+    <span class="device-name" id="headerDeviceName">Select Device</span>
+    <span class="device-os"><span class="online-dot"></span> No device selected</span>
+  </div>
+  <div class="header-sync">Last sync: May 9, 2026 02:15 PM</div>
+
+  <div class="header-status">
+    <div class="protected-badge">
+      <span class="protected-text">PROTECTED</span>
+      <span class="risk-text">Risk Level: <b>Medium</b></span>
+    </div>
+  </div>
+
+  <div class="client-section">
+    <div>
+      <div class="client-name">Select Client</div>
+      <div class="client-company">Assigned Client</div>
+    </div>
+    <span class="tier-badge business"><span class="tier-dot"></span>Business</span>
+  </div>
+
+  <div class="header-actions">
+    <button class="hdr-btn primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      Quick Scan
+    </button>
+    <button class="hdr-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Lockdown
+    </button>
+    <button class="hdr-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Backup Now
+    </button>
+  </div>
+
+  <div class="header-user">
+    <div class="user-avatar">PP</div>
+    <div class="user-info">
+      <div class="name">PC Plus</div>
+      <div class="role">Managed by PC Plus Computing</div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- TOP ROW: Overall Compliance Status -->
+  <div class="row row-1">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Overall Compliance Status</span><span style="font-size:9px; font-weight:700; color:var(--accent); background:rgba(37,150,190,0.08); padding:2px 8px; border-radius:10px; letter-spacing:0.3px;">5-FRAMEWORK AUDIT</span></div>
+      <div class="overall-compliance">
+        <div class="compliance-ring">
+          <svg viewBox="0 0 100 100">
+            <defs><linearGradient id="compGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#2596be"/></linearGradient></defs>
+            <circle class="bg" cx="50" cy="50" r="42"/>
+            <circle class="fg" cx="50" cy="50" r="42" stroke="url(#compGradient)" stroke-dasharray="264" stroke-dashoffset="71" filter="drop-shadow(0 0 4px rgba(245,158,11,0.3))"/>
+          </svg>
+          <div class="compliance-ring-value">
+            <span class="compliance-ring-num">73%</span>
+            <span class="compliance-ring-grade">--</span>
+          </div>
+        </div>
+        <div class="compliance-summary">
+          <h3>Your organization is progressing toward compliance readiness</h3>
+          <p>Based on assessments across CyberSecure Canada, NIST CSF 2.0, CIS Controls v8, PIPEDA Privacy, and Insurance Readiness frameworks. Critical gaps remain in identity access, email authentication, and disaster recovery testing.</p>
+          <div class="date">
+            <svg style="width:12px;height:12px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="#8d9bb0" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Last Assessment: May 9, 2026
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Framework Scorecard -->
+  <div class="row row-5">
+
+    <!-- CyberSecure Canada -->
+    <div class="card framework-card">
+      <div class="framework-icon cyber">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      </div>
+      <div class="framework-name">CyberSecure Canada</div>
+      <div class="mini-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="38"/>
+          <circle class="fg" cx="50" cy="50" r="38" stroke="#10b981" stroke-dasharray="239" stroke-dashoffset="43"/>
+        </svg>
+        <div class="mini-ring-value">82%</div>
+      </div>
+      <div class="framework-stats"><span class="passed">33</span> / 40 controls met</div>
+      <div class="framework-stats"><span class="gaps">7 gaps</span></div>
+      <a class="framework-link">View Details &rarr;</a>
+    </div>
+
+    <!-- NIST CSF 2.0 -->
+    <div class="card framework-card">
+      <div class="framework-icon nist">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+      </div>
+      <div class="framework-name">NIST CSF 2.0</div>
+      <div class="mini-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="38"/>
+          <circle class="fg" cx="50" cy="50" r="38" stroke="#3b82f6" stroke-dasharray="239" stroke-dashoffset="62"/>
+        </svg>
+        <div class="mini-ring-value">74%</div>
+      </div>
+      <div class="framework-stats"><span class="passed">45</span> / 61 controls met</div>
+      <div class="framework-stats"><span class="gaps">16 gaps</span></div>
+      <a class="framework-link">View Details &rarr;</a>
+    </div>
+
+    <!-- CIS Controls v8 -->
+    <div class="card framework-card">
+      <div class="framework-icon cis">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div class="framework-name">CIS Controls v8</div>
+      <div class="mini-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="38"/>
+          <circle class="fg" cx="50" cy="50" r="38" stroke="#8b5cf6" stroke-dasharray="239" stroke-dashoffset="69"/>
+        </svg>
+        <div class="mini-ring-value">71%</div>
+      </div>
+      <div class="framework-stats"><span class="passed">28</span> / 39 controls met</div>
+      <div class="framework-stats"><span class="gaps">11 gaps</span></div>
+      <a class="framework-link">View Details &rarr;</a>
+    </div>
+
+    <!-- PIPEDA Privacy -->
+    <div class="card framework-card">
+      <div class="framework-icon pipeda">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      </div>
+      <div class="framework-name">PIPEDA Privacy</div>
+      <div class="mini-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="38"/>
+          <circle class="fg" cx="50" cy="50" r="38" stroke="#f59e0b" stroke-dasharray="239" stroke-dashoffset="79"/>
+        </svg>
+        <div class="mini-ring-value">67%</div>
+      </div>
+      <div class="framework-stats"><span class="passed">10</span> / 15 requirements met</div>
+      <div class="framework-stats"><span class="gaps">5 gaps</span></div>
+      <a class="framework-link">View Details &rarr;</a>
+    </div>
+
+    <!-- Insurance Readiness -->
+    <div class="card framework-card" style="border-color: rgba(239,68,68,0.2); background: linear-gradient(145deg, #fff, #fff9f9);">
+      <div class="framework-icon insurance">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/></svg>
+      </div>
+      <div class="framework-name">Insurance Readiness</div>
+      <div class="mini-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="38"/>
+          <circle class="fg" cx="50" cy="50" r="38" stroke="#ef4444" stroke-dasharray="239" stroke-dashoffset="122"/>
+        </svg>
+        <div class="mini-ring-value" style="color:var(--red);">49%</div>
+      </div>
+      <div class="framework-stats"><span class="passed">9</span> / 18 criteria met</div>
+      <div class="framework-stats warning"><span class="gaps">9 gaps</span></div>
+      <a class="framework-link">View Details &rarr;</a>
+    </div>
+
+  </div>
+
+  <!-- ROW 2: Gaps + Evidence -->
+  <div class="row row-2">
+
+    <!-- Compliance Gaps by Priority -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Compliance Gaps by Priority</span><span style="font-size:10px; font-weight:700; color:var(--text-muted);">17 Total Gaps</span></div>
+
+      <!-- Critical -->
+      <div class="gap-section">
+        <div class="gap-section-header">
+          <div class="dot critical"></div>
+          <span class="gap-section-title">Critical</span>
+          <span class="gap-section-count critical">4</span>
+        </div>
+        <div class="gap-item"><div class="icon critical"></div>MFA not enabled for all users</div>
+        <div class="gap-item"><div class="icon critical"></div>DMARC policy not configured</div>
+        <div class="gap-item"><div class="icon critical"></div>Backup restore never tested</div>
+        <div class="gap-item"><div class="icon critical"></div>No incident response plan documented</div>
+      </div>
+
+      <!-- High -->
+      <div class="gap-section">
+        <div class="gap-section-header">
+          <div class="dot high"></div>
+          <span class="gap-section-title">High</span>
+          <span class="gap-section-count high">8</span>
+        </div>
+        <div class="gap-item"><div class="icon high"></div>DKIM key rotation overdue</div>
+        <div class="gap-item"><div class="icon high"></div>Firmware update needed</div>
+        <div class="gap-item"><div class="icon high"></div>Password minimum length below 12</div>
+        <div class="gap-item"><div class="icon high"></div>No security awareness training documented</div>
+        <div class="gap-item"><div class="icon high"></div>USB policy not enforced via GPO</div>
+        <div class="gap-item"><div class="icon high"></div>No vendor risk assessment process</div>
+        <div class="gap-item"><div class="icon high"></div>Cyber insurance policy review overdue</div>
+        <div class="gap-item"><div class="icon high"></div>Screen lock &gt; 15 minutes</div>
+      </div>
+
+      <!-- Low -->
+      <div class="gap-section">
+        <div class="gap-section-header">
+          <div class="dot low"></div>
+          <span class="gap-section-title">Low / Informational</span>
+          <span class="gap-section-count low">5</span>
+        </div>
+        <div class="gap-item"><div class="icon low"></div>Windows telemetry set to Full (recommend Basic)</div>
+        <div class="gap-item"><div class="icon low"></div>Browser extensions not inventoried</div>
+        <div class="gap-item"><div class="icon low"></div>DNS filtering logs not centralized</div>
+        <div class="gap-item"><div class="icon low"></div>Removable media audit policy missing</div>
+        <div class="gap-item"><div class="icon low"></div>Asset inventory last updated 60+ days ago</div>
+      </div>
+    </div>
+
+    <!-- Compliance Evidence Library -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Compliance Evidence Library</span></div>
+
+      <div class="evidence-item">
+        <div class="info"><div class="status-dot uploaded"></div><span class="doc-name">Acceptable Use Policy</span></div>
+        <div><span class="doc-status uploaded">Uploaded</span><span class="doc-date">Jan 2026</span></div>
+      </div>
+      <div class="evidence-item">
+        <div class="info"><div class="status-dot missing"></div><span class="doc-name">Incident Response Plan</span></div>
+        <div><span class="doc-status missing">Upload Required</span></div>
+      </div>
+      <div class="evidence-item">
+        <div class="info"><div class="status-dot missing"></div><span class="doc-name">Business Continuity Plan</span></div>
+        <div><span class="doc-status missing">Upload Required</span></div>
+      </div>
+      <div class="evidence-item">
+        <div class="info"><div class="status-dot missing"></div><span class="doc-name">Security Awareness Training Records</span></div>
+        <div><span class="doc-status missing">Upload Required</span></div>
+      </div>
+      <div class="evidence-item">
+        <div class="info"><div class="status-dot uploaded"></div><span class="doc-name">Data Classification Policy</span></div>
+        <div><span class="doc-status uploaded">Uploaded</span><span class="doc-date">Mar 2026</span></div>
+      </div>
+      <div class="evidence-item">
+        <div class="info"><div class="status-dot recommended"></div><span class="doc-name">Vendor Risk Assessment</span></div>
+        <div><span class="doc-status recommended">Recommended</span></div>
+      </div>
+      <div class="evidence-item">
+        <div class="info"><div class="status-dot uploaded"></div><span class="doc-name">Privacy Impact Assessment</span></div>
+        <div><span class="doc-status uploaded">Uploaded</span><span class="doc-date">Feb 2026</span></div>
+      </div>
+      <div class="evidence-item">
+        <div class="info"><div class="status-dot recommended"></div><span class="doc-name">Change Management Policy</span></div>
+        <div><span class="doc-status recommended">Recommended</span></div>
+      </div>
+
+      <button class="upload-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Document
+      </button>
+
+      <div class="evidence-note">Evidence documents are stored securely and included in compliance reports.</div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Compliance Improvement Roadmap -->
+  <div class="row row-1">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Compliance Improvement Roadmap</span><span style="font-size:9px; font-weight:700; color:var(--green); background:var(--green-bg); padding:2px 8px; border-radius:10px;">ACTIONABLE PLAN</span></div>
+
+      <div class="roadmap-timeline">
+        <!-- Phase 1 -->
+        <div class="roadmap-phase">
+          <div class="phase-header">
+            <span class="phase-badge immediate">Phase 1</span>
+            <span class="phase-title">Immediate</span>
+          </div>
+          <div class="phase-duration">Timeline: 2 weeks</div>
+          <ul class="phase-tasks">
+            <li>Enable MFA for all user accounts</li>
+            <li>Configure DMARC policy for email domain</li>
+            <li>Test backup restore process</li>
+          </ul>
+          <div class="phase-impact">Completing Phase 1 raises score from 73% to 85%</div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="roadmap-phase">
+          <div class="phase-header">
+            <span class="phase-badge short">Phase 2</span>
+            <span class="phase-title">Short-term</span>
+          </div>
+          <div class="phase-duration">Timeline: 1 month</div>
+          <ul class="phase-tasks">
+            <li>Document incident response plan</li>
+            <li>Complete security awareness training</li>
+            <li>Rotate DKIM keys</li>
+          </ul>
+          <div class="phase-impact">Completing Phase 2 raises score from 85% to 91%</div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="roadmap-phase">
+          <div class="phase-header">
+            <span class="phase-badge medium">Phase 3</span>
+            <span class="phase-title">Medium-term</span>
+          </div>
+          <div class="phase-duration">Timeline: 3 months</div>
+          <ul class="phase-tasks">
+            <li>Full CIS benchmark assessment</li>
+            <li>Insurance readiness review</li>
+            <li>Vendor risk assessments</li>
+          </ul>
+          <div class="phase-impact">Completing Phase 3 raises score from 91% to 97%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+    <div>
+      <div class="footer-label">AGENT STATUS</div>
+      <div class="footer-val green">Up to Date</div>
+      <div class="footer-label">v4.27.0</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg></div>
+    <div>
+      <div class="footer-label">RMM CONNECTION</div>
+      <div class="footer-val blue">Connected</div>
+      <div class="footer-label">PC Plus RMM</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+    <div>
+      <div class="footer-label">POLICY STATUS</div>
+      <div class="footer-val green">Compliant</div>
+      <div class="footer-label">All policies active</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <div>
+      <div class="footer-label">LICENSE</div>
+      <div class="footer-val green">Active</div>
+      <div class="footer-label">Expires: Dec 31, 2026</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 22V2"/></svg></div>
+    <div>
+      <div class="footer-label">VPN</div>
+      <div class="footer-val green">Available</div>
+      <div class="footer-label">Secure Tunnel</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+    <div>
+      <div class="footer-label">REMOTE SUPPORT</div>
+      <div class="footer-val blue">RustDesk</div>
+      <div class="footer-label">Coming Soon</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+    <div>
+      <div class="footer-label">NEXT REPORT</div>
+      <div class="footer-val">May 15, 2026</div>
+      <div class="footer-label">Scheduled</div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/dashboard-api.js"></script>
+<script src="js/device-persistence.js"></script>
+<script src="js/page-loader.js"></script>
+</body>
+</html>

@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC Plus Computing - AI Threat Advisor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sidebar: #0a1628;
+  --sidebar-hover: #0f1f38;
+  --sidebar-active: #2596be;
+  --content-bg: #f0f3f8;
+  --card: #ffffff;
+  --text-primary: #1a2332;
+  --text-secondary: #5a6b7f;
+  --text-muted: #8d9bb0;
+  --accent: #2596be;
+  --accent-dark: #1d7a9c;
+  --accent-light: #e6f3fa;
+  --green: #10b981;
+  --green-bg: #d1fae5;
+  --yellow: #f59e0b;
+  --yellow-bg: #fef3c7;
+  --red: #ef4444;
+  --red-bg: #fee2e2;
+  --blue: #3b82f6;
+  --border: #e5e9f0;
+  --shadow: 0 1px 3px rgba(10,22,40,0.06), 0 1px 2px rgba(10,22,40,0.04);
+  --shadow-md: 0 4px 16px rgba(10,22,40,0.08), 0 2px 6px rgba(10,22,40,0.04);
+  --shadow-lg: 0 8px 30px rgba(10,22,40,0.12), 0 4px 12px rgba(10,22,40,0.06);
+  --radius: 12px;
+  --sidebar-w: 232px;
+  --header-h: 64px;
+  --footer-h: 46px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: var(--content-bg);
+  background-image: radial-gradient(circle at 20% 50%, rgba(37,150,190,0.03) 0%, transparent 50%),
+                     radial-gradient(circle at 80% 20%, rgba(16,185,129,0.02) 0%, transparent 50%);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: linear-gradient(180deg, #0c1a2e 0%, #081422 100%);
+  color: #fff;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f transparent;
+}
+
+.sidebar-logo {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(37,150,190,0.05);
+}
+
+.logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #2596be 0%, #1d7a9c 100%);
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37,150,190,0.3);
+}
+
+.logo-text h2 { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.25; }
+.logo-text span { font-size: 9px; color: #5a7a94; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+
+.sidebar-nav { flex: 1; padding: 8px 0; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 18px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all 0.15s;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover { background: rgba(37,150,190,0.08); color: #c8d6e5; }
+
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(37,150,190,0.25) 0%, rgba(37,150,190,0.08) 100%);
+  color: #fff;
+  border-left-color: var(--accent);
+  font-weight: 600;
+  border-radius: 0 6px 6px 0;
+  margin-right: 8px;
+}
+
+.nav-section {
+  padding: 14px 18px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.nav-icon { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 1; }
+
+.sidebar-footer {
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: #64748b;
+}
+
+.sidebar-footer .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+/* ─── HEADER ─── */
+.header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--header-h);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 20px;
+  z-index: 90;
+}
+
+.device-info { display: flex; flex-direction: column; }
+.device-name { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+.device-os { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.device-os .online-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+.header-sync { font-size: 11px; color: var(--text-muted); }
+
+.header-status {
+  display: flex; align-items: center; gap: 10px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.protected-badge {
+  display: flex; flex-direction: column; align-items: center;
+}
+
+.protected-text { font-size: 22px; font-weight: 800; color: var(--green); letter-spacing: 2px; text-shadow: 0 0 20px rgba(16,185,129,0.15); }
+.risk-text { font-size: 11px; color: var(--text-secondary); }
+.risk-text b { color: var(--yellow); font-weight: 700; }
+
+.tier-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.tier-badge.business { background: linear-gradient(135deg, rgba(37,150,190,0.12), rgba(37,150,190,0.06)); color: var(--accent); border: 1px solid rgba(37,150,190,0.2); }
+.tier-badge .tier-dot { width: 6px; height: 6px; border-radius: 50%; }
+.tier-badge.business .tier-dot { background: var(--accent); }
+
+.client-section { display: flex; align-items: center; gap: 12px; padding-left: 16px; border-left: 1px solid var(--border); }
+.client-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.client-company { font-size: 10px; color: var(--text-muted); }
+
+.header-actions { display: flex; gap: 8px; }
+
+.hdr-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-primary);
+  transition: all 0.15s;
+}
+
+.hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+.hdr-btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; border-color: transparent; box-shadow: 0 2px 8px rgba(37,150,190,0.25); }
+.hdr-btn.primary:hover { background: linear-gradient(135deg, var(--accent-dark), #16687f); box-shadow: 0 2px 12px rgba(37,150,190,0.35); }
+.hdr-btn svg { width: 14px; height: 14px; }
+
+.header-user {
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+.user-avatar {
+  width: 34px; height: 34px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+}
+
+.user-info { font-size: 11px; }
+.user-info .name { font-weight: 700; color: var(--text-primary); }
+.user-info .role { color: var(--text-muted); font-size: 10px; }
+
+/* ─── MAIN ─── */
+.main {
+  margin-left: var(--sidebar-w);
+  margin-top: var(--header-h);
+  padding: 20px 24px;
+  padding-bottom: calc(var(--footer-h) + 20px);
+  min-height: calc(100vh - var(--header-h));
+}
+
+/* ─── GRID ─── */
+.row { display: grid; gap: 16px; margin-bottom: 16px; }
+.row-3 { grid-template-columns: repeat(3, 1fr); }
+.row-2 { grid-template-columns: 1.2fr 1fr; }
+.row-1 { grid-template-columns: 1fr; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-title { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; }
+.card-link { font-size: 11px; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.15s; }
+.card-link:hover { color: var(--accent-dark); }
+
+/* ─── AI SUMMARY CARD ─── */
+.ai-summary-card {
+  background: linear-gradient(135deg, #0c1f3d 0%, #153652 50%, #0f2847 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 20px rgba(10,22,40,0.2);
+  padding: 28px;
+}
+
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.ai-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ai-summary-icon {
+  width: 48px; height: 48px;
+  background: rgba(37,150,190,0.25);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 20px rgba(37,150,190,0.2);
+}
+
+.ai-summary-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+.ai-summary-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+.risk-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.risk-badge.medium { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.risk-badge.medium .badge-dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; animation: pulse 2s infinite; }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.ai-summary-details {
+  display: flex;
+  gap: 24px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.ai-summary-details span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-summary-details svg { width: 14px; height: 14px; opacity: 0.7; }
+
+/* ─── RISK CATEGORY CARDS ─── */
+.risk-cat-card {
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.risk-cat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+}
+
+.risk-cat-card.high::before { background: linear-gradient(90deg, var(--red), #f97316); }
+.risk-cat-card.low::before { background: linear-gradient(90deg, var(--green), #22d3ee); }
+.risk-cat-card.medium-risk::before { background: linear-gradient(90deg, var(--yellow), #f97316); }
+
+.risk-cat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.risk-cat-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+
+.risk-cat-level {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.risk-cat-level.high { background: var(--red-bg); color: var(--red); }
+.risk-cat-level.low { background: var(--green-bg); color: #16a34a; }
+.risk-cat-level.medium { background: var(--yellow-bg); color: #d97706; }
+
+.risk-cat-desc {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ─── AI RECOMMENDATIONS ─── */
+.ai-rec-list { display: flex; flex-direction: column; gap: 14px; }
+
+.ai-rec-item {
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: linear-gradient(145deg, #fafbfc, #fff);
+  position: relative;
+}
+
+.ai-rec-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+}
+
+.ai-rec-item.critical::before { background: var(--red); }
+.ai-rec-item.high-priority::before { background: var(--yellow); }
+.ai-rec-item.medium-priority::before { background: var(--accent); }
+
+.ai-rec-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ai-rec-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.ai-rec-badge.critical { background: var(--red-bg); color: var(--red); }
+.ai-rec-badge.high-priority { background: var(--yellow-bg); color: #d97706; }
+.ai-rec-badge.medium-priority { background: var(--accent-light); color: var(--accent); }
+
+.ai-rec-num { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+
+.ai-rec-text {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.ai-rec-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ai-rec-meta-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10.5px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  background: #f1f5f9;
+}
+
+.ai-rec-meta-item .label { color: var(--text-muted); font-weight: 500; }
+.ai-rec-meta-item .value { color: var(--text-primary); font-weight: 600; }
+.ai-rec-meta-item .value.green { color: var(--green); }
+.ai-rec-meta-item .value.blue { color: var(--accent); }
+
+/* ─── THREAT INTELLIGENCE ─── */
+.threat-intel-list { display: flex; flex-direction: column; gap: 6px; }
+
+.threat-intel-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fafbfc;
+  border: 1px solid var(--border);
+}
+
+.threat-intel-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  margin-top: 4px;
+  flex-shrink: 0;
+  animation: pulse 3s infinite;
+}
+
+.threat-intel-content { flex: 1; }
+.threat-intel-text { font-size: 11.5px; color: var(--text-primary); font-weight: 500; line-height: 1.5; }
+.threat-intel-date { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+/* ─── SCORE PROJECTION ─── */
+.projection-chart {
+  padding: 10px 0;
+}
+
+.projection-bar-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.projection-label {
+  width: 140px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.projection-bar-wrap {
+  flex: 1;
+  height: 28px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.projection-bar {
+  height: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.projection-bar.current { background: linear-gradient(90deg, #f59e0b, #f97316); width: 44.5%; }
+.projection-bar.phase1 { background: linear-gradient(90deg, #10b981, #2596be); width: 56%; }
+.projection-bar.phase2 { background: linear-gradient(90deg, #10b981, #22d3ee); width: 61.7%; }
+.projection-bar.target { background: linear-gradient(90deg, #10b981, #059669); width: 69.1%; }
+
+.projection-score {
+  width: 60px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.projection-note {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--green-bg);
+  border-left: 4px solid var(--green);
+  font-size: 12px;
+  color: #166534;
+  font-weight: 500;
+}
+
+/* ─── FOOTER ─── */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--footer-h);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 24px;
+  z-index: 90;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
+}
+
+.footer-item { display: flex; align-items: center; gap: 8px; }
+.footer-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.footer-icon svg { width: 18px; height: 18px; }
+.footer-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+.footer-val { font-size: 11px; font-weight: 700; }
+.footer-val.green { color: var(--green); }
+.footer-val.blue { color: var(--accent); }
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+.card { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.row > :nth-child(1) .card, .row > :nth-child(1).card { animation-delay: 0.06s; }
+.row > :nth-child(2) .card, .row > :nth-child(2).card { animation-delay: 0.12s; }
+.row > :nth-child(3) .card, .row > :nth-child(3).card { animation-delay: 0.18s; }
+.nav-item { animation: slideIn 0.3s ease both; }
+.nav-section ~ .nav-item:nth-child(2) { animation-delay: 0.02s; }
+.nav-section ~ .nav-item:nth-child(3) { animation-delay: 0.04s; }
+
+/* ─── SCROLLBAR ─── */
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1200px) {
+  .row-3 { grid-template-columns: 1fr 1fr; }
+  .row-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  .main, .header, .footer { margin-left: 0; left: 0; }
+  .row-3, .row-2, .row-1 { grid-template-columns: 1fr; }
+  .header-status { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="logo-text">
+      <h2>PC PLUS<br>COMPUTING</h2>
+      <span>Endpoint Protection</span>
+    </div>
+  </div>
+
+    <nav class="sidebar-nav">
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Dashboard</a>
+    <div class="nav-section">Security</div>
+    <a class="nav-item" href="scan-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Scan &amp; Threat Protection</a>
+    <a class="nav-item" href="realtime-protection.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Real-Time Protection</a>
+    <a class="nav-item" href="ransomware-shield.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Ransomware Shield</a>
+    <a class="nav-item" href="security-logs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Detection History</a>
+    <a class="nav-item" href="scan-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Quarantine</a>
+    <a class="nav-item active" href="ai-advisor.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg> AI Threat Advisor</a>
+    <div class="nav-section">Compliance</div>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Compliance Overview</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> CyberSecure Canada</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> NIST CSF 2.0</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> CIS Controls</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/></svg> Insurance Readiness</a>
+    <a class="nav-item" href="compliance-overview.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg> Compliance Evidence</a>
+    <div class="nav-section">Backup &amp; Recovery</div>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Backup Health</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Recovery Readiness</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg> Restore Testing</a>
+    <a class="nav-item" href="backup-detail.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-4V4a2 2 0 00-4 0v6H6a2 2 0 00-2 2v1a7 7 0 0014 0v-1a2 2 0 00-2-2z"/></svg> Cloud Backup</a>
+    <div class="nav-section">Network</div>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/></svg> Network Security</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Firewall</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg> Open Ports</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg> WiFi Security</a>
+    <a class="nav-item" href="network-security.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 009 9"/></svg> Network Map</a>
+    <div class="nav-section">Performance</div>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> System Health</a>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Optimization</a>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg> Startup Apps</a>
+    <div class="nav-section">Support</div>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Live Chat</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg> Support Ticket</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Remote Support</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Screenshot Tool</a>
+    <div class="nav-section">Reports</div>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> Executive Reports</a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Security Reports</a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> Compliance Reports</a>
+    <div class="nav-section">Settings</div>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Policies</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Notifications</a>
+    <a class="nav-item" href="settings.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Privacy Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="dot"></div>
+    <span>Agent v4.27.0</span>
+    <span style="margin-left:auto; color: var(--green); font-weight:600;">Up to date</span>
+  </div>
+</aside>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="device-info">
+    <span class="device-name" id="headerDeviceName">Select Device</span>
+    <span class="device-os"><span class="online-dot"></span> No device selected</span>
+  </div>
+  <div class="header-sync">Last sync: May 9, 2026 02:15 PM</div>
+
+  <div class="header-status">
+    <div class="protected-badge">
+      <span class="protected-text">PROTECTED</span>
+      <span class="risk-text">Risk Level: <b>Medium</b></span>
+    </div>
+  </div>
+
+  <div class="client-section">
+    <div>
+      <div class="client-name">Select Client</div>
+      <div class="client-company">Assigned Client</div>
+    </div>
+    <span class="tier-badge business"><span class="tier-dot"></span>Business</span>
+  </div>
+
+  <div class="header-actions">
+    <button class="hdr-btn primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      Quick Scan
+    </button>
+    <button class="hdr-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Lockdown
+    </button>
+    <button class="hdr-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Backup Now
+    </button>
+  </div>
+
+  <div class="header-user">
+    <div class="user-avatar">PP</div>
+    <div class="user-info">
+      <div class="name">PC Plus</div>
+      <div class="role">Managed by PC Plus Computing</div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- TOP: AI Analysis Summary -->
+  <div class="row row-1">
+    <div class="card ai-summary-card">
+      <div class="ai-summary-header">
+        <div class="ai-summary-left">
+          <div class="ai-summary-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 014-4z"/><path d="M10 17h4"/><path d="M10 20h4"/></svg>
+          </div>
+          <div>
+            <div class="ai-summary-title">AI Threat Analysis Report</div>
+            <div class="ai-summary-sub">Generated: May 9, 2026 2:15 PM</div>
+          </div>
+        </div>
+        <div class="risk-badge medium">
+          <span class="badge-dot"></span>
+          Overall Risk: MEDIUM
+        </div>
+      </div>
+      <div class="ai-summary-details">
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Based on 175-point security audit
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Wazuh SIEM events analyzed
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Endpoint telemetry correlated
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Three Risk Category Cards -->
+  <div class="row row-3">
+    <div class="card risk-cat-card high">
+      <div class="risk-cat-header">
+        <span class="risk-cat-name">Identity &amp; Access Risk</span>
+        <span class="risk-cat-level high">HIGH</span>
+      </div>
+      <div class="risk-cat-desc">MFA disabled, 3 breached passwords detected, 1 shared account identified. Immediate action required to prevent unauthorized access.</div>
+    </div>
+    <div class="card risk-cat-card low">
+      <div class="risk-cat-header">
+        <span class="risk-cat-name">Infrastructure Risk</span>
+        <span class="risk-cat-level low">LOW</span>
+      </div>
+      <div class="risk-cat-desc">Firewall active and properly configured, disk encryption enabled, OS patches current. Infrastructure posture is strong.</div>
+    </div>
+    <div class="card risk-cat-card medium-risk">
+      <div class="risk-cat-header">
+        <span class="risk-cat-name">Data Protection Risk</span>
+        <span class="risk-cat-level medium">MEDIUM</span>
+      </div>
+      <div class="risk-cat-desc">Backup untested for recovery, DMARC policy missing for email domain, USB device policy not enforced via Group Policy.</div>
+    </div>
+  </div>
+
+  <!-- ROW 2: AI Recommendations + Threat Intelligence -->
+  <div class="row row-2">
+
+    <!-- AI Recommendations -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">AI-Generated Recommendations</span><span style="font-size:9px; font-weight:700; color:var(--accent); background:rgba(37,150,190,0.08); padding:2px 8px; border-radius:10px;">PRIORITIZED</span></div>
+
+      <div class="ai-rec-list">
+        <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:12px;">Loading AI recommendations based on device security data...</div>
+      </div>
+    </div>
+
+    <!-- Threat Intelligence Feed -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Threat Intelligence Feed</span><span style="font-size:9px; font-weight:700; color:var(--red); background:var(--red-bg); padding:2px 8px; border-radius:10px;">LIVE</span></div>
+      <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:14px; font-weight:500;">Threats Relevant to Your Environment</p>
+
+      <div class="threat-intel-list">
+        <div class="threat-intel-item">
+          <div class="threat-intel-dot"></div>
+          <div class="threat-intel-content">
+            <div class="threat-intel-text">Ransomware targeting Canadian businesses increased 40% in Q1 2026. Small businesses without MFA are primary targets.</div>
+            <div class="threat-intel-date">May 8, 2026</div>
+          </div>
+        </div>
+        <div class="threat-intel-item">
+          <div class="threat-intel-dot" style="background:var(--yellow);"></div>
+          <div class="threat-intel-content">
+            <div class="threat-intel-text">New PowerShell-based attack bypasses AMSI - ensure Script Block Logging is enabled on all endpoints.</div>
+            <div class="threat-intel-date">May 7, 2026</div>
+          </div>
+        </div>
+        <div class="threat-intel-item">
+          <div class="threat-intel-dot"></div>
+          <div class="threat-intel-content">
+            <div class="threat-intel-text">Critical Windows vulnerability CVE-2026-21551 - patch available in latest update. Remote code execution risk.</div>
+            <div class="threat-intel-date">May 6, 2026</div>
+          </div>
+        </div>
+        <div class="threat-intel-item">
+          <div class="threat-intel-dot" style="background:var(--yellow);"></div>
+          <div class="threat-intel-content">
+            <div class="threat-intel-text">Phishing campaigns targeting Office 365 users with fake MFA prompts. Verify all MFA requests through official channels.</div>
+            <div class="threat-intel-date">May 5, 2026</div>
+          </div>
+        </div>
+        <div class="threat-intel-item">
+          <div class="threat-intel-dot"></div>
+          <div class="threat-intel-content">
+            <div class="threat-intel-text">New variant of LockBit ransomware targets unpatched RDP services. Ensure RDP is disabled or protected behind VPN.</div>
+            <div class="threat-intel-date">May 3, 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Security Score Projection -->
+  <div class="row row-1">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Security Score Projection</span><span style="font-size:9px; font-weight:700; color:var(--green); background:var(--green-bg); padding:2px 8px; border-radius:10px;">IMPROVEMENT PATH</span></div>
+
+      <div class="projection-chart">
+        <div class="projection-bar-group">
+          <div class="projection-label">Current Score</div>
+          <div class="projection-bar-wrap">
+            <div class="projection-bar current">78 / 175</div>
+          </div>
+          <div class="projection-score">78 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade B</span></div>
+        </div>
+        <div class="projection-bar-group">
+          <div class="projection-label">After Phase 1 <span style="font-size:9px;color:var(--text-muted);">(+MFA, +DMARC)</span></div>
+          <div class="projection-bar-wrap">
+            <div class="projection-bar phase1">98 / 175</div>
+          </div>
+          <div class="projection-score">98 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade B+</span></div>
+        </div>
+        <div class="projection-bar-group">
+          <div class="projection-label">After Phase 2 <span style="font-size:9px;color:var(--text-muted);">(+Backup, +Passwords)</span></div>
+          <div class="projection-bar-wrap">
+            <div class="projection-bar phase2">108 / 175</div>
+          </div>
+          <div class="projection-score">108 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade A-</span></div>
+        </div>
+        <div class="projection-bar-group">
+          <div class="projection-label">All Recommendations</div>
+          <div class="projection-bar-wrap">
+            <div class="projection-bar target">121 / 175</div>
+          </div>
+          <div class="projection-score">121 <span style="font-size:10px;color:var(--text-muted);font-weight:500;">Grade A-</span></div>
+        </div>
+      </div>
+
+      <div class="projection-note">Following all recommendations would raise your score from 78 (Grade B) to 121 (Grade A-), representing a 55% improvement in your security posture.</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+    <div>
+      <div class="footer-label">AGENT STATUS</div>
+      <div class="footer-val green">Up to Date</div>
+      <div class="footer-label">v4.27.0</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg></div>
+    <div>
+      <div class="footer-label">RMM CONNECTION</div>
+      <div class="footer-val blue">Connected</div>
+      <div class="footer-label">PC Plus RMM</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+    <div>
+      <div class="footer-label">POLICY STATUS</div>
+      <div class="footer-val green">Compliant</div>
+      <div class="footer-label">All policies active</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <div>
+      <div class="footer-label">LICENSE</div>
+      <div class="footer-val green">Active</div>
+      <div class="footer-label">Expires: Dec 31, 2026</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 22V2"/></svg></div>
+    <div>
+      <div class="footer-label">VPN</div>
+      <div class="footer-val green">Available</div>
+      <div class="footer-label">Secure Tunnel</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2596be" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+    <div>
+      <div class="footer-label">REMOTE SUPPORT</div>
+      <div class="footer-val blue">RustDesk</div>
+      <div class="footer-label">Coming Soon</div>
+    </div>
+  </div>
+  <div class="footer-item">
+    <div class="footer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+    <div>
+      <div class="footer-label">NEXT REPORT</div>
+      <div class="footer-val">May 15, 2026</div>
+      <div class="footer-label">Scheduled</div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/dashboard-api.js"></script>
+<script src="js/device-persistence.js"></script>
+<script src="js/page-loader.js"></script>
+</body>
+</html>
