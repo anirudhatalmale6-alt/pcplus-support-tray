@@ -1,10 +1,10 @@
-# PC Plus Endpoint Protection v4.33.0 - Safe RMM Deployment Script
+# PC Plus Endpoint Protection v5.9.0 - Safe RMM Deployment Script
 # Handles Avast exclusions before installing to prevent false positive blocks
 # Run via Tactical RMM as PowerShell script (Run as System)
 # Set $Tier below to match the customer's subscription (Free, Standard, Premium)
 
 $ErrorActionPreference = 'Stop'
-$Version = "4.33.0"
+$Version = "5.9.0"
 $Tier = "Premium"  # Change per customer: Free, Standard, or Premium
 $InstallDir = "C:\Program Files\PC Plus\Endpoint Protection"
 $DataDir = "C:\ProgramData\PCPlusEndpoint"
