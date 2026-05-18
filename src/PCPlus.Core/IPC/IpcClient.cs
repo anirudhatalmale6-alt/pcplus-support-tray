@@ -158,12 +158,16 @@ namespace PCPlus.Core.IPC
 
             try
             {
+                var writer = _writer;
+                if (writer == null)
+                    return IpcResponse.Fail(request.Id, "Not connected (writer null)");
+
                 var json = JsonSerializer.Serialize(request, IpcProtocol.JsonOptions);
 
                 await _sendLock.WaitAsync();
                 try
                 {
-                    await _writer!.WriteLineAsync(json);
+                    await writer.WriteLineAsync(json);
                 }
                 finally
                 {
