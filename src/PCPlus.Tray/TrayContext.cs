@@ -62,11 +62,11 @@ namespace PCPlus.Tray
                     ShowDashboard();
             };
 
-            // Connect to service
-            _ = ConnectToServiceAsync();
+            // Connect to service (delay to let service pipe initialize after install)
+            _ = StartupConnectAsync();
 
-            // Reconnect timer (try every 10 seconds if disconnected)
-            _reconnectTimer = new System.Windows.Forms.Timer { Interval = 10000 };
+            // Reconnect timer (try every 5 seconds if disconnected)
+            _reconnectTimer = new System.Windows.Forms.Timer { Interval = 5000 };
             _reconnectTimer.Tick += async (s, e) =>
             {
                 try
@@ -137,13 +137,28 @@ namespace PCPlus.Tray
             catch { }
         }
 
+        private async Task StartupConnectAsync()
+        {
+            // Retry aggressively during startup (service may still be initializing pipe)
+            for (int i = 0; i < 10; i++)
+            {
+                await Task.Delay(3000);
+                if (_serviceConnected) return;
+                try
+                {
+                    await ConnectToServiceAsync();
+                    if (_serviceConnected) return;
+                }
+                catch { }
+            }
+        }
+
         private async Task ConnectToServiceAsync()
         {
             if (_connecting) return;
             _connecting = true;
             try
             {
-                // Run IPC connection off the UI thread to prevent freezing
                 await Task.Run(async () =>
                 {
                     await _ipc.ConnectAsync(3000);
@@ -151,7 +166,6 @@ namespace PCPlus.Tray
                 _serviceConnected = true;
                 UpdateTrayIcon();
 
-                // Get initial status (also off UI thread)
                 var response = await Task.Run(async () => await _ipc.GetServiceStatusAsync());
                 if (response.Success)
                 {

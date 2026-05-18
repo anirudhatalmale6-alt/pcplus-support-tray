@@ -3080,18 +3080,22 @@ namespace PCPlus.Tray.Forms
                 }
 
                 // Update sidebar status and rebuild current view with fresh data
-                if (!IsDisposed && InvokeRequired)
-                    Invoke(new Action(() =>
+                if (!IsDisposed)
+                {
+                    void UpdateUI()
                     {
                         if (IsDisposed) return;
-                        // Invalidate sidebar status
                         foreach (var ctrl in _sidebar.Controls)
                             if (ctrl is Panel p) p.Invalidate();
-
-                        // Only rebuild view if data actually changed
                         if (_currentView == "dashboard" || _currentView == "system")
                             ShowView(_currentView);
-                    }));
+                    }
+
+                    if (InvokeRequired)
+                        Invoke(new Action(UpdateUI));
+                    else
+                        UpdateUI();
+                }
             }
             catch { }
         }

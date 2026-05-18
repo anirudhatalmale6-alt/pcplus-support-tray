@@ -54,6 +54,8 @@ Filename: "sc.exe"; Parameters: "create PCPlusEndpoint binPath= ""{app}\Service\
 Filename: "sc.exe"; Parameters: "description PCPlusEndpoint ""PC Plus Endpoint Protection - Security monitoring, ransomware defense, system health."""; Flags: runhidden
 Filename: "sc.exe"; Parameters: "failure PCPlusEndpoint reset= 86400 actions= restart/5000/restart/10000/restart/30000"; Flags: runhidden
 Filename: "net.exe"; Parameters: "start PCPlusEndpoint"; Flags: runhidden
+; Wait for service pipe to initialize before launching tray
+Filename: "cmd.exe"; Parameters: "/c timeout /t 5 /nobreak >nul"; Flags: runhidden
 ; Start tray app
 Filename: "{app}\Tray\PCPlusTray.exe"; Flags: nowait postinstall skipifsilent runhidden
 
