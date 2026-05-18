@@ -163,8 +163,12 @@ namespace PCPlus.Tray
                 {
                     await _ipc.ConnectAsync(3000);
                 });
-                _serviceConnected = true;
+
+                // Verify actual connection state (ConnectAsync may return without
+                // connecting if another attempt holds the lock)
+                _serviceConnected = _ipc.IsConnected;
                 UpdateTrayIcon();
+                if (!_serviceConnected) return;
 
                 var response = await Task.Run(async () => await _ipc.GetServiceStatusAsync());
                 if (response.Success)
