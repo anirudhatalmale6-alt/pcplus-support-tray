@@ -33,44 +33,65 @@ namespace PCPlus.Core.IPC
         public event Action<IpcNotification>? OnNotification;
         public event Action<bool>? OnConnectionChanged;
         public bool IsConnected => _pipe?.IsConnected ?? false;
+
+        private static readonly string _logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "PCPlusEndpoint", "Logs", "ipc_debug.log");
+
+        private static void Log(string msg)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_logPath)!);
+                File.AppendAllText(_logPath,
+                    $"[{DateTime.Now:HH:mm:ss.fff}] {msg}{Environment.NewLine}");
+            }
+            catch { }
+        }
         public bool IsAuthenticated => _session != null && _session.ExpiresAt > DateTime.UtcNow;
         public CommandPermission PermissionLevel => _session?.PermissionLevel ?? CommandPermission.ReadOnly;
 
         public async Task ConnectAsync(int timeoutMs = 5000)
         {
+            Log($"ConnectAsync called. IsConnected={IsConnected}");
             if (IsConnected) return;
 
             if (!await _connectLock.WaitAsync(0))
+            {
+                Log("ConnectAsync: lock busy, skipping");
                 return;
+            }
 
             try
             {
-                if (IsConnected) return;
+                if (IsConnected) { Log("ConnectAsync: already connected after lock"); return; }
 
-                // Dispose any stale pipe
                 _listenerCts?.Cancel();
                 _pipe?.Dispose();
                 _pipe = null;
 
+                Log($"ConnectAsync: creating pipe to '{IpcProtocol.PIPE_NAME}'...");
                 var newPipe = new NamedPipeClientStream(".", IpcProtocol.PIPE_NAME,
                     PipeDirection.InOut, PipeOptions.Asynchronous);
 
                 await newPipe.ConnectAsync(timeoutMs);
+                Log("ConnectAsync: pipe connected!");
                 _pipe = newPipe;
                 _reader = new StreamReader(_pipe, Encoding.UTF8);
                 _writer = new StreamWriter(_pipe, Encoding.UTF8) { AutoFlush = true };
 
-                // Start listening for responses and notifications
                 _listenerCts = new CancellationTokenSource();
                 _listenerTask = ListenAsync(_listenerCts.Token);
 
                 OnConnectionChanged?.Invoke(true);
 
-                // Authenticate immediately after connecting
-                await AuthenticateAsync();
+                Log("ConnectAsync: authenticating...");
+                var authResult = await AuthenticateAsync();
+                Log($"ConnectAsync: auth result={authResult}, IsConnected={IsConnected}");
             }
-            catch
+            catch (Exception ex)
             {
+                Log($"ConnectAsync FAILED: {ex.GetType().Name}: {ex.Message}");
                 _pipe?.Dispose();
                 _pipe = null;
                 throw;
@@ -170,6 +191,7 @@ namespace PCPlus.Core.IPC
             }
             catch (Exception ex)
             {
+                Log($"SendRawRequest ERROR ({request.Type}): {ex.GetType().Name}: {ex.Message}");
                 try { _pipe?.Dispose(); } catch { }
                 _pipe = null;
                 return IpcResponse.Fail(request.Id, $"IPC error: {ex.Message}");
@@ -228,20 +250,24 @@ namespace PCPlus.Core.IPC
 
         private async Task ListenAsync(CancellationToken ct)
         {
+            Log("ListenAsync: started");
             try
             {
                 while (!ct.IsCancellationRequested && IsConnected)
                 {
                     var line = await _reader!.ReadLineAsync(ct);
-                    if (line == null) break;
+                    if (line == null) { Log("ListenAsync: ReadLine returned null (pipe closed)"); break; }
 
+                    Log($"ListenAsync: received {line.Length} chars");
                     ProcessMessage(line);
                 }
+                Log($"ListenAsync: loop exited. Cancelled={ct.IsCancellationRequested}, Connected={IsConnected}");
             }
-            catch (OperationCanceledException) { }
-            catch { }
+            catch (OperationCanceledException) { Log("ListenAsync: cancelled"); }
+            catch (Exception ex) { Log($"ListenAsync ERROR: {ex.GetType().Name}: {ex.Message}"); }
             finally
             {
+                Log("ListenAsync: cleaning up, firing OnConnectionChanged(false)");
                 _session = null;
                 _sessionToken = "";
                 try { _reader?.Dispose(); } catch { }
