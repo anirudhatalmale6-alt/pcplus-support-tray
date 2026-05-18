@@ -1594,7 +1594,7 @@ namespace PCPlus.Tray.Forms
 
         #region Vulnerability View
 
-        private void BuildVulnerabilityView()
+        private async void BuildVulnerabilityView()
         {
             int y = 0;
             int m = 16;
@@ -1625,7 +1625,6 @@ namespace PCPlus.Tray.Forms
             // Status card
             var statusCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 120), CardBg, CardBorder);
 
-            // Shield icon area
             var shieldPanel = new Panel
             {
                 Location = new Point(20, 16),
@@ -1680,56 +1679,50 @@ namespace PCPlus.Tray.Forms
 
             // Severity summary cards
             var cardW = (contentW - m * 3) / 4;
-            var severities = new[] {
-                ("Critical", "0", AccentRed, "CVSS 9.0-10.0"),
-                ("High", "2", AccentOrange, "CVSS 7.0-8.9"),
-                ("Medium", "8", AccentBlue, "CVSS 4.0-6.9"),
-                ("Low", "10", AccentGreen, "CVSS 0.1-3.9")
-            };
+            var sevColors = new[] { AccentRed, AccentOrange, AccentBlue, AccentGreen };
+            var sevLabels = new[] { "Critical", "High", "Medium", "Low" };
+            var sevRanges = new[] { "CVSS 9.0-10.0", "CVSS 7.0-8.9", "CVSS 4.0-6.9", "CVSS 0.1-3.9" };
+            var sevCountLabels = new Label[4];
 
             for (int i = 0; i < 4; i++)
             {
-                var (label, count, color, range) = severities[i];
                 var card = CreateRoundedPanel(new Rectangle(m + i * (cardW + m), y, cardW, 100), CardBg, CardBorder);
 
-                // Left accent bar
                 var accentBar = new Panel
                 {
                     Location = new Point(0, 0),
                     Size = new Size(4, 100),
-                    BackColor = color
+                    BackColor = sevColors[i]
                 };
                 card.Controls.Add(accentBar);
 
-                var countLabel = new Label
+                sevCountLabels[i] = new Label
                 {
                     Text = "--",
                     Font = new Font("Segoe UI", 28, FontStyle.Bold),
-                    ForeColor = color,
+                    ForeColor = sevColors[i],
                     Location = new Point(16, 8),
                     AutoSize = true
                 };
-                card.Controls.Add(countLabel);
+                card.Controls.Add(sevCountLabels[i]);
 
-                var nameLabel = new Label
+                card.Controls.Add(new Label
                 {
-                    Text = label,
+                    Text = sevLabels[i],
                     Font = new Font("Segoe UI", 10, FontStyle.Bold),
                     ForeColor = TextDark,
                     Location = new Point(16, 58),
                     AutoSize = true
-                };
-                card.Controls.Add(nameLabel);
+                });
 
-                var rangeLabel = new Label
+                card.Controls.Add(new Label
                 {
-                    Text = range,
+                    Text = sevRanges[i],
                     Font = new Font("Segoe UI", 8),
                     ForeColor = TextMuted,
                     Location = new Point(16, 78),
                     AutoSize = true
-                };
-                card.Controls.Add(rangeLabel);
+                });
 
                 _contentArea.Controls.Add(card);
             }
@@ -1738,52 +1731,70 @@ namespace PCPlus.Tray.Forms
             // Scan details card
             var detailCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 200), CardBg, CardBorder);
 
-            var detailTitle = new Label
+            detailCard.Controls.Add(new Label
             {
                 Text = "Scan Details",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = TextDark,
                 Location = new Point(20, 14),
                 AutoSize = true
-            };
-            detailCard.Controls.Add(detailTitle);
+            });
 
-            var details = new[] {
-                ("Last Scan", "Pending first scan"),
-                ("Duration", "--"),
-                ("Hosts Scanned", "--"),
-                ("Next Scheduled", "Sunday 2:00 AM"),
-                ("Scanner Version", "OpenVAS 22.x"),
-                ("Feed Status", "Updating...")
-            };
+            var detailKeys = new[] { "Last Scan", "Duration", "Hosts Scanned", "Total Findings", "Next Scheduled", "Feed Status" };
+            var detailValLabels = new Label[detailKeys.Length];
 
-            for (int i = 0; i < details.Length; i++)
+            for (int i = 0; i < detailKeys.Length; i++)
             {
-                var (key, val) = details[i];
-                var keyLabel = new Label
+                detailCard.Controls.Add(new Label
                 {
-                    Text = key,
+                    Text = detailKeys[i],
                     Font = new Font("Segoe UI", 9.5f),
                     ForeColor = TextMuted,
                     Location = new Point(20, 46 + i * 24),
                     AutoSize = true
-                };
-                detailCard.Controls.Add(keyLabel);
+                });
 
-                var valColor = key == "Feed Status" ? AccentGreen : TextDark;
-                var valLabel = new Label
+                detailValLabels[i] = new Label
                 {
-                    Text = val,
+                    Text = "--",
                     Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-                    ForeColor = valColor,
+                    ForeColor = TextDark,
                     Location = new Point(200, 46 + i * 24),
                     AutoSize = true
                 };
-                detailCard.Controls.Add(valLabel);
+                detailCard.Controls.Add(detailValLabels[i]);
             }
 
             _contentArea.Controls.Add(detailCard);
             y += 216;
+
+            // Top vulnerabilities list
+            var vulnListCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 220), CardBg, CardBorder);
+            vulnListCard.Controls.Add(new Label
+            {
+                Text = "Top Vulnerabilities",
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                ForeColor = TextDark,
+                Location = new Point(20, 14),
+                AutoSize = true
+            });
+
+            var vulnListLabels = new Label[5];
+            for (int i = 0; i < 5; i++)
+            {
+                vulnListLabels[i] = new Label
+                {
+                    Text = "",
+                    Font = new Font("Segoe UI", 9),
+                    ForeColor = TextMuted,
+                    Location = new Point(20, 46 + i * 34),
+                    Size = new Size(contentW - 40, 30),
+                    AutoSize = false
+                };
+                vulnListCard.Controls.Add(vulnListLabels[i]);
+            }
+            _contentArea.Controls.Add(vulnListCard);
+            y += 236;
 
             // Action buttons
             var scanBtn = new Panel
@@ -1832,9 +1843,85 @@ namespace PCPlus.Tray.Forms
             };
             reportBtn.Click += (s, e) =>
             {
-                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://dashboard.pcpluscomputing.com/vulnerability-scanner.html", UseShellExecute = true }); } catch { }
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://dashboard.pcpluscomputing.com/network-security.html", UseShellExecute = true }); } catch { }
             };
             _contentArea.Controls.Add(reportBtn);
+
+            // Fetch real vulnerability stats from service
+            if (_ipc.IsConnected)
+            {
+                try
+                {
+                    var resp = await _ipc.GetVulnerabilityStatsAsync();
+                    if (resp.Success)
+                    {
+                        var stats = resp.GetData<VulnerabilityStatsDto>();
+                        if (stats != null)
+                        {
+                            void UpdateLabels()
+                            {
+                                if (IsDisposed) return;
+
+                                sevCountLabels[0].Text = stats.Critical.ToString();
+                                sevCountLabels[1].Text = stats.High.ToString();
+                                sevCountLabels[2].Text = stats.Medium.ToString();
+                                sevCountLabels[3].Text = (stats.Low + stats.Info).ToString();
+
+                                // Update status card based on findings
+                                if (stats.Critical > 0)
+                                {
+                                    statusText.Text = "Critical Issues Found";
+                                    statusText.ForeColor = AccentRed;
+                                    statusSub.Text = $"{stats.Critical} critical vulnerabilities detected. Immediate action recommended.";
+                                }
+                                else if (stats.High > 0)
+                                {
+                                    statusText.Text = "Issues Found";
+                                    statusText.ForeColor = AccentOrange;
+                                    statusSub.Text = $"{stats.High} high-severity vulnerabilities found. Review recommended.";
+                                }
+                                else if (stats.TotalFindings == 0)
+                                {
+                                    statusText.Text = "Network Clean";
+                                    statusText.ForeColor = AccentGreen;
+                                    statusSub.Text = "No vulnerabilities detected. Weekly scan every Sunday 2AM.";
+                                }
+
+                                // Scan details
+                                if (!string.IsNullOrEmpty(stats.ScanDate))
+                                    detailValLabels[0].Text = stats.ScanDate;
+                                if (!string.IsNullOrEmpty(stats.ScanDuration))
+                                    detailValLabels[1].Text = stats.ScanDuration;
+                                detailValLabels[2].Text = stats.HostsScanned > 0 ? stats.HostsScanned.ToString() : "--";
+                                detailValLabels[3].Text = stats.TotalFindings.ToString();
+                                detailValLabels[4].Text = "Sunday 2:00 AM";
+                                detailValLabels[5].Text = "Up to date";
+                                detailValLabels[5].ForeColor = AccentGreen;
+
+                                // Top vulnerabilities
+                                for (int i = 0; i < 5 && i < stats.TopVulnerabilities.Count; i++)
+                                {
+                                    var v = stats.TopVulnerabilities[i];
+                                    var sevText = v.Severity >= 9 ? "CRIT" : v.Severity >= 7 ? "HIGH" : v.Severity >= 4 ? "MED" : "LOW";
+                                    var sevColor = v.Severity >= 9 ? AccentRed : v.Severity >= 7 ? AccentOrange : v.Severity >= 4 ? AccentBlue : AccentGreen;
+                                    vulnListLabels[i].Text = $"[{sevText} {v.Severity:F1}] {v.Name}  -  {v.Host}:{v.Port}" + (!string.IsNullOrEmpty(v.Cve) ? $"  ({v.Cve})" : "");
+                                    vulnListLabels[i].ForeColor = sevColor;
+                                }
+
+                                if (stats.TopVulnerabilities.Count == 0)
+                                {
+                                    vulnListLabels[0].Text = "No vulnerabilities found - network is clean";
+                                    vulnListLabels[0].ForeColor = AccentGreen;
+                                }
+                            }
+
+                            if (InvokeRequired) Invoke(UpdateLabels);
+                            else UpdateLabels();
+                        }
+                    }
+                }
+                catch { }
+            }
         }
 
         #endregion

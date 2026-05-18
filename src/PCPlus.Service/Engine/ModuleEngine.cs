@@ -20,6 +20,8 @@ namespace PCPlus.Service.Engine
         private readonly ServiceConfig _config;
         private readonly AuditLogger _auditLogger;
         private AdGuardClient? _adGuardClient;
+        private VulnerabilityStatsDto? _cachedVulnStats;
+        private DateTime _vulnCacheExpiry;
         private CancellationTokenSource? _cts;
         private DateTime _startedAt;
         private bool _disposed;
@@ -233,6 +235,9 @@ namespace PCPlus.Service.Engine
                     IpcRequestType.GetDnsStats =>
                         await HandleGetDnsStats(request),
 
+                    IpcRequestType.GetVulnerabilityStats =>
+                        await HandleGetVulnerabilityStats(request),
+
                     IpcRequestType.RunMaintenance or
                     IpcRequestType.GetMaintenanceStatus =>
                         await RouteToModuleAsync("maintenance", request),
@@ -368,6 +373,46 @@ namespace PCPlus.Service.Engine
             catch (Exception ex)
             {
                 return IpcResponse.Fail(request.Id, $"DNS stats error: {ex.Message}");
+            }
+        }
+
+        private async Task<IpcResponse> HandleGetVulnerabilityStats(IpcRequest request)
+        {
+            var dashboardUrl = _config.DashboardApiUrl;
+            if (string.IsNullOrEmpty(dashboardUrl))
+                return IpcResponse.Fail(request.Id, "Dashboard API not configured");
+
+            if (_cachedVulnStats != null && DateTime.UtcNow < _vulnCacheExpiry)
+                return IpcResponse.Ok(request.Id, _cachedVulnStats);
+
+            try
+            {
+                using var http = new HttpClient { BaseAddress = new Uri(dashboardUrl.TrimEnd('/')), Timeout = TimeSpan.FromSeconds(15) };
+                var token = _config.DashboardApiToken;
+                if (!string.IsNullOrEmpty(token))
+                    http.DefaultRequestHeaders.Add("X-Api-Token", token);
+
+                var resp = await http.GetAsync("/api/vulnerability/summary");
+                if (!resp.IsSuccessStatusCode)
+                    return IpcResponse.Fail(request.Id, $"Dashboard API returned {(int)resp.StatusCode}");
+
+                var json = await resp.Content.ReadAsStringAsync();
+                var stats = JsonSerializer.Deserialize<VulnerabilityStatsDto>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (stats == null)
+                    return IpcResponse.Fail(request.Id, "Failed to parse vulnerability data");
+
+                stats.FetchedAt = DateTime.UtcNow;
+                _cachedVulnStats = stats;
+                _vulnCacheExpiry = DateTime.UtcNow.AddMinutes(5);
+
+                return IpcResponse.Ok(request.Id, stats);
+            }
+            catch (Exception ex)
+            {
+                Log(LogLevel.Warning, "engine", $"Vulnerability stats fetch failed: {ex.Message}");
+                if (_cachedVulnStats != null)
+                    return IpcResponse.Ok(request.Id, _cachedVulnStats);
+                return IpcResponse.Fail(request.Id, $"Vulnerability stats error: {ex.Message}");
             }
         }
 
