@@ -227,6 +227,16 @@ namespace PCPlus.Tray.Forms
         /// <summary>Navigate to a specific view. Called externally by TrayContext.</summary>
         public void NavigateToView(string viewId) => ShowView(viewId);
 
+        private void DisposeContentControls()
+        {
+            var controls = new List<Control>();
+            foreach (Control c in _contentArea.Controls)
+                controls.Add(c);
+            _contentArea.Controls.Clear();
+            foreach (var c in controls)
+                c.Dispose();
+        }
+
         private void ShowView(string viewId)
         {
             _currentView = viewId;
@@ -234,8 +244,8 @@ namespace PCPlus.Tray.Forms
             foreach (var btn in _navButtons.Values)
                 btn.Invalidate();
 
-            // Clear content and show the selected view
-            _contentArea.Controls.Clear();
+            // Dispose old controls to free GDI handles, then rebuild
+            DisposeContentControls();
             switch (viewId)
             {
                 case "dashboard": BuildDashboardView(); break;
@@ -3069,16 +3079,18 @@ namespace PCPlus.Tray.Forms
                         _securityResult = _localFallback.LastSecurityScan;
                 }
 
-                // Refresh current view
+                // Update sidebar status and rebuild current view with fresh data
                 if (!IsDisposed && InvokeRequired)
                     Invoke(new Action(() =>
                     {
+                        if (IsDisposed) return;
                         // Invalidate sidebar status
                         foreach (var ctrl in _sidebar.Controls)
                             if (ctrl is Panel p) p.Invalidate();
 
-                        // Refresh the currently displayed view
-                        ShowView(_currentView);
+                        // Only rebuild view if data actually changed
+                        if (_currentView == "dashboard" || _currentView == "system")
+                            ShowView(_currentView);
                     }));
             }
             catch { }
