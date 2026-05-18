@@ -45,6 +45,10 @@ Name: "{commonappdata}\PCPlusEndpoint\reports"
 [Run]
 ; Write config if it doesn't exist
 Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""$f='{commonappdata}\PCPlusEndpoint\config.json'; if(-not(Test-Path $f)){{@{{dashboardApiUrl='https://dashboard.pcpluscomputing.com';deviceId='{computername}-'+[guid]::NewGuid().ToString('N').Substring(0,4).ToUpper();ransomwareProtectionEnabled='true';autoContainmentEnabled='true';showBalloonAlerts='true';logAlerts='true'}}|ConvertTo-Json|Set-Content $f -Encoding UTF8}}"""; Flags: runhidden
+; Stop and remove old service if it exists (handles upgrades)
+Filename: "net.exe"; Parameters: "stop PCPlusEndpoint"; Flags: runhidden; Check: ServiceExists
+Filename: "sc.exe"; Parameters: "delete PCPlusEndpoint"; Flags: runhidden; Check: ServiceExists
+Filename: "cmd.exe"; Parameters: "/c timeout /t 3 /nobreak >nul"; Flags: runhidden
 ; Register and start service
 Filename: "sc.exe"; Parameters: "create PCPlusEndpoint binPath= ""{app}\Service\PCPlusService.exe"" start= auto DisplayName= ""PC Plus Endpoint Protection"""; Flags: runhidden
 Filename: "sc.exe"; Parameters: "description PCPlusEndpoint ""PC Plus Endpoint Protection - Security monitoring, ransomware defense, system health."""; Flags: runhidden
@@ -63,6 +67,14 @@ Filename: "sc.exe"; Parameters: "delete PCPlusEndpoint"; Flags: runhidden
 Filename: "taskkill.exe"; Parameters: "/F /IM PCPlusTray.exe"; Flags: runhidden
 
 [Code]
+function ServiceExists: Boolean;
+var
+  ResultCode: Integer;
+begin
+  Exec('sc.exe', 'query PCPlusEndpoint', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := (ResultCode = 0);
+end;
+
 // Send heartbeat on install completion
 procedure CurStepChanged(CurStep: TSetupStep);
 var
