@@ -45,10 +45,9 @@ Name: "{commonappdata}\PCPlusEndpoint\reports"
 [Run]
 ; Write config if it doesn't exist
 Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""$f='{commonappdata}\PCPlusEndpoint\config.json'; if(-not(Test-Path $f)){{@{{dashboardApiUrl='https://dashboard.pcpluscomputing.com';deviceId='{computername}-'+[guid]::NewGuid().ToString('N').Substring(0,4).ToUpper();ransomwareProtectionEnabled='true';autoContainmentEnabled='true';showBalloonAlerts='true';logAlerts='true'}}|ConvertTo-Json|Set-Content $f -Encoding UTF8}}"""; Flags: runhidden
-; Stop and remove old service if it exists (handles upgrades)
-Filename: "net.exe"; Parameters: "stop PCPlusEndpoint"; Flags: runhidden; Check: ServiceExists
+; Service was already stopped in PrepareToInstall - just delete and recreate
 Filename: "sc.exe"; Parameters: "delete PCPlusEndpoint"; Flags: runhidden; Check: ServiceExists
-Filename: "cmd.exe"; Parameters: "/c timeout /t 3 /nobreak >nul"; Flags: runhidden
+Filename: "cmd.exe"; Parameters: "/c timeout /t 2 /nobreak >nul"; Flags: runhidden
 ; Register and start service
 Filename: "sc.exe"; Parameters: "create PCPlusEndpoint binPath= ""{app}\Service\PCPlusService.exe"" start= auto DisplayName= ""PC Plus Endpoint Protection"""; Flags: runhidden
 Filename: "sc.exe"; Parameters: "description PCPlusEndpoint ""PC Plus Endpoint Protection - Security monitoring, ransomware defense, system health."""; Flags: runhidden
@@ -75,6 +74,23 @@ var
 begin
   Exec('sc.exe', 'query PCPlusEndpoint', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Result := (ResultCode = 0);
+end;
+
+// Stop service and kill tray BEFORE files are copied (prevents locked file errors)
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  Result := '';
+  // Kill tray app first
+  Exec('taskkill.exe', '/F /IM PCPlusTray.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // Stop the service
+  if ServiceExists then
+  begin
+    Exec('net.exe', 'stop PCPlusEndpoint', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    // Wait for service process to fully exit
+    Sleep(3000);
+  end;
 end;
 
 // Send heartbeat on install completion
