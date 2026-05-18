@@ -242,6 +242,9 @@ namespace PCPlus.Core.IPC
         public Task<IpcResponse> GetServiceStatusAsync() =>
             SendRequestAsync(new IpcRequest { Type = IpcRequestType.GetServiceStatus });
 
+        public Task<IpcResponse> GetDnsStatsAsync() =>
+            SendRequestAsync(new IpcRequest { Type = IpcRequestType.GetDnsStats }, 15000);
+
         public Task<IpcResponse> SendModuleCommandAsync(string moduleId, string action,
             Dictionary<string, string>? parameters = null) =>
             SendRequestAsync(new IpcRequest

@@ -70,6 +70,11 @@ namespace PCPlus.Core.Interfaces
         string DashboardApiUrl { get; }
         string DashboardApiToken { get; }
 
+        // DNS / AdGuard Home
+        string AdGuardHomeUrl { get; }
+        string AdGuardHomeUser { get; }
+        string AdGuardHomePassword { get; }
+
         // Threat Intel
         string AbuseChAuthKey { get; }
 

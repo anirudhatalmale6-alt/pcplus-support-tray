@@ -19,6 +19,7 @@ namespace PCPlus.Service.Engine
         private readonly IpcServer _ipcServer;
         private readonly ServiceConfig _config;
         private readonly AuditLogger _auditLogger;
+        private AdGuardClient? _adGuardClient;
         private CancellationTokenSource? _cts;
         private DateTime _startedAt;
         private bool _disposed;
@@ -56,6 +57,12 @@ namespace PCPlus.Service.Engine
             _ipcServer.OnDiagnostic += msg => _auditLogger.Log("ipc", "diag", msg);
             _ipcServer.Start();
             Log(LogLevel.Info, "engine", "IPC server started (secured: session auth + command authorization)");
+
+            if (!string.IsNullOrEmpty(_config.AdGuardHomeUrl))
+            {
+                _adGuardClient = new AdGuardClient(_config.AdGuardHomeUrl, _config.AdGuardHomeUser, _config.AdGuardHomePassword);
+                Log(LogLevel.Info, "engine", $"AdGuard Home client initialized: {_config.AdGuardHomeUrl}");
+            }
 
             foreach (var (id, module) in _modules)
             {
@@ -223,6 +230,9 @@ namespace PCPlus.Service.Engine
                     IpcRequestType.DeactivateLockdown =>
                         await HandleRansomwareRequest(request, session),
 
+                    IpcRequestType.GetDnsStats =>
+                        await HandleGetDnsStats(request),
+
                     IpcRequestType.RunMaintenance or
                     IpcRequestType.GetMaintenanceStatus =>
                         await RouteToModuleAsync("maintenance", request),
@@ -343,6 +353,22 @@ namespace PCPlus.Service.Engine
                 }
             }
             return IpcResponse.Ok(request.Id);
+        }
+
+        private async Task<IpcResponse> HandleGetDnsStats(IpcRequest request)
+        {
+            if (_adGuardClient == null)
+                return IpcResponse.Fail(request.Id, "AdGuard Home not configured");
+
+            try
+            {
+                var stats = await _adGuardClient.GetStatsForThisMachineAsync();
+                return IpcResponse.Ok(request.Id, stats);
+            }
+            catch (Exception ex)
+            {
+                return IpcResponse.Fail(request.Id, $"DNS stats error: {ex.Message}");
+            }
         }
 
         private IpcResponse HandleSetConfig(IpcRequest request, IpcServer.ClientSession? session)

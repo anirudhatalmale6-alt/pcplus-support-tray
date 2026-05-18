@@ -90,6 +90,11 @@ namespace PCPlus.Service.Engine
         public string DashboardApiUrl => Get("dashboardApiUrl", "");
         public string DashboardApiToken => Get("dashboardApiToken", "");
 
+        // DNS / AdGuard Home
+        public string AdGuardHomeUrl => Get("adguardHomeUrl", "");
+        public string AdGuardHomeUser => Get("adguardHomeUser", "admin");
+        public string AdGuardHomePassword => Get("adguardHomePassword", "");
+
         // Threat Intelligence
         public string AbuseChAuthKey => Get("abuseChAuthKey", "");
 

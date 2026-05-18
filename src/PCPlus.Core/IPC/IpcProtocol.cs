@@ -53,6 +53,7 @@ namespace PCPlus.Core.IPC
             [IpcRequestType.GetLicenseInfo] = CommandPermission.ReadOnly,
             [IpcRequestType.GetConfig] = CommandPermission.ReadOnly,
             [IpcRequestType.GetMaintenanceStatus] = CommandPermission.ReadOnly,
+            [IpcRequestType.GetDnsStats] = CommandPermission.ReadOnly,
 
             // Operator - can trigger actions but nothing dangerous
             [IpcRequestType.RunSecurityScan] = CommandPermission.Operator,
@@ -135,6 +136,9 @@ namespace PCPlus.Core.IPC
         // Maintenance
         RunMaintenance,
         GetMaintenanceStatus,
+
+        // DNS
+        GetDnsStats,
 
         // Authentication
         Authenticate

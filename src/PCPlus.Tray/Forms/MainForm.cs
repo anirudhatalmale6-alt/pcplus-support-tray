@@ -2028,7 +2028,7 @@ namespace PCPlus.Tray.Forms
 
         #region DNS Protection View
 
-        private void BuildDnsProtectionView()
+        private async void BuildDnsProtectionView()
         {
             int y = 0;
             int m = 16;
@@ -2079,36 +2079,64 @@ namespace PCPlus.Tray.Forms
             };
             statusCard.Controls.Add(shieldPanel);
 
-            statusCard.Controls.Add(new Label
+            var statusTitle = new Label
             {
                 Text = "DNS Filtering Active",
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 ForeColor = AccentGreen,
                 Location = new Point(108, 18),
                 AutoSize = true
-            });
-            statusCard.Controls.Add(new Label
+            };
+            statusCard.Controls.Add(statusTitle);
+
+            var statusDesc = new Label
             {
-                Text = "443,000+ phishing & malware domains blocked at network level.\nAll DNS queries are filtered before reaching your browser.",
+                Text = "Loading DNS statistics for this PC...",
                 Font = new Font("Segoe UI", 9),
                 ForeColor = TextMuted,
                 Location = new Point(108, 46),
                 Size = new Size(contentW - 140, 40)
-            });
+            };
+            statusCard.Controls.Add(statusDesc);
             _contentArea.Controls.Add(statusCard);
             y += 116;
 
-            // Stats row
+            // Stats row - placeholders that get updated
             var cardW = (contentW - m * 2) / 3;
-            var stats = new[]
+            var blockedLabel = new Label
             {
-                ("Threats Blocked", "Real-time", AccentRed),
-                ("Filter Rules", "443,408", AccentBlue),
-                ("Response Time", "<100ms", AccentGreen)
+                Text = "--",
+                Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                ForeColor = AccentRed,
+                Location = new Point(12, 34),
+                AutoSize = true
+            };
+            var totalLabel = new Label
+            {
+                Text = "--",
+                Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                ForeColor = AccentBlue,
+                Location = new Point(12, 34),
+                AutoSize = true
+            };
+            var rateLabel = new Label
+            {
+                Text = "--",
+                Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                ForeColor = AccentGreen,
+                Location = new Point(12, 34),
+                AutoSize = true
+            };
+
+            var statsInfo = new[]
+            {
+                ("THREATS BLOCKED", blockedLabel),
+                ("TOTAL QUERIES", totalLabel),
+                ("BLOCK RATE", rateLabel)
             };
             for (int i = 0; i < 3; i++)
             {
-                var (label, val, color) = stats[i];
+                var (label, valLbl) = statsInfo[i];
                 var card = CreateRoundedPanel(new Rectangle(m + i * (cardW + m), y, cardW, 80), CardBg, CardBorder);
                 card.Controls.Add(new Label
                 {
@@ -2118,17 +2146,56 @@ namespace PCPlus.Tray.Forms
                     Location = new Point(12, 12),
                     AutoSize = true
                 });
-                card.Controls.Add(new Label
-                {
-                    Text = val,
-                    Font = new Font("Segoe UI", 16, FontStyle.Bold),
-                    ForeColor = color,
-                    Location = new Point(12, 34),
-                    AutoSize = true
-                });
+                card.Controls.Add(valLbl);
                 _contentArea.Controls.Add(card);
             }
             y += 96;
+
+            // Per-PC info card - shows client IP + top blocked domains
+            var pcInfoCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 180), CardBg, CardBorder);
+            pcInfoCard.Controls.Add(new Label
+            {
+                Text = "THIS PC's DNS ACTIVITY",
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = TextMuted,
+                Location = new Point(14, 12),
+                AutoSize = true
+            });
+            var ipLabel = new Label
+            {
+                Text = "Client IP: detecting...",
+                Font = new Font("Segoe UI", 9),
+                ForeColor = TextDark,
+                Location = new Point(14, 34),
+                AutoSize = true
+            };
+            pcInfoCard.Controls.Add(ipLabel);
+
+            var topBlockedHeader = new Label
+            {
+                Text = "Top Blocked Domains:",
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = TextDark,
+                Location = new Point(14, 56),
+                AutoSize = true
+            };
+            pcInfoCard.Controls.Add(topBlockedHeader);
+
+            var blockedListLabels = new Label[5];
+            for (int i = 0; i < 5; i++)
+            {
+                blockedListLabels[i] = new Label
+                {
+                    Text = "",
+                    Font = new Font("Segoe UI", 8.5f),
+                    ForeColor = TextMuted,
+                    Location = new Point(14, 76 + i * 18),
+                    Size = new Size(contentW - 40, 18)
+                };
+                pcInfoCard.Controls.Add(blockedListLabels[i]);
+            }
+            _contentArea.Controls.Add(pcInfoCard);
+            y += 196;
 
             // Protection layers info
             var infoCard = CreateRoundedPanel(new Rectangle(m, y, contentW, 160), CardBg, CardBorder);
@@ -2189,6 +2256,82 @@ namespace PCPlus.Tray.Forms
                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://dns.pcpluscomputing.com", UseShellExecute = true }); } catch { }
             };
             _contentArea.Controls.Add(consoleBtn);
+
+            // Fetch real DNS stats from service
+            if (_ipc.IsConnected)
+            {
+                try
+                {
+                    var resp = await _ipc.GetDnsStatsAsync();
+                    if (resp.Success)
+                    {
+                        var stats = resp.GetData<DnsStatsDto>();
+                        if (stats != null)
+                        {
+                            void UpdateLabels()
+                            {
+                                if (IsDisposed) return;
+
+                                if (stats.HasClientData)
+                                {
+                                    blockedLabel.Text = stats.ClientBlockedQueries.ToString("N0");
+                                    totalLabel.Text = stats.ClientTotalQueries.ToString("N0");
+                                    rateLabel.Text = $"{stats.ClientBlockRate:F1}%";
+                                    statusDesc.Text = $"DNS filtering active for this PC. {stats.ClientBlockedQueries:N0} threats blocked out of {stats.ClientTotalQueries:N0} queries.";
+                                    ipLabel.Text = $"Client IP: {stats.ClientIp}";
+
+                                    for (int i = 0; i < 5; i++)
+                                    {
+                                        if (i < stats.ClientTopBlocked.Count)
+                                        {
+                                            var d = stats.ClientTopBlocked[i];
+                                            blockedListLabels[i].Text = $"• {d.Domain}  ({d.Count} blocked)";
+                                            blockedListLabels[i].ForeColor = AccentRed;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    blockedLabel.Text = stats.GlobalBlockedQueries.ToString("N0");
+                                    totalLabel.Text = stats.GlobalTotalQueries.ToString("N0");
+                                    var globalRate = stats.GlobalTotalQueries > 0
+                                        ? (double)stats.GlobalBlockedQueries / stats.GlobalTotalQueries * 100 : 0;
+                                    rateLabel.Text = $"{globalRate:F1}%";
+                                    statusDesc.Text = $"DNS filtering active. {stats.GlobalBlockedQueries:N0} threats blocked network-wide.";
+                                    ipLabel.Text = $"Client IP: {stats.ClientIp} (per-PC stats unavailable)";
+
+                                    for (int i = 0; i < 5 && i < stats.GlobalTopBlocked.Count; i++)
+                                    {
+                                        var d = stats.GlobalTopBlocked[i];
+                                        blockedListLabels[i].Text = $"• {d.Domain}  ({d.Count} blocked)";
+                                        blockedListLabels[i].ForeColor = AccentRed;
+                                    }
+                                }
+                            }
+
+                            if (InvokeRequired)
+                                Invoke(new Action(UpdateLabels));
+                            else
+                                UpdateLabels();
+                        }
+                    }
+                    else
+                    {
+                        void ShowError()
+                        {
+                            if (IsDisposed) return;
+                            statusDesc.Text = "DNS filtering active. Stats: " + resp.Message;
+                        }
+                        if (InvokeRequired) Invoke(new Action(ShowError));
+                        else ShowError();
+                    }
+                }
+                catch { }
+            }
+            else
+            {
+                statusDesc.Text = "DNS filtering active. Connect to service for per-PC statistics.";
+            }
         }
 
         #endregion

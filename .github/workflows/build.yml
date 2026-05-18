@@ -202,5 +202,6 @@ jobs:
             deploy/Install-PCPlusEndpoint.ps1
             deploy/RMM-Deploy-v3.ps1
             deploy/RMM-Deploy-v4.ps1
+            deploy/RMM-Deploy-v5.ps1
             deploy/RMM-Deploy-Full.ps1
           generate_release_notes: true
