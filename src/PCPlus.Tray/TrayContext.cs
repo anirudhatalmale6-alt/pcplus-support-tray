@@ -43,6 +43,7 @@ namespace PCPlus.Tray
             _ipc.OnNotification += HandleNotification;
             _ipc.OnConnectionChanged += connected =>
             {
+                if (_serviceConnected == connected) return;
                 _serviceConnected = connected;
                 UpdateTrayIcon();
             };
@@ -62,11 +63,14 @@ namespace PCPlus.Tray
                     ShowDashboard();
             };
 
-            // Connect to service (delay to let service pipe initialize after install)
-            _ = StartupConnectAsync();
+            // Initial connection after brief delay (service may still be starting)
+            _ = Task.Delay(5000).ContinueWith(async _ =>
+            {
+                try { await ConnectToServiceAsync(); } catch { }
+            });
 
-            // Reconnect timer (try every 5 seconds if disconnected)
-            _reconnectTimer = new System.Windows.Forms.Timer { Interval = 5000 };
+            // Reconnect timer (try every 10 seconds if disconnected)
+            _reconnectTimer = new System.Windows.Forms.Timer { Interval = 10000 };
             _reconnectTimer.Tick += async (s, e) =>
             {
                 try
@@ -135,22 +139,6 @@ namespace PCPlus.Tray
                 _alertIndex++;
             }
             catch { }
-        }
-
-        private async Task StartupConnectAsync()
-        {
-            // Retry aggressively during startup (service may still be initializing pipe)
-            for (int i = 0; i < 10; i++)
-            {
-                await Task.Delay(3000);
-                if (_serviceConnected) return;
-                try
-                {
-                    await ConnectToServiceAsync();
-                    if (_serviceConnected) return;
-                }
-                catch { }
-            }
         }
 
         private async Task ConnectToServiceAsync()

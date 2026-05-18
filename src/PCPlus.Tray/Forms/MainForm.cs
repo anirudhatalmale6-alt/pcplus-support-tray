@@ -56,7 +56,7 @@ namespace PCPlus.Tray.Forms
             BuildContentArea();
             BuildSidebar();
 
-            _refreshTimer = new System.Windows.Forms.Timer { Interval = 3000 };
+            _refreshTimer = new System.Windows.Forms.Timer { Interval = 10000 };
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
             _refreshTimer.Start();
 
@@ -3006,13 +3006,7 @@ namespace PCPlus.Tray.Forms
             {
                 bool gotServiceData = false;
 
-                // Try IPC first
-                if (!_ipc.IsConnected)
-                {
-                    try { await Task.Run(() => _ipc.ConnectAsync(3000)); }
-                    catch { }
-                }
-
+                // Fetch data from service if connected (TrayContext handles connection)
                 if (_ipc.IsConnected)
                 {
                     // Fetch health from service
@@ -3079,22 +3073,20 @@ namespace PCPlus.Tray.Forms
                         _securityResult = _localFallback.LastSecurityScan;
                 }
 
-                // Update sidebar status and rebuild current view with fresh data
+                // Update sidebar connection status (lightweight repaint only)
                 if (!IsDisposed)
                 {
-                    void UpdateUI()
+                    void InvalidateSidebar()
                     {
                         if (IsDisposed) return;
                         foreach (var ctrl in _sidebar.Controls)
                             if (ctrl is Panel p) p.Invalidate();
-                        if (_currentView == "dashboard" || _currentView == "system")
-                            ShowView(_currentView);
                     }
 
                     if (InvokeRequired)
-                        Invoke(new Action(UpdateUI));
+                        Invoke(new Action(InvalidateSidebar));
                     else
-                        UpdateUI();
+                        InvalidateSidebar();
                 }
             }
             catch { }

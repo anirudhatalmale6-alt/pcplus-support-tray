@@ -40,8 +40,7 @@ namespace PCPlus.Core.IPC
         {
             if (IsConnected) return;
 
-            // Wait for any in-progress connection attempt to finish
-            if (!await _connectLock.WaitAsync(timeoutMs))
+            if (!await _connectLock.WaitAsync(0))
                 return;
 
             try
