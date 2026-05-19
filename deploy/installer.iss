@@ -5,7 +5,7 @@
 #define MyAppPublisher "PC Plus Computing"
 #define MyAppURL "https://pcpluscomputing.com"
 #ifndef APP_VERSION
-#define APP_VERSION "5.10.0"
+#define APP_VERSION "5.9.0"
 #endif
 #define MyAppVersion APP_VERSION
 
