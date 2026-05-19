@@ -32,6 +32,9 @@ namespace PCPlus.Service.Modules.Health
         private long _lastBytesRecv;
         private DateTime _lastNetworkCheck = DateTime.MinValue;
 
+        // Poll cycle counter for throttling expensive operations
+        private int _pollCycle;
+
         // Alert cooldown
         private readonly Dictionary<string, DateTime> _alertCooldowns = new();
         private const int COOLDOWN_SECONDS = 300;
@@ -115,6 +118,9 @@ namespace PCPlus.Service.Modules.Health
         {
             try
             {
+                _pollCycle++;
+                bool isHeavyCycle = _pollCycle % 3 == 0;
+
                 var snapshot = new HealthSnapshot { Timestamp = DateTime.UtcNow };
 
                 // CPU
@@ -130,14 +136,32 @@ namespace PCPlus.Service.Modules.Health
                 // Disks
                 PollDisks(snapshot);
 
-                // Temperatures
-                PollTemps(snapshot);
+                // Temperatures - expensive WMI queries, only every 3rd cycle (~15s)
+                if (isHeavyCycle)
+                {
+                    PollTemps(snapshot);
+                }
+                else
+                {
+                    snapshot.CpuTempC = _current.CpuTempC;
+                    snapshot.GpuTempC = _current.GpuTempC;
+                    snapshot.CpuTempSource = _current.CpuTempSource;
+                    snapshot.GpuTempSource = _current.GpuTempSource;
+                }
 
                 // Network
                 PollNetwork(snapshot);
 
-                // Processes
-                PollProcesses(snapshot);
+                // Processes - sorting all processes is expensive, only every 3rd cycle
+                if (isHeavyCycle)
+                {
+                    PollProcesses(snapshot);
+                }
+                else
+                {
+                    snapshot.ProcessCount = _current.ProcessCount;
+                    snapshot.TopProcesses = _current.TopProcesses;
+                }
 
                 // Uptime
                 snapshot.Uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
@@ -152,8 +176,11 @@ namespace PCPlus.Service.Modules.Health
                 // Check thresholds and raise alerts
                 CheckAlerts(snapshot);
 
-                // Write snapshot to shared file for tray fallback (when IPC unavailable)
-                WriteHealthFile(snapshot);
+                // Write snapshot to shared file for tray fallback - only on heavy cycles
+                if (isHeavyCycle)
+                {
+                    WriteHealthFile(snapshot);
+                }
             }
             catch { }
         }
@@ -313,7 +340,7 @@ namespace PCPlus.Service.Modules.Health
         {
             try
             {
-                if ((DateTime.UtcNow - _lastPsAcpiCheck).TotalSeconds < 15 && _psAcpiTemp > 0)
+                if ((DateTime.UtcNow - _lastPsAcpiCheck).TotalSeconds < 30 && _psAcpiTemp > 0)
                 {
                     snap.CpuTempC = _psAcpiTemp;
                     snap.CpuTempSource = "ACPI Thermal Zone (PS)";

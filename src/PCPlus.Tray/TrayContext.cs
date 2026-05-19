@@ -46,6 +46,12 @@ namespace PCPlus.Tray
                 if (_serviceConnected == connected) return;
                 _serviceConnected = connected;
                 UpdateTrayIcon();
+
+                // Only run local health polling when the service is NOT connected
+                if (connected)
+                    _localFallback.Pause();
+                else
+                    _localFallback.Resume();
             };
 
             _trayIcon = new NotifyIcon
@@ -85,7 +91,7 @@ namespace PCPlus.Tray
             // Direct heartbeat timer - sends health data to dashboard when service isn't handling it
             // Starts local monitoring immediately so heartbeats always have data
             _localFallback.Start();
-            _heartbeatTimer = new System.Windows.Forms.Timer { Interval = 30000 }; // 30 seconds
+            _heartbeatTimer = new System.Windows.Forms.Timer { Interval = 60000 }; // 60 seconds
             _heartbeatTimer.Tick += async (s, e) =>
             {
                 try { await SendDirectHeartbeatAsync(); } catch { }

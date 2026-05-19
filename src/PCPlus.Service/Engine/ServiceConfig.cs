@@ -26,16 +26,16 @@ namespace PCPlus.Service.Engine
         public float RamAlertThreshold => GetFloat("ramAlertThreshold", 90f);
         public float DiskAlertThreshold => GetFloat("diskAlertThreshold", 90f);
         public float TempAlertThreshold => GetFloat("tempAlertThreshold", 85f);
-        public int HealthPollIntervalMs => GetInt("healthPollIntervalMs", 2000);
+        public int HealthPollIntervalMs => GetInt("healthPollIntervalMs", 5000);
         public bool DisableLHM => GetBool("disableLHM", false);
 
         // Module timing (configurable from dashboard)
         public int SecurityScanIntervalMinutes => GetInt("securityScanIntervalMinutes", 720);
-        public int RansomwareProcessMonitorMs => GetInt("ransomwareProcessMonitorMs", 5000);
-        public int RansomwareReconciliationMs => GetInt("ransomwareReconciliationMs", 10000);
-        public int AdvancedDetectionNetworkMs => GetInt("advancedDetectionNetworkMs", 5000);
+        public int RansomwareProcessMonitorMs => GetInt("ransomwareProcessMonitorMs", 10000);
+        public int RansomwareReconciliationMs => GetInt("ransomwareReconciliationMs", 30000);
+        public int AdvancedDetectionNetworkMs => GetInt("advancedDetectionNetworkMs", 30000);
         public int AdvancedDetectionRegistryMs => GetInt("advancedDetectionRegistryMs", 10000);
-        public int HeartbeatIntervalSeconds => GetInt("heartbeatIntervalSeconds", 30);
+        public int HeartbeatIntervalSeconds => GetInt("heartbeatIntervalSeconds", 60);
         public int ReportSnapshotIntervalMinutes => GetInt("reportSnapshotIntervalMinutes", 15);
 
         // Ransomware

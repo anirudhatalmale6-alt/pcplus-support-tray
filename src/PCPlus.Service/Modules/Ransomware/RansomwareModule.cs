@@ -51,6 +51,18 @@ namespace PCPlus.Service.Modules.Ransomware
         // Track file state for reconciliation scanning
         private readonly Dictionary<string, long> _honeypotHashes = new();
 
+        // Cache of PIDs verified as safe system processes (cleared each cycle)
+        private readonly HashSet<int> _safeProcessCache = new();
+
+        /// <summary>Cached WMI process info to avoid per-process queries.</summary>
+        private class CachedProcessInfo
+        {
+            public string CommandLine = "";
+            public string ExecutablePath = "";
+            public int ParentProcessId;
+            public string ParentProcessName = "";
+        }
+
         // Known ransomware file extensions
         internal static readonly HashSet<string> RansomwareExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -668,28 +680,110 @@ namespace PCPlus.Service.Modules.Ransomware
         {
             try
             {
+                // Single batch WMI query replaces ~600 individual queries per cycle
+                var wmiCache = BuildProcessCache();
+
                 var processes = Process.GetProcesses();
                 foreach (var proc in processes)
                 {
                     try
                     {
-                        CheckSuspiciousProcess(proc);
+                        var name = proc.ProcessName.ToLower();
+                        var pid = proc.Id;
+
+                        // Skip PIDs we already verified as safe system processes this cycle
+                        if (_safeProcessCache.Contains(pid))
+                            continue;
+
+                        // If it's a known system process and not in our threat list, cache as safe and skip
+                        if (IsKnownSystemProcess(name) && _scoring.GetProcessScore(pid) == 0)
+                        {
+                            _safeProcessCache.Add(pid);
+                            continue;
+                        }
+
+                        CheckSuspiciousProcess(proc, wmiCache);
                     }
                     catch { }
                     finally { proc.Dispose(); }
                 }
+
+                // Clear safe cache each cycle so new processes get checked
+                _safeProcessCache.Clear();
             }
             catch { }
         }
 
-        private void CheckSuspiciousProcess(Process proc)
+        /// <summary>
+        /// Executes ONE WMI query to fetch CommandLine, ExecutablePath, and ParentProcessId
+        /// for all running processes. Returns a dictionary keyed by PID.
+        /// </summary>
+        private Dictionary<int, CachedProcessInfo> BuildProcessCache()
+        {
+            var cache = new Dictionary<int, CachedProcessInfo>(256);
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT ProcessId, Name, CommandLine, ExecutablePath, ParentProcessId FROM Win32_Process");
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    try
+                    {
+                        var pid = Convert.ToInt32(obj["ProcessId"]);
+                        var parentPid = Convert.ToInt32(obj["ParentProcessId"]);
+
+                        cache[pid] = new CachedProcessInfo
+                        {
+                            CommandLine = obj["CommandLine"]?.ToString() ?? "",
+                            ExecutablePath = obj["ExecutablePath"]?.ToString() ?? "",
+                            ParentProcessId = parentPid
+                        };
+                    }
+                    catch { }
+                }
+
+                // Second pass: resolve parent process names from the same cache
+                foreach (var kvp in cache)
+                {
+                    if (kvp.Value.ParentProcessId > 0 && cache.TryGetValue(kvp.Value.ParentProcessId, out var parentInfo))
+                    {
+                        // Derive name from parent's ExecutablePath
+                        if (!string.IsNullOrEmpty(parentInfo.ExecutablePath))
+                        {
+                            kvp.Value.ParentProcessName = Path.GetFileNameWithoutExtension(parentInfo.ExecutablePath).ToLower();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _context.Log(LogLevel.Warning, Id, $"Batch WMI query failed, falling back to per-process queries: {ex.Message}");
+            }
+            return cache;
+        }
+
+        private void CheckSuspiciousProcess(Process proc, Dictionary<int, CachedProcessInfo>? wmiCache = null)
         {
             try
             {
                 var name = proc.ProcessName.ToLower();
                 var pid = proc.Id;
-                var cmdLine = GetProcessCommandLine(pid);
-                var processPath = GetProcessPath(pid);
+
+                // Use cached WMI data if available, fall back to individual queries
+                string cmdLine, processPath, parentName;
+                if (wmiCache != null && wmiCache.TryGetValue(pid, out var cached))
+                {
+                    cmdLine = cached.CommandLine;
+                    processPath = cached.ExecutablePath;
+                    parentName = cached.ParentProcessName;
+                }
+                else
+                {
+                    // Fallback: individual WMI queries (only if batch query failed)
+                    cmdLine = GetProcessCommandLine(pid);
+                    processPath = GetProcessPath(pid);
+                    parentName = GetParentProcessName(pid);
+                }
 
                 // Known ransomware process name (+50) - uses live threat intel
                 if (IsKnownRansomwareProcess(name) || (_threatIntel?.IsKnownProcess(name) ?? false))
@@ -746,7 +840,6 @@ namespace PCPlus.Service.Modules.Ransomware
                 }
 
                 // Suspicious parent-child chain (+15)
-                var parentName = GetParentProcessName(pid);
                 if (!string.IsNullOrEmpty(parentName) &&
                     SuspiciousParentChild.TryGetValue(parentName, out var suspiciousChildren) &&
                     suspiciousChildren.Contains(name))
@@ -976,6 +1069,7 @@ namespace PCPlus.Service.Modules.Ransomware
             proc?.WaitForExit(10000);
         }
 
+        /// <summary>Fallback: per-process WMI query. Only called if batch query in BuildProcessCache() failed.</summary>
         private static string GetProcessCommandLine(int pid)
         {
             try
@@ -989,6 +1083,7 @@ namespace PCPlus.Service.Modules.Ransomware
             return "";
         }
 
+        /// <summary>Fallback: per-process WMI query. Only called if batch query in BuildProcessCache() failed.</summary>
         private static string GetProcessPath(int pid)
         {
             try
@@ -1002,6 +1097,7 @@ namespace PCPlus.Service.Modules.Ransomware
             return "";
         }
 
+        /// <summary>Fallback: per-process WMI query. Only called if batch query in BuildProcessCache() failed.</summary>
         private static string GetParentProcessName(int pid)
         {
             try

@@ -48,7 +48,23 @@ namespace PCPlus.Tray
             }
             catch { _cpuCounter = null; }
 
-            _pollTimer = new System.Threading.Timer(Poll, null, 1000, 2000);
+            _pollTimer = new System.Threading.Timer(Poll, null, 1000, 10000);
+        }
+
+        /// <summary>
+        /// Pause polling when the service is connected (no need for local fallback).
+        /// </summary>
+        public void Pause()
+        {
+            _pollTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+
+        /// <summary>
+        /// Resume polling when the service disconnects.
+        /// </summary>
+        public void Resume()
+        {
+            _pollTimer?.Change(1000, 10000);
         }
 
         private void Poll(object? state)
@@ -162,7 +178,7 @@ namespace PCPlus.Tray
         {
             try
             {
-                if ((DateTime.UtcNow - _lastPsAcpiCheck).TotalSeconds < 15 && _psAcpiTemp > 0)
+                if ((DateTime.UtcNow - _lastPsAcpiCheck).TotalSeconds < 60 && _psAcpiTemp > 0)
                 {
                     snap.CpuTempC = _psAcpiTemp;
                     snap.CpuTempSource = "ACPI Thermal Zone (PS)";
