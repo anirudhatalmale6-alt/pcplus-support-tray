@@ -75,7 +75,7 @@ namespace PCPlus.Service.Modules.Security
                 }
 
                 _integrityTimer = new Timer(_ => VerifyBinaryIntegrity(), null,
-                    TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(10));
+                    TimeSpan.FromMinutes(_context.Config.BinaryIntegrityIntervalMinutes), TimeSpan.FromMinutes(_context.Config.BinaryIntegrityIntervalMinutes));
 
                 _context.Log(LogLevel.Info, ModuleName,
                     $"Binary integrity baseline: {_binaryHashes.Count} files tracked");
@@ -130,7 +130,7 @@ namespace PCPlus.Service.Modules.Security
         private void StartServiceWatchdog()
         {
             _serviceWatchdog = new Timer(_ => CheckProtectedServices(), null,
-                TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+                TimeSpan.FromSeconds(_context.Config.ServicesMonitorIntervalSeconds), TimeSpan.FromSeconds(_context.Config.ServicesMonitorIntervalSeconds));
         }
 
         private void CheckProtectedServices()

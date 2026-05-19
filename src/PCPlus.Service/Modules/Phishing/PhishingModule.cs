@@ -23,6 +23,9 @@ namespace PCPlus.Service.Modules.Phishing
         private readonly Dictionary<string, int> _blockCounts = new(StringComparer.OrdinalIgnoreCase);
         private DateTime _lastBlocklistUpdate = DateTime.MinValue;
         private int _totalBlocked;
+        private int _totalChecked;
+        private readonly List<DnsBlockEvent> _recentBlocks = new();
+        private const int MAX_RECENT_BLOCKS = 50;
         private bool _dnsProtectionActive;
         private AdvancedPhishing? _advancedPhishing;
         private UrlReputationEngine? _urlReputation;
@@ -112,12 +115,12 @@ namespace PCPlus.Service.Modules.Phishing
                 catch (Exception ex) { _context.Log(LogLevel.Error, Id, $"Blocklist update failed: {ex.Message}"); }
             }, null, TimeSpan.FromHours(6), TimeSpan.FromHours(6));
 
-            // Monitor hosts file integrity every 60 seconds
+            // Monitor hosts file integrity at configurable interval
             _hostsFileWatcher = new Timer(_ =>
             {
                 try { VerifyHostsFileIntegrity(); }
                 catch (Exception ex) { _context.Log(LogLevel.Error, Id, $"Hosts file check failed: {ex.Message}"); }
-            }, null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+            }, null, TimeSpan.FromSeconds(_context.Config.HostsFileIntegrityIntervalSeconds), TimeSpan.FromSeconds(_context.Config.HostsFileIntegrityIntervalSeconds));
 
             // Start advanced phishing engine (realtime feeds, DNS monitor, typosquatting, browser scan)
             _advancedPhishing = new AdvancedPhishing();
@@ -135,6 +138,17 @@ namespace PCPlus.Service.Modules.Phishing
                 if (_blockedDomains.Contains(domain)) return true;
                 if (_advancedPhishing?.IsRealtimeBlocked(domain) == true) return true;
                 return false;
+            },
+            onDnsQuery: (domain, wasBlocked, reason) =>
+            {
+                lock (_lock)
+                {
+                    _totalChecked++;
+                }
+                if (wasBlocked)
+                {
+                    RecordEvent("blocked", domain, reason);
+                }
             });
 
             // Start local API server for browser extension communication
@@ -338,6 +352,19 @@ namespace PCPlus.Service.Modules.Phishing
                         ["advanced"] = _advancedPhishing?.GetStatus() ?? new AdvancedPhishingStatus()
                     }));
 
+                case "getdnsactivity":
+                    lock (_lock)
+                    {
+                        return Task.FromResult(ModuleResponse.Ok("DNS activity stats", new Dictionary<string, object>
+                        {
+                            ["totalChecked"] = _totalChecked,
+                            ["totalBlocked"] = _totalBlocked,
+                            ["recentBlocks"] = _recentBlocks.TakeLast(20).Reverse().ToList(),
+                            ["blockedDomainCount"] = _blockedDomains.Count,
+                            ["dnsProtectionActive"] = _dnsProtectionActive
+                        }));
+                    }
+
                 default:
                     return Task.FromResult(ModuleResponse.Fail($"Unknown action: {command.Action}"));
             }
@@ -362,6 +389,7 @@ namespace PCPlus.Service.Modules.Phishing
                 Metrics = new Dictionary<string, object>
                 {
                     ["blockedDomainCount"] = _blockedDomains.Count,
+                    ["totalChecked"] = _totalChecked,
                     ["totalBlocked"] = _totalBlocked,
                     ["dnsProtectionActive"] = _dnsProtectionActive,
                     ["lastBlocklistUpdate"] = _lastBlocklistUpdate.ToString("o"),
@@ -756,6 +784,15 @@ namespace PCPlus.Service.Modules.Phishing
                     _totalBlocked++;
                     _blockCounts.TryGetValue(domain, out var count);
                     _blockCounts[domain] = count + 1;
+
+                    _recentBlocks.Add(new DnsBlockEvent
+                    {
+                        Domain = domain,
+                        Timestamp = DateTime.UtcNow,
+                        Reason = detail
+                    });
+                    while (_recentBlocks.Count > MAX_RECENT_BLOCKS)
+                        _recentBlocks.RemoveAt(0);
                 }
             }
 
@@ -817,5 +854,12 @@ namespace PCPlus.Service.Modules.Phishing
         Medium,
         High,
         Critical
+    }
+
+    public class DnsBlockEvent
+    {
+        public string Domain { get; set; } = "";
+        public DateTime Timestamp { get; set; }
+        public string Reason { get; set; } = "";
     }
 }

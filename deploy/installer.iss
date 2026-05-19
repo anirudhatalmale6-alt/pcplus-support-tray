@@ -91,6 +91,11 @@ begin
     // Wait for service process to fully exit
     Sleep(3000);
   end;
+  // Delete old files for clean install
+  if DirExists(ExpandConstant('{app}\Service')) then
+    DelTree(ExpandConstant('{app}\Service'), True, True, True);
+  if DirExists(ExpandConstant('{app}\Tray')) then
+    DelTree(ExpandConstant('{app}\Tray'), True, True, True);
 end;
 
 // Send heartbeat on install completion

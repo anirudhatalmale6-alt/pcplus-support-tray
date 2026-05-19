@@ -60,11 +60,19 @@ namespace PCPlus.Service.Modules.Security
         public void Start(IModuleContext context)
         {
             _context = context;
+
+            if (!_context.Config.GeoIpScanEnabled)
+            {
+                _context.Log(LogLevel.Info, ModuleName, "Geo-IP scanning disabled in config");
+                return;
+            }
+
             LoadCache();
 
-            // Scan connections every 60 seconds
+            // Scan connections at configurable interval
+            var intervalSeconds = _context.Config.GeoIpScanIntervalSeconds;
             _scanTimer = new Timer(_ => ScanConnections(), null,
-                TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60));
+                TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(intervalSeconds));
 
             _context.Log(LogLevel.Info, ModuleName,
                 $"Geo-IP blocker active. Blocking: {string.Join(", ", BlockedCountryCodes)}");

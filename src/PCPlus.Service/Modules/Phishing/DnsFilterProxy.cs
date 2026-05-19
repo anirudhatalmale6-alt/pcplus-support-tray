@@ -60,6 +60,7 @@ namespace PCPlus.Service.Modules.Phishing
         };
 
         private Func<string, bool>? _isBlocked;
+        private Action<string, bool, string>? _onDnsQuery; // (domain, wasBlocked, reason)
         private long _totalQueries;
         private long _blockedQueries;
         private long _cachedResponses;
@@ -73,10 +74,11 @@ namespace PCPlus.Service.Modules.Phishing
         private bool _dotAvailable = false;
         private bool _dotConfigEnabled = true;
 
-        public void Start(IModuleContext context, Func<string, bool> blockChecker)
+        public void Start(IModuleContext context, Func<string, bool> blockChecker, Action<string, bool, string>? onDnsQuery = null)
         {
             _context = context;
             _isBlocked = blockChecker;
+            _onDnsQuery = onDnsQuery;
             _cts = new CancellationTokenSource();
 
             var dotSetting = _context.Config.GetValue("dnsOverTlsEnabled");
@@ -266,9 +268,14 @@ namespace PCPlus.Service.Modules.Phishing
                         Category = "dns-filter",
                         Metadata = new() { ["domain"] = domain }
                     });
+
+                    try { _onDnsQuery?.Invoke(domain, true, "DNS blocklist match"); } catch { }
                     return;
                 }
             }
+
+            // Notify: query processed, not blocked
+            try { _onDnsQuery?.Invoke(domain, false, ""); } catch { }
 
             // Forward to upstream (prefer DoT, fallback to UDP)
             byte[]? response = null;

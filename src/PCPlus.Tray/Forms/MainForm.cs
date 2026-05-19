@@ -41,6 +41,17 @@ namespace PCPlus.Tray.Forms
         private ServiceStatusReport? _serviceStatus;
         private List<Alert> _alerts = new();
 
+        // DNS live feed cached data
+        private bool _dnsActive;
+        private int _dnsDomainsChecked;
+        private int _dnsThreatsBlocked;
+        private List<(string Domain, string TimeAgo)> _dnsRecentBlocks = new();
+
+        // Missing patches cached data
+        private int _missingPatchCount;
+        private List<(string PatchId, string Severity)> _missingPatches = new();
+        private DateTime _patchesLastChecked;
+
         // UI
         private Panel _sidebar = null!;
         private Panel _contentArea = null!;
@@ -419,6 +430,164 @@ namespace PCPlus.Tray.Forms
             AddQuickActions(quickCard);
             _contentArea.Controls.Add(quickCard);
             y += 298;
+
+            // === DNS PROTECTION LIVE FEED + MISSING PATCHES - side by side ===
+            int dnsW = (contentW - gap) / 2;
+            int patchW = contentW - dnsW - gap;
+            int feedH = 220;
+
+            // --- DNS Protection Live Feed (left) ---
+            var dnsCard = CreateCard(new Point(m, y), new Size(dnsW, feedH));
+            dnsCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            dnsCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                // Green top accent bar
+                using var topBrush = new SolidBrush(AccentGreen);
+                g.FillRectangle(topBrush, 1, 1, dnsCard.Width - 2, 3);
+
+                // Header row: green dot + title
+                using var dotBrush = new SolidBrush(_dnsActive ? AccentGreen : AccentRed);
+                g.FillEllipse(dotBrush, 14, 16, 10, 10);
+
+                using var titleFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var titleBrush = new SolidBrush(TextDark);
+                var dnsTitle = _dnsActive ? "DNS Protection: Active" : "DNS Protection: Inactive";
+                g.DrawString(dnsTitle, titleFont, titleBrush, 30, 12);
+
+                // Stats line
+                using var statsFont = new Font("Segoe UI", 8.5f);
+                using var statsBrush = new SolidBrush(TextMuted);
+                var statsText = $"{_dnsDomainsChecked:N0} domains checked  |  {_dnsThreatsBlocked:N0} threats blocked today";
+                g.DrawString(statsText, statsFont, statsBrush, 14, 36);
+
+                // Separator line
+                using var sepPen = new Pen(CardBorder);
+                g.DrawLine(sepPen, 14, 56, dnsCard.Width - 14, 56);
+
+                // "Recent Blocks" sub-header
+                using var subFont = new Font("Segoe UI", 8, FontStyle.Bold);
+                using var subBrush = new SolidBrush(Color.FromArgb(80, 90, 100));
+                g.DrawString("RECENT BLOCKS", subFont, subBrush, 14, 62);
+
+                // Recent blocks list
+                using var itemFont = new Font("Segoe UI", 8.5f);
+                using var domainBrush = new SolidBrush(AccentRed);
+                using var timeBrush = new SolidBrush(TextMuted);
+                using var altBg = new SolidBrush(Color.FromArgb(248, 250, 252));
+
+                if (_dnsRecentBlocks.Count == 0)
+                {
+                    using var emptyBrush = new SolidBrush(TextMuted);
+                    using var emptyFont = new Font("Segoe UI", 8.5f, FontStyle.Italic);
+                    g.DrawString("No recent blocks recorded", emptyFont, emptyBrush, 14, 82);
+                }
+                else
+                {
+                    int rowY = 80;
+                    int rowH = 20;
+                    for (int i = 0; i < Math.Min(_dnsRecentBlocks.Count, 6); i++)
+                    {
+                        if (i % 2 == 0)
+                            g.FillRectangle(altBg, 4, rowY - 1, dnsCard.Width - 8, rowH);
+
+                        var (domain, timeAgo) = _dnsRecentBlocks[i];
+                        var displayDomain = domain.Length > 32 ? domain[..32] + ".." : domain;
+                        g.DrawString(displayDomain, itemFont, domainBrush, 14, rowY);
+
+                        var timeSize = g.MeasureString(timeAgo, itemFont);
+                        g.DrawString(timeAgo, itemFont, timeBrush, dnsCard.Width - timeSize.Width - 14, rowY);
+                        rowY += rowH;
+                    }
+                }
+            };
+            _contentArea.Controls.Add(dnsCard);
+
+            // --- Missing Patches (right) ---
+            var patchCard = CreateCard(new Point(m + dnsW + gap, y), new Size(patchW, feedH));
+            patchCard.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            patchCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                // Orange/red top accent bar depending on count
+                var accentColor = _missingPatchCount > 5 ? AccentRed : _missingPatchCount > 0 ? AccentOrange : AccentGreen;
+                using var topBrush = new SolidBrush(accentColor);
+                g.FillRectangle(topBrush, 1, 1, patchCard.Width - 2, 3);
+
+                // Header row: indicator dot + title
+                using var dotBrush = new SolidBrush(accentColor);
+                g.FillEllipse(dotBrush, 14, 16, 10, 10);
+
+                using var titleFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var titleBrush = new SolidBrush(TextDark);
+                var patchTitle = _missingPatchCount > 0
+                    ? $"Missing Updates: {_missingPatchCount} found"
+                    : "Updates: All current";
+                g.DrawString(patchTitle, titleFont, titleBrush, 30, 12);
+
+                // Last checked timestamp
+                using var statsFont = new Font("Segoe UI", 8.5f);
+                using var statsBrush = new SolidBrush(TextMuted);
+                var checkedText = _patchesLastChecked > DateTime.MinValue
+                    ? $"Last checked: {_patchesLastChecked:MMM d, h:mm tt}"
+                    : "Last checked: Never";
+                g.DrawString(checkedText, statsFont, statsBrush, 14, 36);
+
+                // Separator line
+                using var sepPen = new Pen(CardBorder);
+                g.DrawLine(sepPen, 14, 56, patchCard.Width - 14, 56);
+
+                // "Patches" sub-header
+                using var subFont = new Font("Segoe UI", 8, FontStyle.Bold);
+                using var subBrush = new SolidBrush(Color.FromArgb(80, 90, 100));
+                g.DrawString("PATCH", subFont, subBrush, 14, 62);
+                g.DrawString("SEVERITY", subFont, subBrush, patchCard.Width - 100, 62);
+
+                // Patches list
+                using var itemFont = new Font("Segoe UI", 8.5f);
+                using var altBg = new SolidBrush(Color.FromArgb(248, 250, 252));
+
+                if (_missingPatches.Count == 0)
+                {
+                    using var emptyBrush = new SolidBrush(AccentGreen);
+                    using var emptyFont = new Font("Segoe UI", 8.5f, FontStyle.Italic);
+                    g.DrawString("All patches up to date", emptyFont, emptyBrush, 14, 82);
+                }
+                else
+                {
+                    int rowY = 80;
+                    int rowH = 20;
+                    for (int i = 0; i < Math.Min(_missingPatches.Count, 6); i++)
+                    {
+                        if (i % 2 == 0)
+                            g.FillRectangle(altBg, 4, rowY - 1, patchCard.Width - 8, rowH);
+
+                        var (patchId, severity) = _missingPatches[i];
+                        var displayPatch = patchId.Length > 32 ? patchId[..32] + ".." : patchId;
+                        using var patchBrush = new SolidBrush(TextDark);
+                        g.DrawString(displayPatch, itemFont, patchBrush, 14, rowY);
+
+                        // Severity badge color
+                        var sevColor = severity.Equals("Critical", StringComparison.OrdinalIgnoreCase) ? AccentRed
+                            : severity.Equals("Important", StringComparison.OrdinalIgnoreCase) ? AccentOrange
+                            : severity.Equals("Moderate", StringComparison.OrdinalIgnoreCase) ? AccentBlue
+                            : TextMuted;
+                        using var sevBrush = new SolidBrush(sevColor);
+                        using var sevFont = new Font("Segoe UI", 8f, FontStyle.Bold);
+                        var sevSize = g.MeasureString(severity, sevFont);
+                        g.DrawString(severity, sevFont, sevBrush, patchCard.Width - sevSize.Width - 14, rowY);
+                        rowY += rowH;
+                    }
+                }
+            };
+            _contentArea.Controls.Add(patchCard);
+            y += feedH + 8;
 
             // === PREMIUM FEATURES BAR ===
             var premCard = CreateCard(new Point(m, y), new Size(contentW, 110));
@@ -3264,6 +3433,66 @@ namespace PCPlus.Tray.Forms
                         var alerts = alertResp.GetData<List<Alert>>();
                         if (alerts != null) _alerts = alerts;
                     }
+
+                    // Fetch DNS live activity for dashboard feed
+                    try
+                    {
+                        var dnsResp = await Task.Run(() => _ipc.SendModuleCommandAsync("phishing", "GetDnsActivity"));
+                        if (dnsResp.Success && !string.IsNullOrEmpty(dnsResp.JsonData))
+                        {
+                            using var dnsDoc = System.Text.Json.JsonDocument.Parse(dnsResp.JsonData);
+                            var dnsRoot = dnsDoc.RootElement;
+                            _dnsActive = dnsRoot.TryGetProperty("active", out var activeEl) && activeEl.GetBoolean();
+                            _dnsDomainsChecked = dnsRoot.TryGetProperty("domainsChecked", out var dcEl) ? dcEl.GetInt32() : 0;
+                            _dnsThreatsBlocked = dnsRoot.TryGetProperty("threatsBlocked", out var tbEl) ? tbEl.GetInt32() : 0;
+
+                            if (dnsRoot.TryGetProperty("recentBlocks", out var rbEl) && rbEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            {
+                                var blocks = new List<(string Domain, string TimeAgo)>();
+                                foreach (var item in rbEl.EnumerateArray())
+                                {
+                                    var domain = item.TryGetProperty("domain", out var dEl) ? dEl.GetString() ?? "" : "";
+                                    var timeAgo = item.TryGetProperty("timeAgo", out var tEl) ? tEl.GetString() ?? "" : "";
+                                    if (!string.IsNullOrEmpty(domain))
+                                        blocks.Add((domain, timeAgo));
+                                }
+                                _dnsRecentBlocks = blocks;
+                            }
+                        }
+                    }
+                    catch { /* DNS activity is non-critical */ }
+
+                    // Fetch missing patches for dashboard feed
+                    try
+                    {
+                        var patchResp = await Task.Run(() => _ipc.SendModuleCommandAsync("security", "GetMissingPatches"));
+                        if (patchResp.Success && !string.IsNullOrEmpty(patchResp.JsonData))
+                        {
+                            using var patchDoc = System.Text.Json.JsonDocument.Parse(patchResp.JsonData);
+                            var patchRoot = patchDoc.RootElement;
+                            _missingPatchCount = patchRoot.TryGetProperty("count", out var cntEl) ? cntEl.GetInt32() : 0;
+
+                            if (patchRoot.TryGetProperty("lastChecked", out var lcEl))
+                            {
+                                if (lcEl.TryGetDateTime(out var lcDt))
+                                    _patchesLastChecked = lcDt;
+                            }
+
+                            if (patchRoot.TryGetProperty("patches", out var patchesEl) && patchesEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            {
+                                var patches = new List<(string PatchId, string Severity)>();
+                                foreach (var item in patchesEl.EnumerateArray())
+                                {
+                                    var patchId = item.TryGetProperty("patchId", out var pidEl) ? pidEl.GetString() ?? "" : "";
+                                    var severity = item.TryGetProperty("severity", out var sevEl) ? sevEl.GetString() ?? "" : "";
+                                    if (!string.IsNullOrEmpty(patchId))
+                                        patches.Add((patchId, severity));
+                                }
+                                _missingPatches = patches;
+                            }
+                        }
+                    }
+                    catch { /* Missing patches is non-critical */ }
                 }
 
                 // Fallback tier 1: read service files (health + security)

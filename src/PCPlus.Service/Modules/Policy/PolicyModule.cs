@@ -39,7 +39,7 @@ namespace PCPlus.Service.Modules.Policy
         {
             IsRunning = true;
             _enforcementTimer = new Timer(_ => EnforcePolicies(), null,
-                TimeSpan.Zero, TimeSpan.FromSeconds(60));
+                TimeSpan.Zero, TimeSpan.FromSeconds(_context.Config.PolicyEnforcementIntervalSeconds));
             return Task.CompletedTask;
         }
 

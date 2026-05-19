@@ -55,10 +55,18 @@ namespace PCPlus.Service.Modules.Phishing
         public void Start(IModuleContext context)
         {
             _context = context;
+
+            if (!_context.Config.UrlReputationEnabled)
+            {
+                _context.Log(LogLevel.Info, "phishing", "URL Reputation Engine disabled in config");
+                return;
+            }
+
             LoadWhitelist();
 
+            var intervalSeconds = _context.Config.UrlReputationIntervalSeconds;
             _connectionMonitor = new Timer(_ => ScanActiveConnections(), null,
-                TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20));
+                TimeSpan.FromSeconds(intervalSeconds), TimeSpan.FromSeconds(intervalSeconds));
 
             _context.Log(LogLevel.Info, "phishing",
                 "URL Reputation Engine active: real-time connection scanning");

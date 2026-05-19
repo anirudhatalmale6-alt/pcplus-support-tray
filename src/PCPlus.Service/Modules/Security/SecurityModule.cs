@@ -29,6 +29,7 @@ namespace PCPlus.Service.Modules.Security
         private CredentialLeakChecker? _credentialChecker;
         private UsbDeviceMonitor? _usbMonitor;
         private GeoIpBlocker? _geoIpBlocker;
+        private PatchChecker? _patchChecker;
 
         public Task InitializeAsync(IModuleContext context)
         {
@@ -42,7 +43,7 @@ namespace PCPlus.Service.Modules.Security
             // Run initial scan
             Task.Run(() => RunFullScan());
             // Periodic rescan - configurable interval (default 12 hours, non-critical)
-            var scanInterval = TimeSpan.FromMinutes(_context.Config.GetValue("securityScanIntervalMinutes") is string v && int.TryParse(v, out var m) ? m : 720);
+            var scanInterval = TimeSpan.FromMinutes(_context.Config.SecurityScanIntervalMinutes);
             _periodicScan = new Timer(_ => RunFullScan(), null, scanInterval, scanInterval);
             // Start self-protection (service watchdog, binary integrity, uninstall protection)
             _selfProtection = new SelfProtection(_context);
@@ -53,6 +54,8 @@ namespace PCPlus.Service.Modules.Security
             _usbMonitor.Start(_context);
             _geoIpBlocker = new GeoIpBlocker();
             _geoIpBlocker.Start(_context);
+            _patchChecker = new PatchChecker();
+            _patchChecker.Start(_context);
             return Task.CompletedTask;
         }
 
@@ -63,6 +66,7 @@ namespace PCPlus.Service.Modules.Security
             _credentialChecker?.Dispose();
             _usbMonitor?.Dispose();
             _geoIpBlocker?.Dispose();
+            _patchChecker?.Dispose();
             IsRunning = false;
             return Task.CompletedTask;
         }
@@ -91,6 +95,15 @@ namespace PCPlus.Service.Modules.Security
                     // Re-scan after remediation to update scores
                     if (result.Success) RunFullScan();
                     return Task.FromResult(result);
+
+                case "GetMissingPatches":
+                    var patches = _patchChecker?.GetMissingPatches() ?? new List<MissingPatch>();
+                    return Task.FromResult(ModuleResponse.Ok("", new Dictionary<string, object>
+                    {
+                        ["patches"] = patches,
+                        ["count"] = patches.Count,
+                        ["lastCheck"] = _patchChecker?.GetLastCheckTime() ?? DateTime.MinValue
+                    }));
 
                 default:
                     return Task.FromResult(ModuleResponse.Fail($"Unknown: {command.Action}"));

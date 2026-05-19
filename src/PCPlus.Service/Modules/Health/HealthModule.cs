@@ -64,9 +64,16 @@ namespace PCPlus.Service.Modules.Health
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            IsRunning = true;
+
+            if (!_context.Config.HealthMonitorEnabled)
+            {
+                _context.Log(LogLevel.Info, "health", "Health monitoring disabled");
+                return Task.CompletedTask;
+            }
+
             var interval = _context.Config.HealthPollIntervalMs;
             _pollTimer = new Timer(Poll, null, 0, interval);
-            IsRunning = true;
             return Task.CompletedTask;
         }
 

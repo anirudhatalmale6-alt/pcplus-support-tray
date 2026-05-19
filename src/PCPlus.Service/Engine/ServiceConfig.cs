@@ -26,17 +26,30 @@ namespace PCPlus.Service.Engine
         public float RamAlertThreshold => GetFloat("ramAlertThreshold", 90f);
         public float DiskAlertThreshold => GetFloat("diskAlertThreshold", 90f);
         public float TempAlertThreshold => GetFloat("tempAlertThreshold", 85f);
-        public int HealthPollIntervalMs => GetInt("healthPollIntervalMs", 5000);
+        public int HealthPollIntervalMs => GetInt("healthPollIntervalMs", 180000);
+        public bool HealthMonitorEnabled => GetBool("healthMonitorEnabled", false);
         public bool DisableLHM => GetBool("disableLHM", false);
 
         // Module timing (configurable from dashboard)
-        public int SecurityScanIntervalMinutes => GetInt("securityScanIntervalMinutes", 720);
-        public int RansomwareProcessMonitorMs => GetInt("ransomwareProcessMonitorMs", 10000);
-        public int RansomwareReconciliationMs => GetInt("ransomwareReconciliationMs", 30000);
-        public int AdvancedDetectionNetworkMs => GetInt("advancedDetectionNetworkMs", 30000);
-        public int AdvancedDetectionRegistryMs => GetInt("advancedDetectionRegistryMs", 10000);
+        public int SecurityScanIntervalMinutes => GetInt("securityScanIntervalMinutes", 1440);
+        public int BinaryIntegrityIntervalMinutes => GetInt("binaryIntegrityIntervalMinutes", 30);
+        public int ServicesMonitorIntervalSeconds => GetInt("servicesMonitorIntervalSeconds", 120);
+        public int GeoIpScanIntervalSeconds => GetInt("geoIpScanIntervalSeconds", 300);
+        public bool GeoIpScanEnabled => GetBool("geoIpScanEnabled", true);
+        public int RansomwareProcessMonitorMs => GetInt("ransomwareProcessMonitorMs", 30000);
+        public int RansomwareReconciliationMs => GetInt("ransomwareReconciliationMs", 120000);
+        public int AdvancedDetectionRegistryMs => GetInt("advancedDetectionRegistryMs", 60000);
+        public int AdvancedDetectionNetworkMs => GetInt("advancedDetectionNetworkMs", 120000);
+        public int HardeningComplianceIntervalMinutes => GetInt("hardeningComplianceIntervalMinutes", 30);
+        public int HostsFileIntegrityIntervalSeconds => GetInt("hostsFileIntegrityIntervalSeconds", 300);
+        public int DnsCacheMonitorIntervalSeconds => GetInt("dnsCacheMonitorIntervalSeconds", 300);
+        public int BrowserHistoryScanIntervalMinutes => GetInt("browserHistoryScanIntervalMinutes", 30);
+        public int UrlReputationIntervalSeconds => GetInt("urlReputationIntervalSeconds", 300);
+        public bool UrlReputationEnabled => GetBool("urlReputationEnabled", true);
+        public int PolicyEnforcementIntervalSeconds => GetInt("policyEnforcementIntervalSeconds", 300);
         public int HeartbeatIntervalSeconds => GetInt("heartbeatIntervalSeconds", 60);
         public int ReportSnapshotIntervalMinutes => GetInt("reportSnapshotIntervalMinutes", 15);
+        public string TrayAdminPassword => Get("trayAdminPassword", "");
 
         // Ransomware
         public bool RansomwareProtectionEnabled => GetBool("ransomwareProtectionEnabled", true);

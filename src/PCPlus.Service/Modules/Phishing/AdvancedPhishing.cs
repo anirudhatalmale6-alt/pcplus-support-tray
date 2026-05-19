@@ -93,13 +93,13 @@ namespace PCPlus.Service.Modules.Phishing
             _feedUpdateTimer = new Timer(async _ => await UpdateFeedsAsync(),
                 null, TimeSpan.FromMinutes(2), TimeSpan.FromHours(2));
 
-            // Monitor DNS cache every 30 seconds
+            // Monitor DNS cache at configurable interval
             _dnsMonitorTimer = new Timer(_ => { MonitorDnsCache(); DetectDohBypass(); },
-                null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+                null, TimeSpan.FromSeconds(_context.Config.DnsCacheMonitorIntervalSeconds), TimeSpan.FromSeconds(_context.Config.DnsCacheMonitorIntervalSeconds));
 
-            // Scan browser history every 10 minutes
+            // Scan browser history at configurable interval
             _browserScanTimer = new Timer(_ => ScanBrowserHistory(),
-                null, TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(10));
+                null, TimeSpan.FromMinutes(_context.Config.BrowserHistoryScanIntervalMinutes), TimeSpan.FromMinutes(_context.Config.BrowserHistoryScanIntervalMinutes));
 
             // Watch Downloads folders for email files with phishing links
             WatchDownloadFolders();

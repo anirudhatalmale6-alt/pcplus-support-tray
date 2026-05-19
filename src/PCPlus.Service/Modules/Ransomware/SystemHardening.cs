@@ -43,9 +43,9 @@ namespace PCPlus.Service.Modules.Ransomware
             InitializeRules();
             ApplyAllHardening();
 
-            // Compliance check every 10 minutes - re-apply if something reverts our changes
+            // Compliance check - re-apply if something reverts our changes
             _complianceTimer = new Timer(_ => ComplianceCheck(), null,
-                TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(10));
+                TimeSpan.FromMinutes(_context.Config.HardeningComplianceIntervalMinutes), TimeSpan.FromMinutes(_context.Config.HardeningComplianceIntervalMinutes));
 
             _isActive = true;
             _context.Log(LogLevel.Info, "ransomware",

@@ -74,15 +74,15 @@ namespace PCPlus.Service.Modules.Ransomware
             _rollback = new FileRollbackEngine(context, rollbackDir);
             _rollback.Start();
 
-            // Registry monitoring - configurable (default 10s, critical for detecting persistence)
-            var regMs = context.Config.GetValue("advancedDetectionRegistryMs") is string rv && int.TryParse(rv, out var rm) ? rm : 10000;
+            // Registry monitoring - configurable (critical for detecting persistence)
+            var regMs = context.Config.AdvancedDetectionRegistryMs;
             _registryMonitor = new Timer(ScanRegistry, null, TimeSpan.FromMilliseconds(regMs), TimeSpan.FromMilliseconds(regMs));
 
             // Boot config check every 5 minutes (non-critical, rarely changes)
             _bootConfigCheck = new Timer(CheckBootConfig, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
 
-            // Network lateral movement detection - configurable (default 30s, runs netstat -ano)
-            var netMs = context.Config.GetValue("advancedDetectionNetworkMs") is string nv && int.TryParse(nv, out var nm) ? nm : 30000;
+            // Network lateral movement detection - configurable (runs netstat -ano)
+            var netMs = context.Config.AdvancedDetectionNetworkMs;
             _networkMonitor = new Timer(MonitorNetwork, null, TimeSpan.FromMilliseconds(netMs), TimeSpan.FromMilliseconds(netMs));
 
             // WMI persistence check every 2 minutes

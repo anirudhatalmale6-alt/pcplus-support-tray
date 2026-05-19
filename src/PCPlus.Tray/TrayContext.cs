@@ -518,39 +518,15 @@ namespace PCPlus.Tray
             };
             menu.Items.Add(aboutItem);
 
-            // Restart Service
-            var restartItem = new ToolStripMenuItem("Restart Service");
-            restartItem.Click += async (s, e) =>
-            {
-                try
-                {
-                    restartItem.Enabled = false;
-                    restartItem.Text = "Restarting...";
-                    await Task.Run(() =>
-                    {
-                        using var sc = new System.ServiceProcess.ServiceController("PCPlusEndpoint");
-                        if (sc.Status == System.ServiceProcess.ServiceControllerStatus.Running ||
-                            sc.Status == System.ServiceProcess.ServiceControllerStatus.StartPending)
-                        {
-                            sc.Stop();
-                            sc.WaitForStatus(System.ServiceProcess.ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(15));
-                        }
-                        sc.Start();
-                        sc.WaitForStatus(System.ServiceProcess.ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
-                    });
-                    _trayIcon.ShowBalloonTip(3000, "PC Plus", "Service restarted successfully.", ToolTipIcon.Info);
-                }
-                catch (Exception ex)
-                {
-                    _trayIcon.ShowBalloonTip(5000, "PC Plus", $"Could not restart service: {ex.Message}", ToolTipIcon.Warning);
-                }
-                finally
-                {
-                    restartItem.Text = "Restart Service";
-                    restartItem.Enabled = true;
-                }
-            };
-            menu.Items.Add(restartItem);
+            // Stop Protection
+            var stopItem = new ToolStripMenuItem("Stop Protection");
+            stopItem.Click += (s, e) => StopProtection();
+            menu.Items.Add(stopItem);
+
+            // Restart Protection
+            var restartProtItem = new ToolStripMenuItem("Restart Protection");
+            restartProtItem.Click += (s, e) => RestartProtection();
+            menu.Items.Add(restartProtItem);
 
             menu.Items.Add(new ToolStripSeparator());
 
@@ -570,6 +546,91 @@ namespace PCPlus.Tray
             menu.Items.Add(exitItem);
 
             return menu;
+        }
+
+        private void StopProtection()
+        {
+            if (!VerifyAdminPassword()) return;
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "net.exe",
+                    Arguments = "stop PCPlusEndpoint",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                System.Diagnostics.Process.Start(psi)?.WaitForExit(10000);
+                MessageBox.Show("Protection service stopped.", "PC Plus", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to stop service: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void RestartProtection()
+        {
+            if (!VerifyAdminPassword()) return;
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = "/c net stop PCPlusEndpoint && timeout /t 3 /nobreak >nul && net start PCPlusEndpoint",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                System.Diagnostics.Process.Start(psi)?.WaitForExit(20000);
+                MessageBox.Show("Protection service restarted.", "PC Plus", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to restart service: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private bool VerifyAdminPassword()
+        {
+            try
+            {
+                var configPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "PCPlusEndpoint", "config.json");
+                if (File.Exists(configPath))
+                {
+                    var json = File.ReadAllText(configPath);
+                    var config = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+                    if (config != null && config.TryGetValue("trayAdminPassword", out var pwEl))
+                    {
+                        var requiredPw = pwEl.GetString();
+                        if (!string.IsNullOrEmpty(requiredPw))
+                        {
+                            using var form = new Form
+                            {
+                                Width = 350, Height = 150,
+                                Text = "Admin Password Required",
+                                StartPosition = FormStartPosition.CenterScreen,
+                                FormBorderStyle = FormBorderStyle.FixedDialog,
+                                MaximizeBox = false, MinimizeBox = false
+                            };
+                            var label = new Label { Left = 15, Top = 15, Text = "Enter admin password:", AutoSize = true };
+                            var textBox = new TextBox { Left = 15, Top = 40, Width = 300, PasswordChar = '*' };
+                            var button = new Button { Text = "OK", Left = 215, Top = 70, Width = 100, DialogResult = DialogResult.OK };
+                            form.Controls.AddRange(new Control[] { label, textBox, button });
+                            form.AcceptButton = button;
+
+                            if (form.ShowDialog() != DialogResult.OK || textBox.Text != requiredPw)
+                            {
+                                MessageBox.Show("Incorrect password.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+            return true;
         }
 
         private MainForm? _mainForm;

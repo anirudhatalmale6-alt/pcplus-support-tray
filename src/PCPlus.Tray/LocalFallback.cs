@@ -48,7 +48,7 @@ namespace PCPlus.Tray
             }
             catch { _cpuCounter = null; }
 
-            _pollTimer = new System.Threading.Timer(Poll, null, 1000, 10000);
+            _pollTimer = new System.Threading.Timer(Poll, null, 1000, 180000);
         }
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace PCPlus.Tray
         /// </summary>
         public void Resume()
         {
-            _pollTimer?.Change(1000, 10000);
+            _pollTimer?.Change(1000, 180000);
         }
 
         private void Poll(object? state)

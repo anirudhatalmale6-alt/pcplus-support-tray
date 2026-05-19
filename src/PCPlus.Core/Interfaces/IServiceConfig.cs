@@ -17,6 +17,28 @@ namespace PCPlus.Core.Interfaces
         float DiskAlertThreshold { get; }
         float TempAlertThreshold { get; }
         int HealthPollIntervalMs { get; }
+        bool HealthMonitorEnabled { get; }
+
+        // Module timing (configurable from dashboard)
+        int SecurityScanIntervalMinutes { get; }
+        int BinaryIntegrityIntervalMinutes { get; }
+        int ServicesMonitorIntervalSeconds { get; }
+        int GeoIpScanIntervalSeconds { get; }
+        bool GeoIpScanEnabled { get; }
+        int RansomwareProcessMonitorMs { get; }
+        int RansomwareReconciliationMs { get; }
+        int AdvancedDetectionRegistryMs { get; }
+        int AdvancedDetectionNetworkMs { get; }
+        int HardeningComplianceIntervalMinutes { get; }
+        int HostsFileIntegrityIntervalSeconds { get; }
+        int DnsCacheMonitorIntervalSeconds { get; }
+        int BrowserHistoryScanIntervalMinutes { get; }
+        int UrlReputationIntervalSeconds { get; }
+        bool UrlReputationEnabled { get; }
+        int PolicyEnforcementIntervalSeconds { get; }
+        int HeartbeatIntervalSeconds { get; }
+        int ReportSnapshotIntervalMinutes { get; }
+        string TrayAdminPassword { get; }
 
         // Ransomware settings
         bool RansomwareProtectionEnabled { get; }
