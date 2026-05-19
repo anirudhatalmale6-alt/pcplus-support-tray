@@ -66,6 +66,13 @@ Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 Filename: "net.exe"; Parameters: "stop PCPlusEndpoint"; Flags: runhidden
 Filename: "sc.exe"; Parameters: "delete PCPlusEndpoint"; Flags: runhidden
 Filename: "taskkill.exe"; Parameters: "/F /IM PCPlusTray.exe"; Flags: runhidden
+; Restore DNS to DHCP (our DNS proxy sets it to 127.0.0.1, must undo on uninstall)
+Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Get-NetAdapter | Where-Object {{$_.Status -eq 'Up'}} | ForEach-Object {{ Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ResetServerAddresses }}"""; Flags: runhidden
+; Also restore via netsh as fallback for older Windows
+Filename: "netsh.exe"; Parameters: "interface ip set dns name=""Ethernet"" dhcp"; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "interface ip set dns name=""Wi-Fi"" dhcp"; Flags: runhidden
+; Remove hosts file entries
+Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""$h='C:\Windows\System32\drivers\etc\hosts'; $c=Get-Content $h -Raw; if($c -match '# === PCPlus Phishing Protection START ==='){{$c=$c -replace '(?s)# === PCPlus Phishing Protection START ===.*?# === PCPlus Phishing Protection END ===\r?\n?',''; Set-Content $h $c -Encoding ASCII}}"""; Flags: runhidden
 
 [Code]
 function ServiceExists: Boolean;
@@ -91,6 +98,8 @@ begin
     // Wait for service process to fully exit
     Sleep(3000);
   end;
+  // Restore DNS to DHCP before removing files (proxy sets DNS to 127.0.0.1)
+  Exec('powershell.exe', '-NoProfile -Command "Get-NetAdapter | Where-Object {$_.Status -eq ''Up''} | ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ResetServerAddresses }"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   // Delete old files for clean install
   if DirExists(ExpandConstant('{app}\Service')) then
     DelTree(ExpandConstant('{app}\Service'), True, True, True);
