@@ -66,11 +66,8 @@ Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 Filename: "net.exe"; Parameters: "stop PCPlusEndpoint"; Flags: runhidden
 Filename: "sc.exe"; Parameters: "delete PCPlusEndpoint"; Flags: runhidden
 Filename: "taskkill.exe"; Parameters: "/F /IM PCPlusTray.exe"; Flags: runhidden
-; Restore DNS to DHCP (our DNS proxy sets it to 127.0.0.1, must undo on uninstall)
-Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Get-NetAdapter | Where-Object {{$_.Status -eq 'Up'}} | ForEach-Object {{ Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ResetServerAddresses }}"""; Flags: runhidden
-; Also restore via netsh as fallback for older Windows
-Filename: "netsh.exe"; Parameters: "interface ip set dns name=""Ethernet"" dhcp"; Flags: runhidden
-Filename: "netsh.exe"; Parameters: "interface ip set dns name=""Wi-Fi"" dhcp"; Flags: runhidden
+; Restore original DNS settings (reads backup from ProgramData, falls back to DHCP)
+Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""$f='C:\ProgramData\PCPlusEndpoint\original-dns.json'; if(Test-Path $f){{$dns=Get-Content $f -Raw|ConvertFrom-Json; $dns.PSObject.Properties|ForEach-Object{{$n=$_.Name;$s=$_.Value; netsh interface ip set dns name=$n static $s[0] primary; for($i=1;$i -lt $s.Count;$i++){{netsh interface ip add dns name=$n $s[$i] index=($i+1)}}; Write-Host ""Restored DNS on $n`: $($s -join ', ')""}}; Remove-Item $f -Force}}else{{Get-NetAdapter|Where-Object{{$_.Status -eq 'Up'}}|ForEach-Object{{Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ResetServerAddresses; Write-Host ""DNS reset to DHCP on $($_.Name)""}}}}"""; Flags: runhidden
 ; Remove hosts file entries
 Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""$h='C:\Windows\System32\drivers\etc\hosts'; $c=Get-Content $h -Raw; if($c -match '# === PCPlus Phishing Protection START ==='){{$c=$c -replace '(?s)# === PCPlus Phishing Protection START ===.*?# === PCPlus Phishing Protection END ===\r?\n?',''; Set-Content $h $c -Encoding ASCII}}"""; Flags: runhidden
 

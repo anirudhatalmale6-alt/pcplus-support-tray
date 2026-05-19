@@ -850,38 +850,50 @@ namespace PCPlus.Service.Modules.Phishing
 
         #region Network Interface Management
 
+        private static readonly string DnsBackupFile = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "PCPlusEndpoint", "original-dns.json");
+
         private void SaveOriginalDns()
         {
             try
             {
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "netsh",
-                    Arguments = "interface ip show dns",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true
-                };
-                using var proc = System.Diagnostics.Process.Start(psi);
-                _originalDns = proc?.StandardOutput.ReadToEnd();
-                proc?.WaitForExit(5000);
+                var dnsSettings = new Dictionary<string, List<string>>();
+                var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
+                        && n.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback)
+                    .ToList();
 
-                if (_originalDns != null)
+                foreach (var nic in interfaces)
                 {
-                    foreach (var line in _originalDns.Split('\n'))
-                    {
-                        var trimmed = line.Trim();
-                        if (IPAddress.TryParse(trimmed, out var ip) && !IPAddress.IsLoopback(ip))
-                        {
-                            _originalDns = ip.ToString();
-                            break;
-                        }
-                    }
+                    var props = nic.GetIPProperties();
+                    var servers = props.DnsAddresses
+                        .Where(a => !IPAddress.IsLoopback(a))
+                        .Select(a => a.ToString())
+                        .ToList();
+                    if (servers.Count > 0)
+                        dnsSettings[nic.Name] = servers;
                 }
 
-                _context.Log(LogLevel.Info, ModuleName, $"Saved original DNS: {_originalDns}");
+                if (dnsSettings.Count > 0)
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(dnsSettings,
+                        new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(DnsBackupFile, json);
+                    _originalDns = string.Join(", ", dnsSettings.Values.SelectMany(v => v).Distinct());
+                    _context.Log(LogLevel.Info, ModuleName, $"Saved original DNS to {DnsBackupFile}: {_originalDns}");
+                }
+                else
+                {
+                    _originalDns = "DHCP";
+                    _context.Log(LogLevel.Info, ModuleName, "No static DNS found, will restore to DHCP");
+                }
             }
-            catch { _originalDns = "1.1.1.1"; }
+            catch (Exception ex)
+            {
+                _originalDns = "1.1.1.1";
+                _context.Log(LogLevel.Warning, ModuleName, $"Failed to save DNS settings: {ex.Message}");
+            }
         }
 
         private void SetLocalDns()
@@ -909,18 +921,47 @@ namespace PCPlus.Service.Modules.Phishing
         {
             try
             {
+                Dictionary<string, List<string>>? saved = null;
+                if (File.Exists(DnsBackupFile))
+                {
+                    var json = File.ReadAllText(DnsBackupFile);
+                    saved = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, List<string>>>(json);
+                }
+
                 var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
                     .Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
                         && n.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback)
                     .ToList();
 
                 foreach (var nic in interfaces)
-                    RunNetsh($"interface ip set dns name=\"{nic.Name}\" dhcp");
+                {
+                    if (saved != null && saved.TryGetValue(nic.Name, out var servers) && servers.Count > 0)
+                    {
+                        RunNetsh($"interface ip set dns name=\"{nic.Name}\" static {servers[0]} primary");
+                        for (int i = 1; i < servers.Count; i++)
+                            RunNetsh($"interface ip add dns name=\"{nic.Name}\" {servers[i]} index={i + 1}");
+                        _context.Log(LogLevel.Info, ModuleName, $"DNS restored on {nic.Name}: {string.Join(", ", servers)}");
+                    }
+                    else
+                    {
+                        RunNetsh($"interface ip set dns name=\"{nic.Name}\" dhcp");
+                        _context.Log(LogLevel.Info, ModuleName, $"DNS restored to DHCP on {nic.Name}");
+                    }
+                }
 
-                _context.Log(LogLevel.Info, ModuleName, "DNS restored to DHCP");
+                try { File.Delete(DnsBackupFile); } catch { }
             }
             catch (Exception ex)
             {
+                try
+                {
+                    var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                        .Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
+                            && n.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback);
+                    foreach (var nic in interfaces)
+                        RunNetsh($"interface ip set dns name=\"{nic.Name}\" dhcp");
+                }
+                catch { }
                 _context.Log(LogLevel.Warning, ModuleName, $"Failed to restore DNS: {ex.Message}");
             }
         }
