@@ -740,6 +740,7 @@ namespace PCPlus.Service.Modules.Ransomware
                         };
                     }
                     catch { }
+                    finally { obj.Dispose(); }
                 }
 
                 // Second pass: resolve parent process names from the same cache
@@ -1077,7 +1078,11 @@ namespace PCPlus.Service.Modules.Ransomware
                 using var searcher = new ManagementObjectSearcher(
                     $"SELECT CommandLine FROM Win32_Process WHERE ProcessId={pid}");
                 foreach (ManagementObject obj in searcher.Get())
-                    return obj["CommandLine"]?.ToString() ?? "";
+                {
+                    var result = obj["CommandLine"]?.ToString() ?? "";
+                    obj.Dispose();
+                    return result;
+                }
             }
             catch { }
             return "";
@@ -1091,7 +1096,11 @@ namespace PCPlus.Service.Modules.Ransomware
                 using var searcher = new ManagementObjectSearcher(
                     $"SELECT ExecutablePath FROM Win32_Process WHERE ProcessId={pid}");
                 foreach (ManagementObject obj in searcher.Get())
-                    return obj["ExecutablePath"]?.ToString() ?? "";
+                {
+                    var result = obj["ExecutablePath"]?.ToString() ?? "";
+                    obj.Dispose();
+                    return result;
+                }
             }
             catch { }
             return "";
@@ -1107,7 +1116,8 @@ namespace PCPlus.Service.Modules.Ransomware
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     var parentPid = Convert.ToInt32(obj["ParentProcessId"]);
-                    var parent = Process.GetProcessById(parentPid);
+                    obj.Dispose();
+                    using var parent = Process.GetProcessById(parentPid);
                     return parent.ProcessName.ToLower();
                 }
             }
@@ -1126,7 +1136,9 @@ namespace PCPlus.Service.Modules.Ransomware
                     $"SELECT ProcessId FROM CIM_DataFile WHERE Name='{filePath.Replace("\\", "\\\\")}'");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    return Convert.ToInt32(obj["ProcessId"]);
+                    var pid = Convert.ToInt32(obj["ProcessId"]);
+                    obj.Dispose();
+                    return pid;
                 }
             }
             catch { }

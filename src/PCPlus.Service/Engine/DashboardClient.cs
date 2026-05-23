@@ -18,6 +18,7 @@ namespace PCPlus.Service.Engine
         private readonly ServiceConfig _config;
         private readonly ModuleEngine _engine;
         private HttpClient? _http;
+        private static readonly HttpClient _ipClient = new() { Timeout = TimeSpan.FromSeconds(5) };
         private Timer? _heartbeatTimer;
         private bool _disposed;
         private int _heartbeatCount;
@@ -474,8 +475,7 @@ namespace PCPlus.Service.Engine
 
             try
             {
-                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-                _cachedPublicIp = (await client.GetStringAsync("https://api.ipify.org")).Trim();
+                _cachedPublicIp = (await _ipClient.GetStringAsync("https://api.ipify.org")).Trim();
                 _publicIpLastFetched = DateTime.UtcNow;
             }
             catch
@@ -689,75 +689,79 @@ namespace PCPlus.Service.Engine
                     "root\\SecurityCenter2", "SELECT * FROM AntiVirusProduct");
                 foreach (System.Management.ManagementObject obj in searcher.Get())
                 {
-                    var name = obj["displayName"]?.ToString() ?? "";
-                    if (string.IsNullOrEmpty(name)) continue;
+                    try
+                    {
+                        var name = obj["displayName"]?.ToString() ?? "";
+                        if (string.IsNullOrEmpty(name)) continue;
 
-                    var state = Convert.ToUInt32(obj["productState"]);
-                    // Decode productState: bits 12-15 = scanner enabled, bits 4-7 = definition status
-                    var scannerEnabled = ((state >> 12) & 0xF) == 1;
-                    var defsOutdated = ((state >> 4) & 0xF) != 0;
+                        var state = Convert.ToUInt32(obj["productState"]);
+                        // Decode productState: bits 12-15 = scanner enabled, bits 4-7 = definition status
+                        var scannerEnabled = ((state >> 12) & 0xF) == 1;
+                        var defsOutdated = ((state >> 4) & 0xF) != 0;
 
-                    // Determine Active vs Passive vs OnDemand
-                    string status;
-                    if (scannerEnabled && name.Contains("Defender", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // If Defender + another AV is active, Defender is passive
-                        status = products.Any(p => ((dynamic)p).status == "Active") ? "Passive" : "Active";
-                    }
-                    else if (scannerEnabled)
-                    {
-                        status = "Active";
-                    }
-                    else
-                    {
-                        status = "OnDemand";
-                    }
-
-                    // If a non-Defender product is active, mark Defender as Passive
-                    if (status == "Active" && !name.Contains("Defender", StringComparison.OrdinalIgnoreCase))
-                    {
-                        for (int i = 0; i < products.Count; i++)
+                        // Determine Active vs Passive vs OnDemand
+                        string status;
+                        if (scannerEnabled && name.Contains("Defender", StringComparison.OrdinalIgnoreCase))
                         {
-                            var p = (dynamic)products[i];
-                            if (p.name.ToString().Contains("Defender") && p.status == "Active")
+                            // If Defender + another AV is active, Defender is passive
+                            status = products.Any(p => ((dynamic)p).status == "Active") ? "Passive" : "Active";
+                        }
+                        else if (scannerEnabled)
+                        {
+                            status = "Active";
+                        }
+                        else
+                        {
+                            status = "OnDemand";
+                        }
+
+                        // If a non-Defender product is active, mark Defender as Passive
+                        if (status == "Active" && !name.Contains("Defender", StringComparison.OrdinalIgnoreCase))
+                        {
+                            for (int i = 0; i < products.Count; i++)
                             {
-                                products[i] = new
+                                var p = (dynamic)products[i];
+                                if (p.name.ToString().Contains("Defender") && p.status == "Active")
                                 {
-                                    name = (string)p.name,
-                                    vendor = (string)p.vendor,
-                                    version = (string)p.version,
-                                    definitionDate = (string)p.definitionDate,
-                                    status = "Passive",
-                                    realTimeEnabled = false,
-                                    lastScanTime = (string)p.lastScanTime,
-                                    quarantineCount = (int)p.quarantineCount
-                                };
+                                    products[i] = new
+                                    {
+                                        name = (string)p.name,
+                                        vendor = (string)p.vendor,
+                                        version = (string)p.version,
+                                        definitionDate = (string)p.definitionDate,
+                                        status = "Passive",
+                                        realTimeEnabled = false,
+                                        lastScanTime = (string)p.lastScanTime,
+                                        quarantineCount = (int)p.quarantineCount
+                                    };
+                                }
                             }
                         }
-                    }
 
-                    products.Add(new
-                    {
-                        name,
-                        vendor = name.Contains("Defender") ? "Microsoft" :
-                                 name.Contains("Avast") ? "Avast" :
-                                 name.Contains("AVG") ? "AVG" :
-                                 name.Contains("Norton") ? "Norton" :
-                                 name.Contains("McAfee") ? "McAfee" :
-                                 name.Contains("Kaspersky") ? "Kaspersky" :
-                                 name.Contains("Bitdefender") ? "Bitdefender" :
-                                 name.Contains("ESET") ? "ESET" :
-                                 name.Contains("Malwarebytes") ? "Malwarebytes" :
-                                 name.Contains("Webroot") ? "Webroot" :
-                                 name.Contains("Sophos") ? "Sophos" :
-                                 name.Contains("Trend") ? "Trend Micro" : "Unknown",
-                        version = "",
-                        definitionDate = defsOutdated ? "" : DateTime.UtcNow.ToString("yyyy-MM-dd"),
-                        status,
-                        realTimeEnabled = scannerEnabled,
-                        lastScanTime = "",
-                        quarantineCount = 0
-                    });
+                        products.Add(new
+                        {
+                            name,
+                            vendor = name.Contains("Defender") ? "Microsoft" :
+                                     name.Contains("Avast") ? "Avast" :
+                                     name.Contains("AVG") ? "AVG" :
+                                     name.Contains("Norton") ? "Norton" :
+                                     name.Contains("McAfee") ? "McAfee" :
+                                     name.Contains("Kaspersky") ? "Kaspersky" :
+                                     name.Contains("Bitdefender") ? "Bitdefender" :
+                                     name.Contains("ESET") ? "ESET" :
+                                     name.Contains("Malwarebytes") ? "Malwarebytes" :
+                                     name.Contains("Webroot") ? "Webroot" :
+                                     name.Contains("Sophos") ? "Sophos" :
+                                     name.Contains("Trend") ? "Trend Micro" : "Unknown",
+                            version = "",
+                            definitionDate = defsOutdated ? "" : DateTime.UtcNow.ToString("yyyy-MM-dd"),
+                            status,
+                            realTimeEnabled = scannerEnabled,
+                            lastScanTime = "",
+                            quarantineCount = 0
+                        });
+                    }
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }

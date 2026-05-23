@@ -260,14 +260,18 @@ namespace PCPlus.Service.Modules.Policy
 
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    if (obj["DriveLetter"]?.ToString()?.Equals(sysDrive, StringComparison.OrdinalIgnoreCase) == true)
+                    try
                     {
-                        var status = Convert.ToInt32(obj["ProtectionStatus"]);
-                        if (status != 1)
+                        if (obj["DriveLetter"]?.ToString()?.Equals(sysDrive, StringComparison.OrdinalIgnoreCase) == true)
                         {
-                            RecordViolation(rule, $"BitLocker not active on {sysDrive}");
+                            var status = Convert.ToInt32(obj["ProtectionStatus"]);
+                            if (status != 1)
+                            {
+                                RecordViolation(rule, $"BitLocker not active on {sysDrive}");
+                            }
                         }
                     }
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }

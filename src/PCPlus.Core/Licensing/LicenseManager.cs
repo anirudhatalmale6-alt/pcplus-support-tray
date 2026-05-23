@@ -46,6 +46,7 @@ namespace PCPlus.Core.Licensing
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     components.Append(obj["SerialNumber"]?.ToString() ?? "");
+                    obj.Dispose();
                     break;
                 }
             }
@@ -61,6 +62,7 @@ namespace PCPlus.Core.Licensing
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     components.Append(obj["ProcessorId"]?.ToString() ?? "");
+                    obj.Dispose();
                     break;
                 }
             }
@@ -76,6 +78,7 @@ namespace PCPlus.Core.Licensing
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     components.Append(obj["SerialNumber"]?.ToString()?.Trim() ?? "");
+                    obj.Dispose();
                     break;
                 }
             }

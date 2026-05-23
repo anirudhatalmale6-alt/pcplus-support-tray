@@ -508,9 +508,13 @@ namespace PCPlus.Service.Modules.Security
                 var active = new List<string>();
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var name = obj["displayName"]?.ToString() ?? "";
-                    var state = Convert.ToInt32(obj["productState"]);
-                    if (((state >> 12) & 0xF) == 1) active.Add(name);
+                    try
+                    {
+                        var name = obj["displayName"]?.ToString() ?? "";
+                        var state = Convert.ToInt32(obj["productState"]);
+                        if (((state >> 12) & 0xF) == 1) active.Add(name);
+                    }
+                    finally { obj.Dispose(); }
                 }
                 return (active.Count > 0, active.Count > 0 ? $"Active: {string.Join(", ", active)}" : "No active AV",
                     active.Count > 0 ? "" : "Install antivirus software");
@@ -564,9 +568,13 @@ namespace PCPlus.Service.Modules.Security
                 var sysDrive = Environment.GetFolderPath(Environment.SpecialFolder.Windows)[..2];
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    if (obj["DriveLetter"]?.ToString()?.Equals(sysDrive, StringComparison.OrdinalIgnoreCase) == true
-                        && Convert.ToInt32(obj["ProtectionStatus"]) == 1)
-                        return (true, $"BitLocker active on {sysDrive}", "");
+                    try
+                    {
+                        if (obj["DriveLetter"]?.ToString()?.Equals(sysDrive, StringComparison.OrdinalIgnoreCase) == true
+                            && Convert.ToInt32(obj["ProtectionStatus"]) == 1)
+                            return (true, $"BitLocker active on {sysDrive}", "");
+                    }
+                    finally { obj.Dispose(); }
                 }
                 return (false, "System drive not encrypted", "Enable BitLocker");
             }
@@ -580,10 +588,14 @@ namespace PCPlus.Service.Modules.Security
                 using var searcher = new ManagementObjectSearcher("SELECT Caption, BuildNumber FROM Win32_OperatingSystem");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var caption = obj["Caption"]?.ToString() ?? "";
-                    var build = int.TryParse(obj["BuildNumber"]?.ToString(), out var b) ? b : 0;
-                    var ok = build >= 19041;
-                    return (ok, $"{caption} (Build {build})", ok ? "" : "Update Windows");
+                    try
+                    {
+                        var caption = obj["Caption"]?.ToString() ?? "";
+                        var build = int.TryParse(obj["BuildNumber"]?.ToString(), out var b) ? b : 0;
+                        var ok = build >= 19041;
+                        return (ok, $"{caption} (Build {build})", ok ? "" : "Update Windows");
+                    }
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }
@@ -739,9 +751,13 @@ namespace PCPlus.Service.Modules.Security
                 var drives = new List<(string name, string status)>();
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var caption = obj["Caption"]?.ToString() ?? "Unknown";
-                    var status = obj["Status"]?.ToString() ?? "Unknown";
-                    drives.Add((caption, status));
+                    try
+                    {
+                        var caption = obj["Caption"]?.ToString() ?? "Unknown";
+                        var status = obj["Status"]?.ToString() ?? "Unknown";
+                        drives.Add((caption, status));
+                    }
+                    finally { obj.Dispose(); }
                 }
                 if (drives.Count == 0)
                     return (true, "No disk drives detected", "");
@@ -766,15 +782,19 @@ namespace PCPlus.Service.Modules.Security
                 var ssds = new List<(string name, int? wear)>();
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var mediaType = Convert.ToInt32(obj["MediaType"]);
-                    // MediaType: 3=HDD, 4=SSD, 5=SCM
-                    if (mediaType == 4 || mediaType == 5)
+                    try
                     {
-                        var name = obj["FriendlyName"]?.ToString() ?? "SSD";
-                        int? wear = null;
-                        try { wear = Convert.ToInt32(obj["Wear"]); } catch { }
-                        ssds.Add((name, wear));
+                        var mediaType = Convert.ToInt32(obj["MediaType"]);
+                        // MediaType: 3=HDD, 4=SSD, 5=SCM
+                        if (mediaType == 4 || mediaType == 5)
+                        {
+                            var name = obj["FriendlyName"]?.ToString() ?? "SSD";
+                            int? wear = null;
+                            try { wear = Convert.ToInt32(obj["Wear"]); } catch { }
+                            ssds.Add((name, wear));
+                        }
                     }
+                    finally { obj.Dispose(); }
                 }
                 if (ssds.Count == 0)
                     return (true, "No SSD detected (or HDD only)", "");
@@ -803,17 +823,21 @@ namespace PCPlus.Service.Modules.Security
                     "SELECT DesignedCapacity, FullChargedCapacity FROM BatteryFullChargedCapacity");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var designed = Convert.ToInt32(obj["DesignedCapacity"]);
-                    var fullCharge = Convert.ToInt32(obj["FullChargedCapacity"]);
-                    if (designed > 0)
+                    try
                     {
-                        var healthPct = (int)((double)fullCharge / designed * 100);
-                        if (healthPct < 40)
-                            return (false, $"Battery health: {healthPct}% (critical - {fullCharge}mWh / {designed}mWh)", "Battery is severely degraded - recommend replacement");
-                        if (healthPct < 60)
-                            return (false, $"Battery health: {healthPct}% (degraded - {fullCharge}mWh / {designed}mWh)", "Battery is degraded - consider replacement");
-                        return (true, $"Battery health: {healthPct}% ({fullCharge}mWh / {designed}mWh)", "");
+                        var designed = Convert.ToInt32(obj["DesignedCapacity"]);
+                        var fullCharge = Convert.ToInt32(obj["FullChargedCapacity"]);
+                        if (designed > 0)
+                        {
+                            var healthPct = (int)((double)fullCharge / designed * 100);
+                            if (healthPct < 40)
+                                return (false, $"Battery health: {healthPct}% (critical - {fullCharge}mWh / {designed}mWh)", "Battery is severely degraded - recommend replacement");
+                            if (healthPct < 60)
+                                return (false, $"Battery health: {healthPct}% (degraded - {fullCharge}mWh / {designed}mWh)", "Battery is degraded - consider replacement");
+                            return (true, $"Battery health: {healthPct}% ({fullCharge}mWh / {designed}mWh)", "");
+                        }
                     }
+                    finally { obj.Dispose(); }
                 }
                 // No battery = desktop, that's fine
                 return (true, "No battery detected (desktop)", "");
@@ -832,10 +856,14 @@ namespace PCPlus.Service.Modules.Security
                 var badModules = 0;
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    totalModules++;
-                    var status = obj["Status"]?.ToString();
-                    if (status != null && status != "OK" && status != "")
-                        badModules++;
+                    try
+                    {
+                        totalModules++;
+                        var status = obj["Status"]?.ToString();
+                        if (status != null && status != "OK" && status != "")
+                            badModules++;
+                    }
+                    finally { obj.Dispose(); }
                 }
 
                 if (totalModules == 0)
@@ -848,7 +876,10 @@ namespace PCPlus.Service.Modules.Security
                         "SELECT * FROM Win32_NTLogEvent WHERE Logfile='System' AND SourceName='Microsoft-Windows-WHEA-Logger' AND EventCode=19");
                     int wheaErrors = 0;
                     foreach (ManagementObject obj in eventSearcher.Get())
+                    {
                         wheaErrors++;
+                        obj.Dispose();
+                    }
 
                     if (wheaErrors > 0)
                         return (false, $"{totalModules} RAM module(s) - {wheaErrors} WHEA memory error(s) detected", "Run Windows Memory Diagnostic (mdsched.exe) and consider replacing faulty RAM");
@@ -963,9 +994,13 @@ namespace PCPlus.Service.Modules.Security
                 var admins = new List<string>();
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var part = obj["PartComponent"]?.ToString() ?? "";
-                    var nameMatch = System.Text.RegularExpressions.Regex.Match(part, "Name=\"(.+?)\"");
-                    if (nameMatch.Success) admins.Add(nameMatch.Groups[1].Value);
+                    try
+                    {
+                        var part = obj["PartComponent"]?.ToString() ?? "";
+                        var nameMatch = System.Text.RegularExpressions.Regex.Match(part, "Name=\"(.+?)\"");
+                        if (nameMatch.Success) admins.Add(nameMatch.Groups[1].Value);
+                    }
+                    finally { obj.Dispose(); }
                 }
                 if (admins.Count > 3)
                     return (false, $"{admins.Count} admin accounts: {string.Join(", ", admins.Take(5))}", "Too many admin accounts increases attack surface - remove unnecessary admin privileges");
@@ -1029,10 +1064,14 @@ namespace PCPlus.Service.Modules.Security
                 var enabled = new List<string>();
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    total++;
-                    var isDisabled = Convert.ToBoolean(obj["Disabled"]);
-                    if (isDisabled) disabled++;
-                    else enabled.Add(obj["Name"]?.ToString() ?? "");
+                    try
+                    {
+                        total++;
+                        var isDisabled = Convert.ToBoolean(obj["Disabled"]);
+                        if (isDisabled) disabled++;
+                        else enabled.Add(obj["Name"]?.ToString() ?? "");
+                    }
+                    finally { obj.Dispose(); }
                 }
                 if (enabled.Count > 5)
                     return (false, $"{enabled.Count} active user accounts (review needed)", "Review and disable unused accounts: " + string.Join(", ", enabled.Skip(3)));
@@ -1068,9 +1107,13 @@ namespace PCPlus.Service.Modules.Security
                 var unquoted = 0;
                 foreach (ManagementObject obj in svcSearcher.Get())
                 {
-                    var path = obj["PathName"]?.ToString() ?? "";
-                    if (path.Contains(" ") && !path.StartsWith("\"") && !path.StartsWith("'"))
-                        unquoted++;
+                    try
+                    {
+                        var path = obj["PathName"]?.ToString() ?? "";
+                        if (path.Contains(" ") && !path.StartsWith("\"") && !path.StartsWith("'"))
+                            unquoted++;
+                    }
+                    finally { obj.Dispose(); }
                 }
                 if (unquoted > 3) risks.Add($"{unquoted} services with unquoted paths");
 
@@ -1164,8 +1207,12 @@ namespace PCPlus.Service.Modules.Security
                 var dnsServers = new List<string>();
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var dns = obj["DNSServerSearchOrder"] as string[];
-                    if (dns != null) dnsServers.AddRange(dns);
+                    try
+                    {
+                        var dns = obj["DNSServerSearchOrder"] as string[];
+                        if (dns != null) dnsServers.AddRange(dns);
+                    }
+                    finally { obj.Dispose(); }
                 }
 
                 var secureDns = new HashSet<string> {
@@ -1226,13 +1273,17 @@ namespace PCPlus.Service.Modules.Security
                 var vpnAdapters = new List<string>();
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var name = (obj["Name"]?.ToString() ?? "") + " " + (obj["Description"]?.ToString() ?? "");
-                    if (name.Contains("VPN", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("WireGuard", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("OpenVPN", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("TAP-", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("Tunnel", StringComparison.OrdinalIgnoreCase))
-                        vpnAdapters.Add(obj["Name"]?.ToString() ?? "VPN");
+                    try
+                    {
+                        var name = (obj["Name"]?.ToString() ?? "") + " " + (obj["Description"]?.ToString() ?? "");
+                        if (name.Contains("VPN", StringComparison.OrdinalIgnoreCase) ||
+                            name.Contains("WireGuard", StringComparison.OrdinalIgnoreCase) ||
+                            name.Contains("OpenVPN", StringComparison.OrdinalIgnoreCase) ||
+                            name.Contains("TAP-", StringComparison.OrdinalIgnoreCase) ||
+                            name.Contains("Tunnel", StringComparison.OrdinalIgnoreCase))
+                            vpnAdapters.Add(obj["Name"]?.ToString() ?? "VPN");
+                    }
+                    finally { obj.Dispose(); }
                 }
 
                 if (vpnAdapters.Count > 0)
@@ -1381,9 +1432,13 @@ namespace PCPlus.Service.Modules.Security
                     "SELECT * FROM Win32_DeviceGuard");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var vbsStatus = obj["VirtualizationBasedSecurityStatus"];
-                    if (vbsStatus != null && Convert.ToInt32(vbsStatus) == 2)
-                        return (true, "Virtualization-Based Security running", "");
+                    try
+                    {
+                        var vbsStatus = obj["VirtualizationBasedSecurityStatus"];
+                        if (vbsStatus != null && Convert.ToInt32(vbsStatus) == 2)
+                            return (true, "Virtualization-Based Security running", "");
+                    }
+                    finally { obj.Dispose(); }
                 }
 
                 return (false, "Credential Guard / VBS not enabled", "Enable Virtualization-Based Security for credential isolation (requires compatible hardware)");
@@ -1423,10 +1478,14 @@ namespace PCPlus.Service.Modules.Security
                 {
                     foreach (ManagementObject obj in searcher.Get())
                     {
-                        var name = obj["DisplayName"]?.ToString() ?? "";
-                        foreach (var edr in edrProducts)
-                            if (name.Contains(edr, StringComparison.OrdinalIgnoreCase))
-                                found.Add(name);
+                        try
+                        {
+                            var name = obj["DisplayName"]?.ToString() ?? "";
+                            foreach (var edr in edrProducts)
+                                if (name.Contains(edr, StringComparison.OrdinalIgnoreCase))
+                                    found.Add(name);
+                        }
+                        finally { obj.Dispose(); }
                     }
                 }
                 catch { }
@@ -1532,6 +1591,7 @@ namespace PCPlus.Service.Modules.Security
                     foreach (ManagementObject obj in searcher.Get())
                     {
                         tpmPresent = true;
+                        obj.Dispose();
                         break;
                     }
                 }
@@ -1632,15 +1692,19 @@ namespace PCPlus.Service.Modules.Security
                 {
                     foreach (ManagementObject obj in searcher.Get())
                     {
-                        var name = obj["Name"]?.ToString() ?? "";
-                        foreach (var (pattern, category) in eolPatterns)
+                        try
                         {
-                            if (name.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                            var name = obj["Name"]?.ToString() ?? "";
+                            foreach (var (pattern, category) in eolPatterns)
                             {
-                                found.Add($"{name} ({category})");
-                                break;
+                                if (name.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    found.Add($"{name} ({category})");
+                                    break;
+                                }
                             }
                         }
+                        finally { obj.Dispose(); }
                     }
                 }
                 catch { }
@@ -1844,12 +1908,16 @@ namespace PCPlus.Service.Modules.Security
                     "SELECT TcpipNetbiosOptions FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled=True");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var nbOption = obj["TcpipNetbiosOptions"];
-                    if (nbOption != null && Convert.ToInt32(nbOption) != 2) // 2 = disabled
+                    try
                     {
-                        issues.Add("NetBIOS over TCP/IP enabled");
-                        break;
+                        var nbOption = obj["TcpipNetbiosOptions"];
+                        if (nbOption != null && Convert.ToInt32(nbOption) != 2) // 2 = disabled
+                        {
+                            issues.Add("NetBIOS over TCP/IP enabled");
+                            break;
+                        }
                     }
+                    finally { obj.Dispose(); }
                 }
 
                 if (issues.Count > 0)
@@ -2305,7 +2373,10 @@ namespace PCPlus.Service.Modules.Security
                 var biosInfo = "";
                 using var bioSearch = new ManagementObjectSearcher("SELECT * FROM Win32_BIOS");
                 foreach (ManagementObject obj in bioSearch.Get())
+                {
                     biosInfo = obj["Description"]?.ToString() ?? "";
+                    obj.Dispose();
+                }
 
                 // Cannot definitively check BIOS password from OS level - flag as advisory
                 return (false, "BIOS/UEFI password status unknown - recommend setting one",
@@ -2321,23 +2392,31 @@ namespace PCPlus.Service.Modules.Security
                 using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_DeviceGuard");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var vbsStatus = obj["VirtualizationBasedSecurityStatus"];
-                    if (vbsStatus != null && Convert.ToInt32(vbsStatus) == 2) // 2 = running
-                        return (true, "Virtualization-based Security (VBS) running", "");
-                    if (vbsStatus != null && Convert.ToInt32(vbsStatus) == 1) // 1 = configured but not running
-                        return (false, "VBS configured but not running", "Ensure Hyper-V is enabled and reboot to activate VBS");
+                    try
+                    {
+                        var vbsStatus = obj["VirtualizationBasedSecurityStatus"];
+                        if (vbsStatus != null && Convert.ToInt32(vbsStatus) == 2) // 2 = running
+                            return (true, "Virtualization-based Security (VBS) running", "");
+                        if (vbsStatus != null && Convert.ToInt32(vbsStatus) == 1) // 1 = configured but not running
+                            return (false, "VBS configured but not running", "Ensure Hyper-V is enabled and reboot to activate VBS");
+                    }
+                    finally { obj.Dispose(); }
                 }
 
                 // Fallback: check if Hyper-V/VT is available
                 using var cpuSearch = new ManagementObjectSearcher("SELECT VirtualizationFirmwareEnabled FROM Win32_Processor");
                 foreach (ManagementObject obj in cpuSearch.Get())
                 {
-                    var vtEnabled = obj["VirtualizationFirmwareEnabled"];
-                    if (vtEnabled != null && Convert.ToBoolean(vtEnabled))
-                        return (false, "Virtualization available but VBS not enabled",
-                            "Enable Virtualization-based Security for Credential Guard and memory integrity protection");
-                    return (false, "Hardware virtualization not enabled in BIOS",
-                        "Enable VT-x/AMD-V in BIOS settings, then enable VBS for enhanced memory protection");
+                    try
+                    {
+                        var vtEnabled = obj["VirtualizationFirmwareEnabled"];
+                        if (vtEnabled != null && Convert.ToBoolean(vtEnabled))
+                            return (false, "Virtualization available but VBS not enabled",
+                                "Enable Virtualization-based Security for Credential Guard and memory integrity protection");
+                        return (false, "Hardware virtualization not enabled in BIOS",
+                            "Enable VT-x/AMD-V in BIOS settings, then enable VBS for enhanced memory protection");
+                    }
+                    finally { obj.Dispose(); }
                 }
                 return (false, "VBS status unknown", "Check BIOS for virtualization support");
             }
@@ -4054,26 +4133,30 @@ namespace PCPlus.Service.Modules.Security
                 using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_BIOS");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var version = obj["SMBIOSBIOSVersion"]?.ToString() ?? "Unknown";
-                    var manufacturer = obj["Manufacturer"]?.ToString() ?? "Unknown";
-                    var releaseDateStr = obj["ReleaseDate"]?.ToString() ?? "";
-
-                    DateTime? releaseDate = null;
-                    if (!string.IsNullOrEmpty(releaseDateStr) && releaseDateStr.Length >= 8)
+                    try
                     {
-                        try { releaseDate = ManagementDateTimeConverter.ToDateTime(releaseDateStr); }
-                        catch { }
-                    }
+                        var version = obj["SMBIOSBIOSVersion"]?.ToString() ?? "Unknown";
+                        var manufacturer = obj["Manufacturer"]?.ToString() ?? "Unknown";
+                        var releaseDateStr = obj["ReleaseDate"]?.ToString() ?? "";
 
-                    if (releaseDate.HasValue)
-                    {
-                        var ageMonths = (DateTime.Now - releaseDate.Value).TotalDays / 30;
-                        var passed = ageMonths < 24;
-                        return (passed,
-                            $"BIOS: {manufacturer} v{version}, released {releaseDate.Value:yyyy-MM-dd} ({(int)ageMonths} months old)",
-                            passed ? "" : "BIOS firmware is over 2 years old - check manufacturer for updates");
+                        DateTime? releaseDate = null;
+                        if (!string.IsNullOrEmpty(releaseDateStr) && releaseDateStr.Length >= 8)
+                        {
+                            try { releaseDate = ManagementDateTimeConverter.ToDateTime(releaseDateStr); }
+                            catch { }
+                        }
+
+                        if (releaseDate.HasValue)
+                        {
+                            var ageMonths = (DateTime.Now - releaseDate.Value).TotalDays / 30;
+                            var passed = ageMonths < 24;
+                            return (passed,
+                                $"BIOS: {manufacturer} v{version}, released {releaseDate.Value:yyyy-MM-dd} ({(int)ageMonths} months old)",
+                                passed ? "" : "BIOS firmware is over 2 years old - check manufacturer for updates");
+                        }
+                        return (true, $"BIOS: {manufacturer} v{version} (release date unavailable)", "Check manufacturer website for firmware updates");
                     }
-                    return (true, $"BIOS: {manufacturer} v{version} (release date unavailable)", "Check manufacturer website for firmware updates");
+                    finally { obj.Dispose(); }
                 }
                 return (true, "Unable to query BIOS info", "");
             }

@@ -106,7 +106,10 @@ namespace PCPlus.Tray
             {
                 using var searcher = new ManagementObjectSearcher("SELECT LoadPercentage FROM Win32_Processor");
                 foreach (ManagementObject obj in searcher.Get())
-                    return Convert.ToSingle(obj["LoadPercentage"]);
+                {
+                    try { return Convert.ToSingle(obj["LoadPercentage"]); }
+                    finally { obj.Dispose(); }
+                }
             }
             catch { }
             return 0;
@@ -120,12 +123,16 @@ namespace PCPlus.Tray
                     "SELECT TotalVisibleMemorySize, FreePhysicalMemory FROM Win32_OperatingSystem");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var totalKB = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
-                    var freeKB = Convert.ToDouble(obj["FreePhysicalMemory"]);
-                    snap.RamTotalGB = (float)(totalKB / 1024.0 / 1024.0);
-                    snap.RamUsedGB = (float)((totalKB - freeKB) / 1024.0 / 1024.0);
-                    snap.RamPercent = (float)((totalKB - freeKB) / totalKB * 100.0);
-                    break;
+                    try
+                    {
+                        var totalKB = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
+                        var freeKB = Convert.ToDouble(obj["FreePhysicalMemory"]);
+                        snap.RamTotalGB = (float)(totalKB / 1024.0 / 1024.0);
+                        snap.RamUsedGB = (float)((totalKB - freeKB) / 1024.0 / 1024.0);
+                        snap.RamPercent = (float)((totalKB - freeKB) / totalKB * 100.0);
+                        break;
+                    }
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }
@@ -222,27 +229,31 @@ namespace PCPlus.Tray
                 bool found = false;
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var name = obj["Name"]?.ToString() ?? "";
-                    var parent = obj["Parent"]?.ToString() ?? "";
-                    var value = Convert.ToSingle(obj["Value"]);
+                    try
+                    {
+                        var name = obj["Name"]?.ToString() ?? "";
+                        var parent = obj["Parent"]?.ToString() ?? "";
+                        var value = Convert.ToSingle(obj["Value"]);
 
-                    if (snap.CpuTempC == 0 && (name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("cpu", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        snap.CpuTempC = value;
-                        snap.CpuTempSource = name;
-                        found = true;
+                        if (snap.CpuTempC == 0 && (name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
+                            name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("cpu", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            snap.CpuTempC = value;
+                            snap.CpuTempSource = name;
+                            found = true;
+                        }
+                        if (snap.GpuTempC == 0 && (name.Contains("GPU", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("gpu", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("nvidia", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("amd", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            snap.GpuTempC = value;
+                            snap.GpuTempSource = name;
+                            found = true;
+                        }
                     }
-                    if (snap.GpuTempC == 0 && (name.Contains("GPU", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("gpu", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("nvidia", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("amd", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        snap.GpuTempC = value;
-                        snap.GpuTempSource = name;
-                        found = true;
-                    }
+                    finally { obj.Dispose(); }
                 }
                 return found;
             }
@@ -257,14 +268,18 @@ namespace PCPlus.Tray
                     "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var tempK = Convert.ToDouble(obj["CurrentTemperature"]) / 10.0;
-                    var tempC = (float)(tempK - 273.15);
-                    if (tempC > 0 && tempC < 120)
+                    try
                     {
-                        snap.CpuTempC = tempC;
-                        snap.CpuTempSource = "ACPI Thermal Zone";
+                        var tempK = Convert.ToDouble(obj["CurrentTemperature"]) / 10.0;
+                        var tempC = (float)(tempK - 273.15);
+                        if (tempC > 0 && tempC < 120)
+                        {
+                            snap.CpuTempC = tempC;
+                            snap.CpuTempSource = "ACPI Thermal Zone";
+                        }
+                        break;
                     }
-                    break;
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }
@@ -484,19 +499,23 @@ namespace PCPlus.Tray
                     "SELECT displayName, productState FROM AntiVirusProduct");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var name = obj["displayName"]?.ToString() ?? "Unknown";
-                    var state = Convert.ToInt32(obj["productState"]);
-                    var enabled = ((state >> 12) & 0xF) == 1;
-                    var upToDate = ((state >> 4) & 0xF) == 0;
-                    return new SecurityCheck
+                    try
                     {
-                        Name = "Antivirus Protection",
-                        Category = "Security Software",
-                        Passed = enabled,
-                        Detail = enabled ? $"{name} is active and {(upToDate ? "up to date" : "needs updating")}"
-                            : $"{name} is installed but not active",
-                        Recommendation = !enabled ? "Enable your antivirus protection" : ""
-                    };
+                        var name = obj["displayName"]?.ToString() ?? "Unknown";
+                        var state = Convert.ToInt32(obj["productState"]);
+                        var enabled = ((state >> 12) & 0xF) == 1;
+                        var upToDate = ((state >> 4) & 0xF) == 0;
+                        return new SecurityCheck
+                        {
+                            Name = "Antivirus Protection",
+                            Category = "Security Software",
+                            Passed = enabled,
+                            Detail = enabled ? $"{name} is active and {(upToDate ? "up to date" : "needs updating")}"
+                                : $"{name} is installed but not active",
+                            Recommendation = !enabled ? "Enable your antivirus protection" : ""
+                        };
+                    }
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }
@@ -588,15 +607,19 @@ namespace PCPlus.Tray
                     "SELECT ProtectionStatus FROM Win32_EncryptableVolume WHERE DriveLetter='C:'");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var status = Convert.ToInt32(obj["ProtectionStatus"]);
-                    return new SecurityCheck
+                    try
                     {
-                        Name = "Drive Encryption (BitLocker)",
-                        Category = "Data Protection",
-                        Passed = status == 1,
-                        Detail = status == 1 ? "BitLocker is active on C:" : "BitLocker is not active on C:",
-                        Recommendation = status != 1 ? "Enable BitLocker to protect your data (requires Windows Pro)" : ""
-                    };
+                        var status = Convert.ToInt32(obj["ProtectionStatus"]);
+                        return new SecurityCheck
+                        {
+                            Name = "Drive Encryption (BitLocker)",
+                            Category = "Data Protection",
+                            Passed = status == 1,
+                            Detail = status == 1 ? "BitLocker is active on C:" : "BitLocker is not active on C:",
+                            Recommendation = status != 1 ? "Enable BitLocker to protect your data (requires Windows Pro)" : ""
+                        };
+                    }
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }

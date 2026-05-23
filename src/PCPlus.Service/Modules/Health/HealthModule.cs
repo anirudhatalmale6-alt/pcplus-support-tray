@@ -217,7 +217,11 @@ namespace PCPlus.Service.Modules.Health
             {
                 using var searcher = new ManagementObjectSearcher("SELECT LoadPercentage FROM Win32_Processor");
                 foreach (ManagementObject obj in searcher.Get())
-                    return Convert.ToSingle(obj["LoadPercentage"]);
+                {
+                    var result = Convert.ToSingle(obj["LoadPercentage"]);
+                    obj.Dispose();
+                    return result;
+                }
             }
             catch { }
             return 0;
@@ -231,12 +235,16 @@ namespace PCPlus.Service.Modules.Health
                     "SELECT TotalVisibleMemorySize, FreePhysicalMemory FROM Win32_OperatingSystem");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var totalKB = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
-                    var freeKB = Convert.ToDouble(obj["FreePhysicalMemory"]);
-                    snap.RamTotalGB = (float)(totalKB / 1024.0 / 1024.0);
-                    snap.RamUsedGB = (float)((totalKB - freeKB) / 1024.0 / 1024.0);
-                    snap.RamPercent = (float)((totalKB - freeKB) / totalKB * 100.0);
-                    break;
+                    try
+                    {
+                        var totalKB = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
+                        var freeKB = Convert.ToDouble(obj["FreePhysicalMemory"]);
+                        snap.RamTotalGB = (float)(totalKB / 1024.0 / 1024.0);
+                        snap.RamUsedGB = (float)((totalKB - freeKB) / 1024.0 / 1024.0);
+                        snap.RamPercent = (float)((totalKB - freeKB) / totalKB * 100.0);
+                        break;
+                    }
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }
@@ -294,28 +302,32 @@ namespace PCPlus.Service.Modules.Health
                 bool found = false;
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var name = obj["Name"]?.ToString() ?? "";
-                    var parent = obj["Parent"]?.ToString() ?? "";
-                    var value = Convert.ToSingle(obj["Value"]);
-
-                    if (snap.CpuTempC == 0 && (name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("cpu", StringComparison.OrdinalIgnoreCase)))
+                    try
                     {
-                        snap.CpuTempC = value;
-                        snap.CpuTempSource = name;
-                        found = true;
-                    }
+                        var name = obj["Name"]?.ToString() ?? "";
+                        var parent = obj["Parent"]?.ToString() ?? "";
+                        var value = Convert.ToSingle(obj["Value"]);
 
-                    if (snap.GpuTempC == 0 && (name.Contains("GPU", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("gpu", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("nvidia", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("amd", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        snap.GpuTempC = value;
-                        snap.GpuTempSource = name;
-                        found = true;
+                        if (snap.CpuTempC == 0 && (name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
+                            name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("cpu", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            snap.CpuTempC = value;
+                            snap.CpuTempSource = name;
+                            found = true;
+                        }
+
+                        if (snap.GpuTempC == 0 && (name.Contains("GPU", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("gpu", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("nvidia", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("amd", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            snap.GpuTempC = value;
+                            snap.GpuTempSource = name;
+                            found = true;
+                        }
                     }
+                    finally { obj.Dispose(); }
                 }
                 return found;
             }
@@ -330,14 +342,18 @@ namespace PCPlus.Service.Modules.Health
                     "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var tempK = Convert.ToDouble(obj["CurrentTemperature"]) / 10.0;
-                    var tempC = (float)(tempK - 273.15);
-                    if (tempC > 0 && tempC < 120)
+                    try
                     {
-                        snap.CpuTempC = tempC;
-                        snap.CpuTempSource = "ACPI Thermal Zone";
+                        var tempK = Convert.ToDouble(obj["CurrentTemperature"]) / 10.0;
+                        var tempC = (float)(tempK - 273.15);
+                        if (tempC > 0 && tempC < 120)
+                        {
+                            snap.CpuTempC = tempC;
+                            snap.CpuTempSource = "ACPI Thermal Zone";
+                        }
+                        break;
                     }
-                    break;
+                    finally { obj.Dispose(); }
                 }
             }
             catch { }

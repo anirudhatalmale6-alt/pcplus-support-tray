@@ -134,7 +134,7 @@ namespace PCPlus.Service
             }
 
             // Periodic license validation (every 6 hours)
-            var licenseValidationTimer = new PeriodicTimer(TimeSpan.FromHours(6));
+            using var licenseValidationTimer = new PeriodicTimer(TimeSpan.FromHours(6));
             try
             {
                 while (await licenseValidationTimer.WaitForNextTickAsync(stoppingToken))

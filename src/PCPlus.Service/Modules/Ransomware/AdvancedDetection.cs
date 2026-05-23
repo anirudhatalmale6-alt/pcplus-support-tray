@@ -447,22 +447,22 @@ namespace PCPlus.Service.Modules.Ransomware
                 var suspiciousFilters = new List<string>();
                 foreach (ManagementObject obj in filterSearcher.Get())
                 {
-                    var name = obj["Name"]?.ToString() ?? "";
-                    var query = obj["Query"]?.ToString() ?? "";
-
-                    // Skip known-good system filters
-                    if (name.StartsWith("SCM Event") || name.StartsWith("BVT") ||
-                        name.Contains("Microsoft") || name.Contains("Windows"))
-                        continue;
-
-                    // Suspicious if it watches for startup events or runs commands
-                    if (query.Contains("Win32_ProcessStartTrace") ||
-                        query.Contains("__InstanceCreationEvent") && !name.Contains("PCPlus"))
+                    try
                     {
-                        suspiciousFilters.Add($"{name}: {Truncate(query, 100)}");
-                    }
+                        var name = obj["Name"]?.ToString() ?? "";
+                        var query = obj["Query"]?.ToString() ?? "";
 
-                    obj.Dispose();
+                        if (name.StartsWith("SCM Event") || name.StartsWith("BVT") ||
+                            name.Contains("Microsoft") || name.Contains("Windows"))
+                            continue;
+
+                        if (query.Contains("Win32_ProcessStartTrace") ||
+                            query.Contains("__InstanceCreationEvent") && !name.Contains("PCPlus"))
+                        {
+                            suspiciousFilters.Add($"{name}: {Truncate(query, 100)}");
+                        }
+                    }
+                    finally { obj.Dispose(); }
                 }
 
                 if (suspiciousFilters.Count > 0)
