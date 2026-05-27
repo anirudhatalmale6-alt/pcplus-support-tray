@@ -158,8 +158,13 @@ namespace PCPlus.Service.Modules.Security
                 };
                 using var proc = System.Diagnostics.Process.Start(psi);
                 if (proc == null) return;
-                var output = proc.StandardOutput.ReadToEnd();
-                proc.WaitForExit(30000);
+                var outputTask = proc.StandardOutput.ReadToEndAsync();
+                if (!proc.WaitForExit(15000))
+                {
+                    try { proc.Kill(); } catch { }
+                    return;
+                }
+                var output = outputTask.GetAwaiter().GetResult();
             }
             catch { }
         }

@@ -1451,7 +1451,7 @@ namespace PCPlus.Tray.Forms
 
         #region Lockdown Mode View
 
-        private void BuildLockdownView()
+        private async void BuildLockdownView()
         {
             var title = CreatePageTitle("Lockdown Mode");
             _contentArea.Controls.Add(title);
@@ -1469,13 +1469,13 @@ namespace PCPlus.Tray.Forms
             string lockReason = "";
             string lockTime = "";
 
-            // Try to get lockdown state from service
+            // Fetch lockdown state asynchronously (never block UI thread)
             if (_ipc.IsConnected && !_usingLocalFallback)
             {
                 try
                 {
-                    var resp = _ipc.SendModuleCommandAsync("ransomware", "GetStatus",
-                        new Dictionary<string, string>()).GetAwaiter().GetResult();
+                    var resp = await _ipc.SendModuleCommandAsync("ransomware", "GetStatus",
+                        new Dictionary<string, string>());
                     if (resp.Success && !string.IsNullOrEmpty(resp.JsonData))
                     {
                         using var doc = System.Text.Json.JsonDocument.Parse(resp.JsonData);
@@ -1490,6 +1490,8 @@ namespace PCPlus.Tray.Forms
                 }
                 catch { }
             }
+
+            if (IsDisposed || _currentView != "lockdown") return;
 
             var capturedLocked = isLocked;
             var capturedReason = lockReason;
@@ -2116,6 +2118,7 @@ namespace PCPlus.Tray.Forms
             try
             {
                 var resp = await _ipc.SendModuleCommandAsync("customervalue", "GetWifiNetworks");
+                if (IsDisposed || _currentView != "wifi") return;
                 if (resp.Success)
                 {
                     var json = resp.JsonData ?? "{}";
@@ -2606,6 +2609,7 @@ namespace PCPlus.Tray.Forms
             try
             {
                 var resp = await _ipc.SendModuleCommandAsync("policy", "GetPolicies");
+                if (IsDisposed || _currentView != "policies") return;
                 if (resp.Success)
                 {
                     var json = resp.JsonData ?? "{}";

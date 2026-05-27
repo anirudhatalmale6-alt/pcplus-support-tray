@@ -194,11 +194,18 @@ namespace PCPlus.Service.Modules.Security
                     CreateNoWindow = true
                 };
                 using var proc = Process.Start(startInfo);
-                var output = proc?.StandardOutput.ReadToEnd() ?? "";
-                var error = proc?.StandardError.ReadToEnd() ?? "";
-                proc?.WaitForExit(30000);
+                if (proc == null) return (false, $"{description}: failed to start PowerShell");
+                var outputTask = proc.StandardOutput.ReadToEndAsync();
+                var errorTask = proc.StandardError.ReadToEndAsync();
+                if (!proc.WaitForExit(15000))
+                {
+                    try { proc.Kill(); } catch { }
+                    return (false, $"{description}: timed out after 15s");
+                }
+                var output = outputTask.GetAwaiter().GetResult();
+                var error = errorTask.GetAwaiter().GetResult();
 
-                if (proc?.ExitCode == 0)
+                if (proc.ExitCode == 0)
                     return (true, $"{description} applied successfully");
                 return (false, $"{description} failed: {(string.IsNullOrEmpty(error) ? output : error).Trim()}");
             }

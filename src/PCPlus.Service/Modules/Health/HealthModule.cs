@@ -379,8 +379,13 @@ namespace PCPlus.Service.Modules.Health
                 };
                 using var proc = System.Diagnostics.Process.Start(psi);
                 if (proc == null) return false;
-                var output = proc.StandardOutput.ReadToEnd().Trim();
-                proc.WaitForExit(5000);
+                var outputTask = proc.StandardOutput.ReadToEndAsync();
+                if (!proc.WaitForExit(3000))
+                {
+                    try { proc.Kill(); } catch { }
+                    return false;
+                }
+                var output = outputTask.GetAwaiter().GetResult().Trim();
                 if (int.TryParse(output, out var raw) && raw > 0)
                 {
                     var tempC = (float)(raw / 10.0 - 273.15);

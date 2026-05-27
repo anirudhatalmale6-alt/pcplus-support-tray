@@ -265,7 +265,19 @@ namespace PCPlus.Core.IPC
             {
                 while (!ct.IsCancellationRequested && IsConnected)
                 {
-                    var line = await _reader!.ReadLineAsync(ct);
+                    using var readCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    readCts.CancelAfter(TimeSpan.FromSeconds(60));
+                    string? line;
+                    try
+                    {
+                        line = await _reader!.ReadLineAsync(readCts.Token);
+                    }
+                    catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                    {
+                        Log("ListenAsync: 60s read timeout, checking pipe health");
+                        if (!IsConnected) break;
+                        continue;
+                    }
                     if (line == null) { Log("ListenAsync: ReadLine returned null (pipe closed)"); break; }
 
                     Log($"ListenAsync: received {line.Length} chars");

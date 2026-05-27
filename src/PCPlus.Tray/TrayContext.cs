@@ -77,14 +77,18 @@ namespace PCPlus.Tray
 
             // Reconnect timer (try every 10 seconds if disconnected)
             _reconnectTimer = new System.Windows.Forms.Timer { Interval = 10000 };
+            bool reconnecting = false;
             _reconnectTimer.Tick += async (s, e) =>
             {
+                if (reconnecting) return;
                 try
                 {
+                    reconnecting = true;
                     if (!_serviceConnected && !_connecting)
                         await ConnectToServiceAsync();
                 }
                 catch { }
+                finally { reconnecting = false; }
             };
             _reconnectTimer.Start();
 
@@ -92,9 +96,12 @@ namespace PCPlus.Tray
             // Starts local monitoring immediately so heartbeats always have data
             _localFallback.Start();
             _heartbeatTimer = new System.Windows.Forms.Timer { Interval = 60000 }; // 60 seconds
+            bool heartbeating = false;
             _heartbeatTimer.Tick += async (s, e) =>
             {
-                try { await SendDirectHeartbeatAsync(); } catch { }
+                if (heartbeating) return;
+                try { heartbeating = true; await SendDirectHeartbeatAsync(); } catch { }
+                finally { heartbeating = false; }
             };
             _heartbeatTimer.Start();
             _ = Task.Delay(5000).ContinueWith(async _ =>
