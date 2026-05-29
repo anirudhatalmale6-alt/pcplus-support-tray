@@ -39,8 +39,7 @@ namespace SupportTray
             ShowInTaskbar = false;
             TopMost = true;
             StartPosition = FormStartPosition.Manual;
-            BackColor = Color.Magenta;
-            TransparencyKey = Color.Magenta;
+            BackColor = Color.FromArgb(20, 30, 50);
             Size = _persistent ? new Size(260, 44) : new Size(320, 60);
             DoubleBuffered = true;
             Opacity = 0;

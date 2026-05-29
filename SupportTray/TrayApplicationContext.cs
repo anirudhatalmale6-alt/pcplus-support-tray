@@ -59,12 +59,13 @@ namespace SupportTray
 
                 // Run first-install security audit
                 RunFirstInstallAudit();
-            }
 
-            // Always show desktop overlay on startup
-            // PersistentOverlay = true: compact widget stays on screen permanently (shared workstations)
-            // PersistentOverlay = false: full-size notification that auto-dismisses after 30 seconds
-            ShowDesktopOverlay(persistent: _config.PersistentOverlay);
+                // Show overlay only on first run to avoid screen flickering
+                if (_config.PersistentOverlay)
+                    ShowDesktopOverlay(persistent: true);
+                else
+                    ShowDesktopOverlay(persistent: false);
+            }
 
             // Check for updates silently on startup
             _ = CheckForUpdatesAsync(silent: true);
