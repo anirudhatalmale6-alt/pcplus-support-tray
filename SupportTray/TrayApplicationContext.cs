@@ -60,11 +60,8 @@ namespace SupportTray
                 // Run first-install security audit
                 RunFirstInstallAudit();
 
-                // Show overlay only on first run to avoid screen flickering
-                if (_config.PersistentOverlay)
-                    ShowDesktopOverlay(persistent: true);
-                else
-                    ShowDesktopOverlay(persistent: false);
+                // Desktop overlay removed - caused screen flickering on many systems
+                // Balloon tip above is sufficient for first-run notification
             }
 
             // Check for updates silently on startup
