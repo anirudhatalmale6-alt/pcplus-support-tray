@@ -56,7 +56,11 @@ namespace SupportTray
         public float RamAlertThreshold { get; set; } = 90f;
         public float DiskAlertThreshold { get; set; } = 90f;
         public float TempAlertThreshold { get; set; } = 85f;
-        public int PollIntervalMs { get; set; } = 2000;
+        public int PollIntervalMs { get; set; } = 5000;
+
+        // Slow-poll items run every Nth cycle to reduce WMI overhead
+        private int _pollCycle;
+        private const int SLOW_POLL_EVERY = 6; // temps/disks/processes every 6th cycle
 
         // Alert cooldown tracking (don't spam alerts)
         private readonly Dictionary<string, DateTime> _alertCooldowns = new();
@@ -92,14 +96,20 @@ namespace SupportTray
         {
             try
             {
+                bool slowPoll = (_pollCycle % SLOW_POLL_EVERY) == 0;
+                _pollCycle++;
+
                 lock (_lock)
                 {
                     PollCpu();
                     PollRam();
-                    PollDisks();
-                    PollTemperatures();
                     PollNetwork();
-                    PollProcesses();
+                    if (slowPoll)
+                    {
+                        PollDisks();
+                        PollTemperatures();
+                        PollProcesses();
+                    }
                     Uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
                     LastUpdate = DateTime.Now;
                 }
@@ -209,7 +219,9 @@ namespace SupportTray
         {
             try
             {
-                using var searcher = new ManagementObjectSearcher(wmiNamespace, query);
+                var scope = new ManagementScope(wmiNamespace);
+                var opts = new EnumerationOptions { Timeout = TimeSpan.FromSeconds(3) };
+                using var searcher = new ManagementObjectSearcher(scope, new ObjectQuery(query), opts);
                 var results = searcher.Get();
                 bool foundCpu = false, foundGpu = false;
 
@@ -256,9 +268,10 @@ namespace SupportTray
         {
             try
             {
-                using var searcher = new ManagementObjectSearcher(
-                    "root\\WMI",
-                    "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+                var scope = new ManagementScope("root\\WMI");
+                var opts = new EnumerationOptions { Timeout = TimeSpan.FromSeconds(3) };
+                using var searcher = new ManagementObjectSearcher(scope,
+                    new ObjectQuery("SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature"), opts);
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     // Value is in tenths of Kelvin

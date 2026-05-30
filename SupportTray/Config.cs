@@ -26,7 +26,7 @@ namespace SupportTray
 
         // Health Monitoring Settings
         public bool HealthMonitorEnabled { get; set; } = true;
-        public int HealthPollIntervalMs { get; set; } = 5000;
+        public int HealthPollIntervalMs { get; set; } = 10000;
         public float CpuAlertThreshold { get; set; } = 90f;
         public float RamAlertThreshold { get; set; } = 90f;
         public float DiskAlertThreshold { get; set; } = 90f;
