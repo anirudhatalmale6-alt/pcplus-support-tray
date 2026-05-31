@@ -89,14 +89,18 @@ namespace SupportTray
             closeButton.Click += (s, e) => Close();
             Controls.Add(closeButton);
 
-            // Load info async
             Load += async (s, e) =>
             {
-                await System.Threading.Tasks.Task.Run(() =>
+                try
                 {
-                    var info = SystemInfo.GetFullReport();
+                    var info = await SystemInfo.GetFullReportAsync().ConfigureAwait(false);
                     Invoke(() => infoBox.Text = info);
-                });
+                }
+                catch (Exception ex)
+                {
+                    Program.LogError("SystemInfoForm.Load", ex);
+                    try { Invoke(() => infoBox.Text = "Error loading system info."); } catch { }
+                }
             };
         }
     }

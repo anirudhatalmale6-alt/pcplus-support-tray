@@ -94,11 +94,13 @@ namespace SupportTray
 
         private void PollCallback(object? state)
         {
+            if (_disposed) return;
             try
             {
                 bool slowPoll = (_pollCycle % SLOW_POLL_EVERY) == 0;
                 _pollCycle++;
 
+                HealthSnapshot snapshot;
                 lock (_lock)
                 {
                     PollCpu();
@@ -112,13 +114,13 @@ namespace SupportTray
                     }
                     Uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
                     LastUpdate = DateTime.Now;
+                    snapshot = GetSnapshot();
                 }
 
-                var snapshot = GetSnapshot();
                 OnUpdate?.Invoke(snapshot);
                 CheckAlerts(snapshot);
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("HealthMonitor.Poll", ex); }
         }
 
         private void PollCpu()
@@ -131,17 +133,20 @@ namespace SupportTray
                 }
                 else
                 {
-                    // Fallback: WMI
                     using var searcher = new ManagementObjectSearcher(
                         "SELECT LoadPercentage FROM Win32_Processor");
-                    foreach (ManagementObject obj in searcher.Get())
+                    using var results = searcher.Get();
+                    foreach (ManagementObject obj in results)
                     {
-                        CpuPercent = Convert.ToSingle(obj["LoadPercentage"]);
-                        break;
+                        using (obj)
+                        {
+                            CpuPercent = Convert.ToSingle(obj["LoadPercentage"]);
+                            break;
+                        }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("PollCpu", ex); }
         }
 
         private void PollRam()
@@ -150,17 +155,21 @@ namespace SupportTray
             {
                 using var searcher = new ManagementObjectSearcher(
                     "SELECT TotalVisibleMemorySize, FreePhysicalMemory FROM Win32_OperatingSystem");
-                foreach (ManagementObject obj in searcher.Get())
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
                 {
-                    var totalKB = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
-                    var freeKB = Convert.ToDouble(obj["FreePhysicalMemory"]);
-                    RamTotalGB = (float)(totalKB / 1024.0 / 1024.0);
-                    RamUsedGB = (float)((totalKB - freeKB) / 1024.0 / 1024.0);
-                    RamPercent = (float)((totalKB - freeKB) / totalKB * 100.0);
-                    break;
+                    using (obj)
+                    {
+                        var totalKB = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
+                        var freeKB = Convert.ToDouble(obj["FreePhysicalMemory"]);
+                        RamTotalGB = (float)(totalKB / 1024.0 / 1024.0);
+                        RamUsedGB = (float)((totalKB - freeKB) / 1024.0 / 1024.0);
+                        RamPercent = (float)((totalKB - freeKB) / totalKB * 100.0);
+                        break;
+                    }
                 }
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("PollRam", ex); }
         }
 
         private void PollDisks()
@@ -187,7 +196,7 @@ namespace SupportTray
                 }
                 Disks = disks;
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("PollDisks", ex); }
         }
 
         private void PollTemperatures()
@@ -222,40 +231,40 @@ namespace SupportTray
                 var scope = new ManagementScope(wmiNamespace);
                 var opts = new EnumerationOptions { Timeout = TimeSpan.FromSeconds(3) };
                 using var searcher = new ManagementObjectSearcher(scope, new ObjectQuery(query), opts);
-                var results = searcher.Get();
+                using var results = searcher.Get();
                 bool foundCpu = false, foundGpu = false;
 
                 foreach (ManagementObject obj in results)
                 {
-                    var name = obj["Name"]?.ToString() ?? "";
-                    var parent = obj["Parent"]?.ToString() ?? "";
-                    var value = Convert.ToSingle(obj["Value"]);
-
-                    // CPU temperature
-                    if (!foundCpu && (name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("cpu", StringComparison.OrdinalIgnoreCase)))
+                    using (obj)
                     {
-                        // Take the package temp or first core temp
-                        if (name.Contains("Package", StringComparison.OrdinalIgnoreCase) ||
-                            name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
-                            !foundCpu)
+                        var name = obj["Name"]?.ToString() ?? "";
+                        var parent = obj["Parent"]?.ToString() ?? "";
+                        var value = Convert.ToSingle(obj["Value"]);
+
+                        if (!foundCpu && (name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
+                            name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("cpu", StringComparison.OrdinalIgnoreCase)))
                         {
-                            CpuTempC = value;
-                            CpuTempSource = name;
-                            foundCpu = true;
+                            if (name.Contains("Package", StringComparison.OrdinalIgnoreCase) ||
+                                name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
+                                !foundCpu)
+                            {
+                                CpuTempC = value;
+                                CpuTempSource = name;
+                                foundCpu = true;
+                            }
                         }
-                    }
 
-                    // GPU temperature
-                    if (!foundGpu && (name.Contains("GPU", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("gpu", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("nvidia", StringComparison.OrdinalIgnoreCase) ||
-                        parent.Contains("amd", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        GpuTempC = value;
-                        GpuTempSource = name;
-                        foundGpu = true;
+                        if (!foundGpu && (name.Contains("GPU", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("gpu", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("nvidia", StringComparison.OrdinalIgnoreCase) ||
+                            parent.Contains("amd", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            GpuTempC = value;
+                            GpuTempSource = name;
+                            foundGpu = true;
+                        }
                     }
                 }
 
@@ -272,17 +281,20 @@ namespace SupportTray
                 var opts = new EnumerationOptions { Timeout = TimeSpan.FromSeconds(3) };
                 using var searcher = new ManagementObjectSearcher(scope,
                     new ObjectQuery("SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature"), opts);
-                foreach (ManagementObject obj in searcher.Get())
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
                 {
-                    // Value is in tenths of Kelvin
-                    var tempK = Convert.ToDouble(obj["CurrentTemperature"]) / 10.0;
-                    var tempC = (float)(tempK - 273.15);
-                    if (tempC > 0 && tempC < 120)
+                    using (obj)
                     {
-                        CpuTempC = tempC;
-                        CpuTempSource = "ACPI Thermal Zone";
+                        var tempK = Convert.ToDouble(obj["CurrentTemperature"]) / 10.0;
+                        var tempC = (float)(tempK - 273.15);
+                        if (tempC > 0 && tempC < 120)
+                        {
+                            CpuTempC = tempC;
+                            CpuTempSource = "ACPI Thermal Zone";
+                        }
+                        break;
                     }
-                    break;
                 }
             }
             catch { }
@@ -319,7 +331,7 @@ namespace SupportTray
                 _lastBytesRecv = totalRecv;
                 _lastNetworkCheck = now;
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("PollNetwork", ex); }
         }
 
         private void PollProcesses()
@@ -357,7 +369,7 @@ namespace SupportTray
                     try { p.Dispose(); } catch { }
                 }
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("PollProcesses", ex); }
         }
 
         private void CheckAlerts(HealthSnapshot snapshot)

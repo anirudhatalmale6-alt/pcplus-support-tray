@@ -13,21 +13,35 @@ namespace SupportTray
 {
     public static class SystemInfo
     {
+        private static readonly System.Net.Http.HttpClient SharedHttpClient = new()
+        {
+            Timeout = TimeSpan.FromSeconds(5)
+        };
+
+        private static string? _cachedCpu;
+        private static string? _cachedOs;
+
         public static string GetHostname() => Environment.MachineName;
 
         public static string GetUsername() => Environment.UserName;
 
         public static string GetOSVersion()
         {
+            if (_cachedOs != null) return _cachedOs;
             try
             {
                 using var searcher = new ManagementObjectSearcher("SELECT Caption, Version FROM Win32_OperatingSystem");
-                foreach (ManagementObject obj in searcher.Get())
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
                 {
-                    return $"{obj["Caption"]} ({obj["Version"]})";
+                    using (obj)
+                    {
+                        _cachedOs = $"{obj["Caption"]} ({obj["Version"]})";
+                        return _cachedOs;
+                    }
                 }
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("SystemInfo.GetOSVersion", ex); }
             return RuntimeInformation.OSDescription;
         }
 
@@ -55,26 +69,33 @@ namespace SupportTray
             catch { return "Unknown"; }
         }
 
-        public static string GetPublicIP()
+        public static async System.Threading.Tasks.Task<string> GetPublicIPAsync()
         {
             try
             {
-                using var client = new System.Net.Http.HttpClient();
-                client.Timeout = TimeSpan.FromSeconds(5);
-                return client.GetStringAsync("https://api.ipify.org").Result.Trim();
+                var result = await SharedHttpClient.GetStringAsync("https://api.ipify.org").ConfigureAwait(false);
+                return result.Trim();
             }
             catch { return "Unable to retrieve"; }
         }
 
         public static string GetCPU()
         {
+            if (_cachedCpu != null) return _cachedCpu;
             try
             {
                 using var searcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
-                foreach (ManagementObject obj in searcher.Get())
-                    return obj["Name"]?.ToString() ?? "Unknown";
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
+                {
+                    using (obj)
+                    {
+                        _cachedCpu = obj["Name"]?.ToString() ?? "Unknown";
+                        return _cachedCpu;
+                    }
+                }
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("SystemInfo.GetCPU", ex); }
             return "Unknown";
         }
 
@@ -83,13 +104,17 @@ namespace SupportTray
             try
             {
                 using var searcher = new ManagementObjectSearcher("SELECT TotalPhysicalMemory FROM Win32_ComputerSystem");
-                foreach (ManagementObject obj in searcher.Get())
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
                 {
-                    var bytes = Convert.ToDouble(obj["TotalPhysicalMemory"]);
-                    return $"{bytes / (1024 * 1024 * 1024):F1} GB";
+                    using (obj)
+                    {
+                        var bytes = Convert.ToDouble(obj["TotalPhysicalMemory"]);
+                        return $"{bytes / (1024 * 1024 * 1024):F1} GB";
+                    }
                 }
             }
-            catch { }
+            catch (Exception ex) { Program.LogError("SystemInfo.GetRAM", ex); }
             return "Unknown";
         }
 
@@ -151,8 +176,10 @@ namespace SupportTray
             return "";
         }
 
-        public static string GetFullReport()
+        public static async System.Threading.Tasks.Task<string> GetFullReportAsync()
         {
+            var publicIpTask = GetPublicIPAsync();
+
             var sb = new StringBuilder();
             sb.AppendLine($"Computer Name: {GetHostname()}");
             sb.AppendLine($"Username: {GetUsername()}");
@@ -160,7 +187,7 @@ namespace SupportTray
             sb.AppendLine($"CPU: {GetCPU()}");
             sb.AppendLine($"RAM: {GetRAM()}");
             sb.AppendLine($"Local IP: {GetIPAddress()}");
-            sb.AppendLine($"Public IP: {GetPublicIP()}");
+            sb.AppendLine($"Public IP: {await publicIpTask.ConfigureAwait(false)}");
 
             var uptime = GetUptime();
             sb.AppendLine($"Uptime: {uptime.Days}d {uptime.Hours}h {uptime.Minutes}m");

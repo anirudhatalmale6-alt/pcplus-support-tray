@@ -128,20 +128,21 @@ namespace SupportTray
                 using var searcher = new ManagementObjectSearcher(
                     "root\\SecurityCenter2",
                     "SELECT displayName, productState FROM AntiVirusProduct");
-                var products = searcher.Get();
+                using var products = searcher.Get();
                 var activeProducts = new List<string>();
 
                 foreach (ManagementObject obj in products)
                 {
-                    var name = obj["displayName"]?.ToString() ?? "Unknown";
-                    var state = Convert.ToInt32(obj["productState"]);
+                    using (obj)
+                    {
+                        var name = obj["displayName"]?.ToString() ?? "Unknown";
+                        var state = Convert.ToInt32(obj["productState"]);
+                        var scannerActive = ((state >> 12) & 0xF) == 1;
+                        var upToDate = ((state >> 4) & 0xF) == 0;
 
-                    // Decode productState: bits 12-8 = scanner state, bit 4 = definitions up to date
-                    var scannerActive = ((state >> 12) & 0xF) == 1;
-                    var upToDate = ((state >> 4) & 0xF) == 0;
-
-                    if (scannerActive)
-                        activeProducts.Add(name + (upToDate ? "" : " (definitions outdated)"));
+                        if (scannerActive)
+                            activeProducts.Add(name + (upToDate ? "" : " (definitions outdated)"));
+                    }
                 }
 
                 if (activeProducts.Count > 0)
@@ -269,18 +270,19 @@ namespace SupportTray
                 using var searcher = new ManagementObjectSearcher(
                     "root\\CIMV2\\Security\\MicrosoftVolumeEncryption",
                     "SELECT DriveLetter, ProtectionStatus FROM Win32_EncryptableVolume");
-                var volumes = searcher.Get();
+                using var volumes = searcher.Get();
                 bool systemDriveEncrypted = false;
                 var systemDrive = Environment.GetFolderPath(Environment.SpecialFolder.Windows)
-                    .Substring(0, 2); // "C:"
+                    .Substring(0, 2);
 
                 foreach (ManagementObject obj in volumes)
                 {
-                    var drive = obj["DriveLetter"]?.ToString() ?? "";
-                    var status = Convert.ToInt32(obj["ProtectionStatus"]);
-                    if (drive.Equals(systemDrive, StringComparison.OrdinalIgnoreCase) && status == 1)
+                    using (obj)
                     {
-                        systemDriveEncrypted = true;
+                        var drive = obj["DriveLetter"]?.ToString() ?? "";
+                        var status = Convert.ToInt32(obj["ProtectionStatus"]);
+                        if (drive.Equals(systemDrive, StringComparison.OrdinalIgnoreCase) && status == 1)
+                            systemDriveEncrypted = true;
                     }
                 }
 
@@ -314,34 +316,35 @@ namespace SupportTray
 
             try
             {
-                var osVersion = Environment.OSVersion.Version;
                 using var searcher = new ManagementObjectSearcher(
                     "SELECT Caption, BuildNumber FROM Win32_OperatingSystem");
-                foreach (ManagementObject obj in searcher.Get())
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
                 {
-                    var caption = obj["Caption"]?.ToString() ?? "";
-                    var build = int.TryParse(obj["BuildNumber"]?.ToString(), out var b) ? b : 0;
+                    using (obj)
+                    {
+                        var caption = obj["Caption"]?.ToString() ?? "";
+                        var build = int.TryParse(obj["BuildNumber"]?.ToString(), out var b) ? b : 0;
 
-                    // Windows 10 22H2 = 19045, Windows 11 = 22000+
-                    // EOL versions: anything below Windows 10 (build < 10240)
-                    if (build >= 19041) // Windows 10 2004+
-                    {
-                        check.Passed = true;
-                        check.Detail = $"{caption} (Build {build})";
+                        if (build >= 19041)
+                        {
+                            check.Passed = true;
+                            check.Detail = $"{caption} (Build {build})";
+                        }
+                        else if (build >= 10240)
+                        {
+                            check.Passed = false;
+                            check.Detail = $"{caption} (Build {build}) - outdated feature update";
+                            check.Recommendation = "Update to the latest Windows 10/11 feature update";
+                        }
+                        else
+                        {
+                            check.Passed = false;
+                            check.Detail = $"{caption} - end of life";
+                            check.Recommendation = "Upgrade to Windows 10 or 11 for security updates";
+                        }
+                        break;
                     }
-                    else if (build >= 10240) // Older Windows 10
-                    {
-                        check.Passed = false;
-                        check.Detail = $"{caption} (Build {build}) - outdated feature update";
-                        check.Recommendation = "Update to the latest Windows 10/11 feature update";
-                    }
-                    else
-                    {
-                        check.Passed = false;
-                        check.Detail = $"{caption} - end of life";
-                        check.Recommendation = "Upgrade to Windows 10 or 11 for security updates";
-                    }
-                    break;
                 }
             }
             catch

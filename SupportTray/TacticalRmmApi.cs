@@ -6,11 +6,12 @@ using System.Threading.Tasks;
 
 namespace SupportTray
 {
-    public class TacticalRmmApi
+    public class TacticalRmmApi : IDisposable
     {
         private readonly HttpClient _client;
         private readonly string _baseUrl;
         private readonly string _apiKey;
+        private bool _disposed;
 
         public TacticalRmmApi(string baseUrl, string apiKey)
         {
@@ -19,6 +20,13 @@ namespace SupportTray
             _client = new HttpClient();
             _client.DefaultRequestHeaders.Add("X-API-KEY", _apiKey);
             _client.Timeout = TimeSpan.FromSeconds(30);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _client.Dispose();
         }
 
         public async Task<(bool Success, string Message, int? TicketId)> CreateTicketAsync(

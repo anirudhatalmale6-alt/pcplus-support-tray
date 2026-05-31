@@ -18,6 +18,9 @@ namespace SupportTray
         private readonly HealthMonitor _monitor;
         private SecurityScanner? _securityScanner;
         private System.Windows.Forms.Timer _uiTimer = null!;
+        private string _cachedCpuName = "";
+        private string _cachedOsVersion = "";
+        private string _cachedIpAddress = "";
 
         // UI panels
         private DashboardPanel _cpuPanel = null!;
@@ -140,17 +143,24 @@ namespace SupportTray
             Load += (s, e) =>
             {
                 LayoutCards(content);
-                // Run security scan in background
                 System.Threading.Tasks.Task.Run(() =>
                 {
-                    _securityScanner = new SecurityScanner();
-                    _securityScanner.RunFullScan();
-                    if (!IsDisposed)
-                        Invoke(() => _securityPanel.Invalidate());
+                    try
+                    {
+                        _securityScanner = new SecurityScanner();
+                        _securityScanner.RunFullScan();
+                        if (!IsDisposed)
+                            Invoke(() => _securityPanel.Invalidate());
+                    }
+                    catch (Exception ex) { Program.LogError("SecurityScan", ex); }
                 });
             };
 
             // UI refresh timer (separate from monitor's poll timer)
+            _cachedCpuName = SystemInfo.GetCPU();
+            _cachedOsVersion = SystemInfo.GetOSVersion();
+            _cachedIpAddress = SystemInfo.GetIPAddress();
+
             _uiTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             _uiTimer.Tick += (s, e) => UpdateUI();
             _uiTimer.Start();
@@ -227,7 +237,7 @@ namespace SupportTray
             {
                 case "CPU":
                     PaintGaugeCard(g, bounds, "CPU", snap.CpuPercent, "%",
-                        $"{snap.CpuPercent:F0}%", SystemInfo.GetCPU(),
+                        $"{snap.CpuPercent:F0}%", _cachedCpuName,
                         AccentBlue, _cpuHistory.ToArray());
                     break;
 
@@ -634,9 +644,9 @@ namespace SupportTray
                 ("Computer", SystemInfo.GetHostname()),
                 ("User", SystemInfo.GetUsername()),
                 ("Uptime", FormatUptime(snap.Uptime)),
-                ("OS", TruncateText(SystemInfo.GetOSVersion(), 40)),
-                ("CPU", TruncateText(SystemInfo.GetCPU(), 40)),
-                ("IP", SystemInfo.GetIPAddress())
+                ("OS", TruncateText(_cachedOsVersion, 40)),
+                ("CPU", TruncateText(_cachedCpuName, 40)),
+                ("IP", _cachedIpAddress)
             };
 
             foreach (var (label, value) in items)

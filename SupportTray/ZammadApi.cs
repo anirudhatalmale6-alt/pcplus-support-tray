@@ -9,10 +9,11 @@ using System.Threading.Tasks;
 
 namespace SupportTray
 {
-    public class ZammadApi
+    public class ZammadApi : IDisposable
     {
         private readonly HttpClient _client;
         private readonly string _baseUrl;
+        private bool _disposed;
 
         public ZammadApi(string baseUrl, string apiToken)
         {
@@ -21,6 +22,13 @@ namespace SupportTray
             _client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Token", apiToken);
             _client.Timeout = TimeSpan.FromSeconds(30);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _client.Dispose();
         }
 
         public async Task<(bool Success, string Message, int? TicketId)> CreateTicketAsync(

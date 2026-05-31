@@ -230,6 +230,7 @@ namespace SupportTray
             {
                 _refreshTimer?.Stop();
                 _refreshTimer?.Dispose();
+                _zammadApi?.Dispose();
             };
         }
 

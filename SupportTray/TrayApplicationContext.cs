@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace SupportTray
@@ -117,29 +118,31 @@ namespace SupportTray
         {
             System.Threading.Tasks.Task.Run(() =>
             {
-                var scanner = new SecurityScanner();
-                scanner.RunFullScan();
+                try
+                {
+                    var scanner = new SecurityScanner();
+                    scanner.RunFullScan();
 
-                // Save audit report
-                var auditDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "PCPlusSupport", "Audits");
-                Directory.CreateDirectory(auditDir);
-                var auditFile = Path.Combine(auditDir,
-                    $"first_install_audit_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
-                File.WriteAllText(auditFile, scanner.GetReportText());
+                    var auditDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                        "PCPlusSupport", "Audits");
+                    Directory.CreateDirectory(auditDir);
+                    var auditFile = Path.Combine(auditDir,
+                        $"first_install_audit_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+                    File.WriteAllText(auditFile, scanner.GetReportText());
 
-                // Show summary balloon
-                var grade = scanner.Grade;
-                var score = scanner.TotalScore;
-                var failCount = scanner.Checks.Count(c => !c.Passed);
+                    var grade = scanner.Grade;
+                    var score = scanner.TotalScore;
+                    var failCount = scanner.Checks.Count(c => !c.Passed);
 
-                _trayIcon.BalloonTipTitle = $"Security Audit: {grade} ({score}/100)";
-                _trayIcon.BalloonTipText = failCount > 0
-                    ? $"{failCount} issue(s) found. Double-click for details."
-                    : "All security checks passed!";
-                _trayIcon.BalloonTipIcon = score >= 80 ? ToolTipIcon.Info : ToolTipIcon.Warning;
-                _trayIcon.ShowBalloonTip(8000);
+                    _trayIcon.BalloonTipTitle = $"Security Audit: {grade} ({score}/100)";
+                    _trayIcon.BalloonTipText = failCount > 0
+                        ? $"{failCount} issue(s) found. Double-click for details."
+                        : "All security checks passed!";
+                    _trayIcon.BalloonTipIcon = score >= 80 ? ToolTipIcon.Info : ToolTipIcon.Warning;
+                    _trayIcon.ShowBalloonTip(8000);
+                }
+                catch (Exception ex) { Program.LogError("FirstInstallAudit", ex); }
             });
         }
 
@@ -156,9 +159,11 @@ namespace SupportTray
             await updater.CheckAndUpdateAsync(silent);
         }
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool DestroyIcon(IntPtr hIcon);
+
         private Icon CreateDefaultIcon()
         {
-            // Check for custom override icon (custom-icon.ico, not the bundled icon.ico)
             var exeDir = AppDomain.CurrentDomain.BaseDirectory;
             var customIconPath = Path.Combine(exeDir, "custom-icon.ico");
             if (File.Exists(customIconPath))
@@ -167,40 +172,44 @@ namespace SupportTray
                 catch { }
             }
 
-            // Create bright, visible icon programmatically
-            using var bitmap = new Bitmap(32, 32);
-            using var g = Graphics.FromImage(bitmap);
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-            g.Clear(Color.Transparent);
+            var bitmap = new Bitmap(32, 32);
+            try
+            {
+                using var g = Graphics.FromImage(bitmap);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                g.Clear(Color.Transparent);
 
-            // Rounded square - white background for maximum visibility
-            using var bgPath = new GraphicsPath();
-            bgPath.AddArc(1, 1, 8, 8, 180, 90);
-            bgPath.AddArc(23, 1, 8, 8, 270, 90);
-            bgPath.AddArc(23, 23, 8, 8, 0, 90);
-            bgPath.AddArc(1, 23, 8, 8, 90, 90);
-            bgPath.CloseFigure();
+                using var bgPath = new GraphicsPath();
+                bgPath.AddArc(1, 1, 8, 8, 180, 90);
+                bgPath.AddArc(23, 1, 8, 8, 270, 90);
+                bgPath.AddArc(23, 23, 8, 8, 0, 90);
+                bgPath.AddArc(1, 23, 8, 8, 90, 90);
+                bgPath.CloseFigure();
 
-            // White fill - stands out on dark taskbar
-            using var bgBrush = new SolidBrush(Color.White);
-            g.FillPath(bgBrush, bgPath);
+                using var bgBrush = new SolidBrush(Color.White);
+                g.FillPath(bgBrush, bgPath);
 
-            // Blue border matching brand color
-            using var borderPen = new Pen(Color.FromArgb(255, 40, 120, 220), 2f);
-            g.DrawPath(borderPen, bgPath);
+                using var borderPen = new Pen(Color.FromArgb(255, 40, 120, 220), 2f);
+                g.DrawPath(borderPen, bgPath);
 
-            // "PC" text - bold blue on white background
-            using var font = new Font("Segoe UI", 12, FontStyle.Bold);
-            var textSize = g.MeasureString("PC", font);
-            float tx = (32 - textSize.Width) / 2;
-            float ty = (32 - textSize.Height) / 2 - 1;
+                using var font = new Font("Segoe UI", 12, FontStyle.Bold);
+                var textSize = g.MeasureString("PC", font);
+                float tx = (32 - textSize.Width) / 2;
+                float ty = (32 - textSize.Height) / 2 - 1;
 
-            using var textBrush = new SolidBrush(Color.FromArgb(255, 30, 100, 200));
-            g.DrawString("PC", font, textBrush, tx, ty);
+                using var textBrush = new SolidBrush(Color.FromArgb(255, 30, 100, 200));
+                g.DrawString("PC", font, textBrush, tx, ty);
 
-            var handle = bitmap.GetHicon();
-            return Icon.FromHandle(handle);
+                var handle = bitmap.GetHicon();
+                var icon = (Icon)Icon.FromHandle(handle).Clone();
+                DestroyIcon(handle);
+                return icon;
+            }
+            finally
+            {
+                bitmap.Dispose();
+            }
         }
 
         private ContextMenuStrip CreateContextMenu()

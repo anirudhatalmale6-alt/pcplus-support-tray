@@ -235,13 +235,12 @@ namespace SupportTray
 
             if (_includeSystemInfo.Checked)
             {
-                description += "\n\n--- System Information ---\n" + SystemInfo.GetFullReport();
+                description += "\n\n--- System Information ---\n" + await SystemInfo.GetFullReportAsync();
             }
 
-            // Try Zammad first, then Tactical RMM, then local fallback
             if (!string.IsNullOrEmpty(_config.ZammadUrl) && !string.IsNullOrEmpty(_config.ZammadApiToken))
             {
-                var api = new ZammadApi(_config.ZammadUrl, _config.ZammadApiToken);
+                using var api = new ZammadApi(_config.ZammadUrl, _config.ZammadApiToken);
                 var email = _config.SupportEmail;
                 if (string.IsNullOrEmpty(email)) email = "customer@pcpluscomputing.com";
 
@@ -278,7 +277,7 @@ namespace SupportTray
                 if (_includeScreenshot.Checked && !string.IsNullOrEmpty(_screenshotPath))
                     description += $"\n\n[Screenshot attached: {Path.GetFileName(_screenshotPath)}]";
 
-                var api = new TacticalRmmApi(_config.RmmUrl, _config.RmmApiKey);
+                using var api = new TacticalRmmApi(_config.RmmUrl, _config.RmmApiKey);
                 var agentId = SystemInfo.GetTacticalAgentId();
                 var result = await api.CreateTicketAsync(_subjectBox.Text, description, agentId);
 
