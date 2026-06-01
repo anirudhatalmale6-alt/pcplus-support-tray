@@ -314,8 +314,8 @@ namespace PCPlus.Tray.Forms
             if (contentW < 200) contentW = 700; // fallback if panel not laid out yet
             int y = 10;
 
-            // === HERO STATUS CARD - Large Malwarebytes-style ===
-            var heroCard = CreateCard(new Point(m, y), new Size(contentW, 120));
+            // === HERO STATUS CARD - Premium security overview ===
+            var heroCard = CreateCard(new Point(m, y), new Size(contentW, 140));
             heroCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             heroCard.Paint += (s, e) =>
             {
@@ -324,74 +324,127 @@ namespace PCPlus.Tray.Forms
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
                 var hasData = _health != null && (_health.CpuPercent > 0 || _health.RamPercent > 0);
-                var statusColor = hasData ? AccentGreen : AccentOrange;
+                var score = _securityResult?.TotalScore ?? 0;
+                var statusColor = hasData ? (score >= 80 ? AccentGreen : score >= 50 ? AccentOrange : AccentRed) : AccentOrange;
 
-                // Gradient background
+                // Subtle gradient background
                 using var gradBrush = new LinearGradientBrush(
-                    new Point(0, 0), new Point(heroCard.Width, 0),
-                    Color.FromArgb(8, statusColor), Color.FromArgb(2, statusColor));
+                    new Rectangle(0, 0, heroCard.Width, heroCard.Height),
+                    Color.FromArgb(12, statusColor), Color.FromArgb(3, statusColor),
+                    LinearGradientMode.Horizontal);
                 g.FillRectangle(gradBrush, heroCard.ClientRectangle);
 
-                // Large shield circle
-                int shieldSize = 64;
+                // Left accent bar
+                g.FillRectangle(new SolidBrush(statusColor), 0, 0, 4, heroCard.Height);
+
+                // Shield with glow
+                int shieldSize = 72;
                 int shieldX = 24, shieldY = (heroCard.Height - shieldSize) / 2;
+
+                // Glow behind shield
+                using var glowBrush = new SolidBrush(Color.FromArgb(20, statusColor));
+                g.FillEllipse(glowBrush, shieldX - 6, shieldY - 6, shieldSize + 12, shieldSize + 12);
+
                 using var shieldBrush = new SolidBrush(statusColor);
                 g.FillEllipse(shieldBrush, shieldX, shieldY, shieldSize, shieldSize);
 
-                using var checkPen = new Pen(Color.White, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                // Inner circle highlight
+                using var innerBrush = new SolidBrush(Color.FromArgb(30, 255, 255, 255));
+                g.FillEllipse(innerBrush, shieldX + 4, shieldY + 4, shieldSize - 8, shieldSize - 8);
+
+                using var checkPen = new Pen(Color.White, 3.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
                 if (hasData)
                 {
-                    g.DrawLine(checkPen, shieldX + 20, shieldY + 34, shieldX + 28, shieldY + 42);
-                    g.DrawLine(checkPen, shieldX + 28, shieldY + 42, shieldX + 44, shieldY + 24);
+                    g.DrawLine(checkPen, shieldX + 22, shieldY + 38, shieldX + 30, shieldY + 48);
+                    g.DrawLine(checkPen, shieldX + 30, shieldY + 48, shieldX + 50, shieldY + 26);
                 }
                 else
                 {
-                    using var dotFont = new Font("Segoe UI", 18, FontStyle.Bold);
+                    using var dotFont = new Font("Segoe UI", 20, FontStyle.Bold);
                     using var wb = new SolidBrush(Color.White);
-                    g.DrawString("...", dotFont, wb, shieldX + 14, shieldY + 16);
+                    g.DrawString("...", dotFont, wb, shieldX + 16, shieldY + 18);
                 }
 
-                int textX = shieldX + shieldSize + 20;
+                int textX = shieldX + shieldSize + 24;
 
-                // Status text - large
+                // Status text
                 var statusText = hasData ? "Protection Active" : "Connecting...";
-                using var statusFont = new Font("Segoe UI", 18, FontStyle.Bold);
+                using var statusFont = new Font("Segoe UI", 20, FontStyle.Bold);
                 using var statusBrush = new SolidBrush(TextDark);
-                g.DrawString(statusText, statusFont, statusBrush, textX, 18);
+                g.DrawString(statusText, statusFont, statusBrush, textX, 16);
 
-                // Sub-info row
-                using var subFont = new Font("Segoe UI", 9.5f);
-                using var subBrush = new SolidBrush(TextMuted);
-                var score = _securityResult?.TotalScore ?? 0;
+                // Module status pills
                 var scanTime = _securityResult?.ScanTime.ToString("MMM d, h:mm tt") ?? "Never";
-                var subParts = new List<string>();
-                if (hasData) subParts.Add($"Security: {score}/100");
-                subParts.Add($"Scan: {scanTime}");
+                using var pillFont = new Font("Segoe UI", 8f, FontStyle.Bold);
+                int pillX = textX;
+                int pillY = 54;
+
+                void DrawPill(string text, Color pillColor, bool active)
+                {
+                    var sz = g.MeasureString(text, pillFont);
+                    int pw = (int)sz.Width + 16;
+                    using var pPath = RoundedRect(new Rectangle(pillX, pillY, pw, 20), 10);
+                    using var pBg = new SolidBrush(active ? Color.FromArgb(20, pillColor) : Color.FromArgb(245, 247, 250));
+                    g.FillPath(pBg, pPath);
+                    using var pBrush = new SolidBrush(active ? pillColor : TextMuted);
+                    g.DrawString(text, pillFont, pBrush, pillX + 8, pillY + 2);
+                    pillX += pw + 6;
+                }
+                DrawPill("Real-Time", AccentGreen, hasData);
+                DrawPill("DNS Shield", AccentTeal, _dnsActive);
+                DrawPill("Firewall", AccentBlue, hasData);
+                DrawPill($"Scan: {scanTime}", TextMuted, false);
+
+                // Uptime info
                 if (_health != null)
                 {
+                    using var upFont = new Font("Segoe UI", 8.5f);
+                    using var upBrush = new SolidBrush(TextMuted);
                     var up = _health.Uptime;
-                    subParts.Add($"Uptime: {(int)up.TotalDays}d {up.Hours}h {up.Minutes}m");
+                    g.DrawString($"Uptime: {(int)up.TotalDays}d {up.Hours}h {up.Minutes}m", upFont, upBrush, textX, 82);
                 }
-                g.DrawString(string.Join("   •   ", subParts), subFont, subBrush, textX, 56);
 
-                // Security score badge on right
-                if (hasData)
+                // Security score ring gauge on right
+                int ringSize = 90;
+                int ringX = heroCard.Width - ringSize - 24;
+                int ringY = (heroCard.Height - ringSize) / 2;
+                var ringRect = new Rectangle(ringX, ringY, ringSize, ringSize);
+
+                // Ring track
+                using var ringTrack = new Pen(Color.FromArgb(225, 230, 238), 8);
+                ringTrack.StartCap = LineCap.Round; ringTrack.EndCap = LineCap.Round;
+                g.DrawArc(ringTrack, ringRect, 0, 360);
+
+                // Ring glow
+                float scorePct = score / 100f;
+                if (scorePct > 0)
                 {
-                    var badgeX = heroCard.Width - 100;
-                    var badgeY = (heroCard.Height - 50) / 2;
-                    using var scoreBg = new SolidBrush(Color.FromArgb(15, statusColor));
-                    using var scorePath = RoundedRect(new Rectangle(badgeX, badgeY, 76, 50), 8);
-                    g.FillPath(scoreBg, scorePath);
-                    using var scoreFont = new Font("Segoe UI", 20, FontStyle.Bold);
-                    using var scoreBrush = new SolidBrush(statusColor);
-                    var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                    g.DrawString($"{score}", scoreFont, scoreBrush, new RectangleF(badgeX, badgeY - 4, 76, 50), sf);
-                    using var scoreLbl = new Font("Segoe UI", 7f);
-                    g.DrawString("/100", scoreLbl, subBrush, new RectangleF(badgeX, badgeY + 32, 76, 20), sf);
+                    using var ringGlow = new Pen(Color.FromArgb(25, statusColor), 14);
+                    ringGlow.StartCap = LineCap.Round; ringGlow.EndCap = LineCap.Round;
+                    g.DrawArc(ringGlow, ringRect, -90, scorePct * 360f);
                 }
+
+                // Ring value
+                if (scorePct > 0)
+                {
+                    using var ringPen = new Pen(statusColor, 8);
+                    ringPen.StartCap = LineCap.Round; ringPen.EndCap = LineCap.Round;
+                    g.DrawArc(ringPen, ringRect, -90, scorePct * 360f);
+                }
+
+                // Score text in center
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                using var scoreFont = new Font("Segoe UI", 24, FontStyle.Bold);
+                using var scoreBrush = new SolidBrush(hasData ? statusColor : TextMuted);
+                g.DrawString(hasData ? $"{score}" : "--", scoreFont, scoreBrush,
+                    new RectangleF(ringX, ringY - 4, ringSize, ringSize), sf);
+                using var scoreLbl = new Font("Segoe UI", 7f);
+                using var lblBrush = new SolidBrush(TextMuted);
+                g.DrawString("SCORE", scoreLbl, lblBrush,
+                    new RectangleF(ringX, ringY + 30, ringSize, 30), sf);
             };
             _contentArea.Controls.Add(heroCard);
-            y += 128;
+            y += 148;
 
             // === SYSTEM GAUGES - 4 donut cards ===
             int gap = 10;
