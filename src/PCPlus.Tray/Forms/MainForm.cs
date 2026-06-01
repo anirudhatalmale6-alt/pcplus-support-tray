@@ -52,6 +52,12 @@ namespace PCPlus.Tray.Forms
         private List<(string PatchId, string Severity)> _missingPatches = new();
         private DateTime _patchesLastChecked;
 
+        // Hardware monitor - 30 min cached readings
+        private HealthSnapshot? _hwSnapshot;
+        private DateTime _hwSnapshotTime = DateTime.MinValue;
+        private bool _hwLockAfterFirst;
+        private static readonly TimeSpan HwRefreshInterval = TimeSpan.FromMinutes(30);
+
         // UI
         private Panel _sidebar = null!;
         private Panel _contentArea = null!;
@@ -419,17 +425,17 @@ namespace PCPlus.Tray.Forms
             int rightW = contentW - leftW - gap;
 
             // Hardware Monitor (left)
-            var monitorCard = CreateCard(new Point(m, y), new Size(leftW, 290));
+            var monitorCard = CreateCard(new Point(m, y), new Size(leftW, 390));
             monitorCard.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             AddHardwareMonitor(monitorCard);
             _contentArea.Controls.Add(monitorCard);
 
             // Quick Actions (right)
-            var quickCard = CreateCard(new Point(m + leftW + gap, y), new Size(rightW, 290));
+            var quickCard = CreateCard(new Point(m + leftW + gap, y), new Size(rightW, 390));
             quickCard.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             AddQuickActions(quickCard);
             _contentArea.Controls.Add(quickCard);
-            y += 298;
+            y += 398;
 
             // === DNS PROTECTION LIVE FEED + MISSING PATCHES - side by side ===
             int dnsW = (contentW - gap) / 2;
@@ -716,6 +722,31 @@ namespace PCPlus.Tray.Forms
 
         private void AddHardwareMonitor(Panel card)
         {
+            // Update cached snapshot if interval elapsed (or first reading)
+            if (_health != null && !(_hwLockAfterFirst && _hwSnapshot != null))
+            {
+                if (DateTime.Now - _hwSnapshotTime >= HwRefreshInterval || _hwSnapshot == null)
+                {
+                    _hwSnapshot = _health;
+                    _hwSnapshotTime = DateTime.Now;
+                }
+            }
+            var displayHealth = _hwSnapshot ?? _health;
+
+            // Lock toggle checkbox
+            var lockCheck = new CheckBox
+            {
+                Text = "Lock readings", Checked = _hwLockAfterFirst,
+                Font = new Font("Segoe UI", 8f), ForeColor = TextMuted,
+                BackColor = Color.Transparent, AutoSize = true,
+                Location = new Point(card.Width - 120, 12), Cursor = Cursors.Hand
+            };
+            lockCheck.CheckedChanged += (s, e) =>
+            {
+                _hwLockAfterFirst = lockCheck.Checked;
+            };
+            card.Controls.Add(lockCheck);
+
             card.Paint += (s, e) =>
             {
                 var g = e.Graphics;
@@ -726,13 +757,16 @@ namespace PCPlus.Tray.Forms
                 using var titleBrush = new SolidBrush(TextDark);
                 g.DrawString("Hardware Monitor", titleFont, titleBrush, 14, 10);
 
-                // Subtitle
+                // Subtitle with snapshot time
                 using var subFont = new Font("Segoe UI", 8f);
                 using var subBrush = new SolidBrush(TextMuted);
-                var procCount = _health?.ProcessCount ?? 0;
-                g.DrawString($"{procCount} processes running", subFont, subBrush, 14, 30);
+                var procCount = displayHealth?.ProcessCount ?? 0;
+                var snapInfo = _hwSnapshotTime > DateTime.MinValue
+                    ? $"{procCount} processes  |  Snapshot: {_hwSnapshotTime:h:mm tt}"
+                    : $"{procCount} processes running";
+                g.DrawString(snapInfo, subFont, subBrush, 14, 30);
 
-                if (_health?.TopProcesses == null || _health.TopProcesses.Count == 0)
+                if (displayHealth?.TopProcesses == null || displayHealth.TopProcesses.Count == 0)
                 {
                     using var emptyFont = new Font("Segoe UI", 9);
                     g.DrawString("Waiting for process data...", emptyFont, subBrush, 14, 56);
@@ -760,7 +794,7 @@ namespace PCPlus.Tray.Forms
                 int rowY = hdrY + 22;
                 int rowH = 22;
 
-                foreach (var (proc, idx) in _health.TopProcesses.Take(7).Select((p, i) => (p, i)))
+                foreach (var (proc, idx) in displayHealth.TopProcesses.Take(7).Select((p, i) => (p, i)))
                 {
                     // Alternating row background
                     if (idx % 2 == 0)
@@ -848,6 +882,18 @@ namespace PCPlus.Tray.Forms
                 {
                     await Task.CompletedTask;
                     TakeScreenshot();
+                }),
+                ("Remote Support", "Connect with a technician", Color.FromArgb(139, 92, 246), async () =>
+                {
+                    await Task.CompletedTask;
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    { FileName = "https://mesh.pcpluscomputing.com/", UseShellExecute = true });
+                }),
+                ("VPN Portal", "Download and configure VPN", Color.FromArgb(16, 185, 129), async () =>
+                {
+                    await Task.CompletedTask;
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    { FileName = "https://vpn.pcpluscomputing.com/", UseShellExecute = true });
                 })
             };
 
@@ -2955,21 +3001,8 @@ namespace PCPlus.Tray.Forms
             };
             remoteCard.Click += (s, e) =>
             {
-                try
-                {
-                    var quickAssist = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                        "Quick Assist", "QuickAssist.exe");
-                    if (File.Exists(quickAssist))
-                        System.Diagnostics.Process.Start(quickAssist);
-                    else
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        { FileName = "ms-quick-assist:", UseShellExecute = true });
-                }
-                catch
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    { FileName = "https://quick-assist.microsoft.com/", UseShellExecute = true });
-                }
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = "https://mesh.pcpluscomputing.com/", UseShellExecute = true });
             };
             _contentArea.Controls.Add(remoteCard);
             y += 140 + gap;
