@@ -1029,14 +1029,19 @@ namespace PCPlus.Tray.Forms
             };
 
             int btnY = 38;
-            int btnH = 44;
-            int btnGap = 6;
+            int btnH = 46;
+            int btnGap = 5;
+            string[] icons = { "\u2714", "\u2692", "\u21C5", "\u2605", "\u2316", "\u260E", "\u26BF" };
+            int iconIdx = 0;
             foreach (var (text, desc, color, action) in actions)
             {
+                var btnColor = color;
+                var btnIcon = iconIdx < icons.Length ? icons[iconIdx] : "\u25CF";
+                iconIdx++;
                 var btn = new Panel
                 {
                     Location = new Point(10, btnY), Size = new Size(card.Width - 20, btnH),
-                    BackColor = Color.FromArgb(248, 249, 250), Cursor = Cursors.Hand
+                    BackColor = Color.FromArgb(250, 251, 252), Cursor = Cursors.Hand
                 };
                 btn.Paint += (s, e) =>
                 {
@@ -1044,26 +1049,39 @@ namespace PCPlus.Tray.Forms
                     g.SmoothingMode = SmoothingMode.AntiAlias;
                     g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-                    using var borderPen = new Pen(CardBorder);
-                    using var path = RoundedRect(new Rectangle(0, 0, btn.Width - 1, btn.Height - 1), 6);
-                    g.DrawPath(borderPen, path);
+                    // Rounded background
+                    using var bgPath = RoundedRect(new Rectangle(0, 0, btn.Width - 1, btn.Height - 1), 8);
+                    using var bgBrush = new SolidBrush(btn.BackColor);
+                    g.FillPath(bgBrush, bgPath);
+                    using var borderPen = new Pen(Color.FromArgb(220, 225, 235));
+                    g.DrawPath(borderPen, bgPath);
 
-                    // Color bar on left
-                    using var barBrush = new SolidBrush(color);
-                    g.FillRectangle(barBrush, 0, 6, 4, btn.Height - 12);
+                    // Color circle icon
+                    int circleSize = 30;
+                    int circleX = 8, circleY = (btn.Height - circleSize) / 2;
+                    using var circleBg = new SolidBrush(Color.FromArgb(18, btnColor));
+                    g.FillEllipse(circleBg, circleX, circleY, circleSize, circleSize);
+                    using var iconFont = new Font("Segoe UI Symbol", 11);
+                    using var iconBrush = new SolidBrush(btnColor);
+                    var iconSz = g.MeasureString(btnIcon, iconFont);
+                    g.DrawString(btnIcon, iconFont, iconBrush,
+                        circleX + (circleSize - iconSz.Width) / 2,
+                        circleY + (circleSize - iconSz.Height) / 2);
 
+                    // Text
                     using var nameFont = new Font("Segoe UI", 9.5f, FontStyle.Bold);
                     using var descFont = new Font("Segoe UI", 7.5f);
                     using var nameBrush = new SolidBrush(TextDark);
                     using var descBrush = new SolidBrush(TextMuted);
-                    g.DrawString(text, nameFont, nameBrush, 14, 4);
-                    g.DrawString(desc, descFont, descBrush, 14, 23);
+                    g.DrawString(text, nameFont, nameBrush, circleX + circleSize + 8, 5);
+                    g.DrawString(desc, descFont, descBrush, circleX + circleSize + 8, 24);
 
-                    using var arrowFont = new Font("Segoe UI", 11);
-                    g.DrawString("\u203A", arrowFont, descBrush, btn.Width - 20, 10);
+                    // Arrow
+                    using var arrowFont = new Font("Segoe UI", 12);
+                    g.DrawString("\u203A", arrowFont, descBrush, btn.Width - 22, 11);
                 };
-                btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(235, 240, 248);
-                btn.MouseLeave += (s, e) => btn.BackColor = Color.FromArgb(248, 249, 250);
+                btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(235, 240, 250);
+                btn.MouseLeave += (s, e) => btn.BackColor = Color.FromArgb(250, 251, 252);
                 btn.Click += async (s, e) =>
                 {
                     try { await action(); }
