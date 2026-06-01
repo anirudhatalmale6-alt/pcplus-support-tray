@@ -58,6 +58,13 @@ namespace PCPlus.Tray.Forms
         private bool _hwLockAfterFirst;
         private static readonly TimeSpan HwRefreshInterval = TimeSpan.FromMinutes(30);
 
+        // Trend history for sparklines (last 30 data points = ~5 minutes at 10s interval)
+        private readonly List<float> _cpuHistory = new();
+        private readonly List<float> _ramHistory = new();
+        private readonly List<float> _diskHistory = new();
+        private readonly List<float> _tempHistory = new();
+        private const int MaxHistoryPoints = 30;
+
         // UI
         private Panel _sidebar = null!;
         private Panel _contentArea = null!;
@@ -386,28 +393,42 @@ namespace PCPlus.Tray.Forms
             _contentArea.Controls.Add(heroCard);
             y += 128;
 
-            // === SYSTEM GAUGES - 4 cards in a row ===
+            // === SYSTEM GAUGES - 4 donut cards ===
             int gap = 10;
             int gaugeW = (contentW - gap * 3) / 4;
-            int gaugeH = 140;
+            int gaugeH = 170;
 
             float cpuVal = _health?.CpuPercent ?? 0;
             float ramVal = _health?.RamPercent ?? 0;
             float diskVal = _health?.Disks.FirstOrDefault()?.UsedPercent ?? 0;
             float tempVal = _health?.CpuTempC ?? 0;
+
+            // Track trend history
+            void AddHistory(List<float> hist, float val)
+            {
+                hist.Add(val);
+                if (hist.Count > MaxHistoryPoints) hist.RemoveAt(0);
+            }
+            if (_health != null)
+            {
+                AddHistory(_cpuHistory, cpuVal);
+                AddHistory(_ramHistory, ramVal);
+                AddHistory(_diskHistory, diskVal);
+                AddHistory(_tempHistory, tempVal);
+            }
             string ramDetail = _health != null ? $"{_health.RamUsedGB:F1} / {_health.RamTotalGB:F1} GB" : "";
             var firstDisk = _health?.Disks.FirstOrDefault();
             string diskDetail = firstDisk != null ? $"{firstDisk.TotalGB - firstDisk.FreeGB:F0} / {firstDisk.TotalGB:F0} GB" : "";
             string tempDetail = tempVal > 0 ? $"{tempVal:F0}\u00B0C" : "No sensor";
 
             var cpuCard = CreateGaugeCard("CPU", cpuVal, "%", AccentBlue,
-                new Point(m, y), new Size(gaugeW, gaugeH));
+                new Point(m, y), new Size(gaugeW, gaugeH), null, _cpuHistory);
             var ramCard = CreateGaugeCard("Memory", ramVal, "%", AccentTeal,
-                new Point(m + gaugeW + gap, y), new Size(gaugeW, gaugeH), ramDetail);
+                new Point(m + gaugeW + gap, y), new Size(gaugeW, gaugeH), ramDetail, _ramHistory);
             var diskCard = CreateGaugeCard("Disk", diskVal, "%", AccentOrange,
-                new Point(m + (gaugeW + gap) * 2, y), new Size(gaugeW, gaugeH), diskDetail);
+                new Point(m + (gaugeW + gap) * 2, y), new Size(gaugeW, gaugeH), diskDetail, _diskHistory);
             var tempCard = CreateGaugeCard("Temp", tempVal, "\u00B0C", AccentRed,
-                new Point(m + (gaugeW + gap) * 3, y), new Size(gaugeW, gaugeH), tempDetail);
+                new Point(m + (gaugeW + gap) * 3, y), new Size(gaugeW, gaugeH), tempDetail, _tempHistory);
 
             _contentArea.Controls.Add(cpuCard);
             _contentArea.Controls.Add(ramCard);
@@ -649,7 +670,8 @@ namespace PCPlus.Tray.Forms
             _contentArea.Controls.Add(premCard);
         }
 
-        private Panel CreateGaugeCard(string label, float value, string unit, Color color, Point loc, Size size, string? detail = null)
+        private Panel CreateGaugeCard(string label, float value, string unit, Color color,
+            Point loc, Size size, string? detail = null, List<float>? history = null)
         {
             var card = CreateCard(loc, size);
             card.Paint += (s, e) =>
@@ -658,63 +680,119 @@ namespace PCPlus.Tray.Forms
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-                // Colored top accent
-                using var topBrush = new SolidBrush(Color.FromArgb(40, color));
-                g.FillRectangle(topBrush, 1, 1, card.Width - 2, 4);
-                using var topLine = new SolidBrush(color);
-                g.FillRectangle(topLine, 1, 1, card.Width - 2, 3);
+                // Gradient top accent bar
+                using var topGrad = new LinearGradientBrush(
+                    new Point(0, 0), new Point(card.Width, 0),
+                    color, Color.FromArgb(180, color.R, color.G, color.B));
+                g.FillRectangle(topGrad, 1, 1, card.Width - 2, 3);
 
                 // Label at top
                 using var labelFont = new Font("Segoe UI", 10f, FontStyle.Bold);
                 using var labelBrush = new SolidBrush(TextDark);
-                g.DrawString(label, labelFont, labelBrush, 12, 14);
+                g.DrawString(label, labelFont, labelBrush, 12, 12);
 
-                // Donut ring
-                int donutSize = 72;
-                int thickness = 8;
+                // Donut ring - larger and thicker
+                int donutSize = 80;
+                int thickness = 10;
                 int donutX = (card.Width - donutSize) / 2;
-                int donutY = 36;
+                int donutY = 34;
                 var donutRect = new Rectangle(donutX, donutY, donutSize, donutSize);
 
-                // Track
-                using var trackPen = new Pen(Color.FromArgb(215, 220, 228), thickness);
+                // Outer glow behind donut
+                float pct = Math.Min(value / 100f, 1f);
+                var arcColor = pct > 0.9f ? AccentRed : pct > 0.75f ? AccentOrange : color;
+                if (pct > 0)
+                {
+                    using var glowPen = new Pen(Color.FromArgb(25, arcColor), thickness + 8);
+                    glowPen.StartCap = LineCap.Round; glowPen.EndCap = LineCap.Round;
+                    g.DrawArc(glowPen, donutRect, -90, pct * 360f);
+                }
+
+                // Track ring
+                using var trackPen = new Pen(Color.FromArgb(230, 234, 240), thickness);
                 trackPen.StartCap = LineCap.Round; trackPen.EndCap = LineCap.Round;
                 g.DrawArc(trackPen, donutRect, 0, 360);
 
-                // Value arc
-                float pct = Math.Min(value / 100f, 1f);
+                // Value arc with rounded caps
                 float sweep = pct * 360f;
                 if (sweep > 0.5f)
                 {
-                    var arcColor = pct > 0.9f ? AccentRed : pct > 0.75f ? AccentOrange : color;
                     using var valuePen = new Pen(arcColor, thickness);
                     valuePen.StartCap = LineCap.Round; valuePen.EndCap = LineCap.Round;
                     g.DrawArc(valuePen, donutRect, -90, sweep);
                 }
 
-                // Center value
+                // Center value - bold
                 var displayVal = value > 0 ? $"{value:F0}" : "--";
-                using var valFont = new Font("Segoe UI", 20, FontStyle.Bold);
+                using var valFont = new Font("Segoe UI", 22, FontStyle.Bold);
                 using var valBrush = new SolidBrush(TextDark);
                 var valSize = g.MeasureString(displayVal, valFont);
                 g.DrawString(displayVal, valFont, valBrush,
                     donutX + (donutSize - valSize.Width) / 2,
-                    donutY + (donutSize - valSize.Height) / 2 - 2);
+                    donutY + (donutSize - valSize.Height) / 2 - 4);
 
-                // Unit below number
+                // Unit label
                 using var unitFont = new Font("Segoe UI", 8f);
                 using var unitBrush = new SolidBrush(TextMuted);
                 var unitSize = g.MeasureString(unit, unitFont);
                 g.DrawString(unit, unitFont, unitBrush,
                     donutX + (donutSize - unitSize.Width) / 2,
-                    donutY + donutSize / 2 + valSize.Height / 2 - 6);
+                    donutY + donutSize / 2 + valSize.Height / 2 - 8);
 
                 // Detail text below donut
+                int detailY = donutRect.Bottom + 4;
                 if (!string.IsNullOrEmpty(detail))
                 {
-                    using var detFont = new Font("Segoe UI", 8.5f);
+                    using var detFont = new Font("Segoe UI", 8f);
                     var detSize = g.MeasureString(detail, detFont);
-                    g.DrawString(detail, detFont, unitBrush, (card.Width - detSize.Width) / 2, donutRect.Bottom + 6);
+                    g.DrawString(detail, detFont, unitBrush, (card.Width - detSize.Width) / 2, detailY);
+                    detailY += 16;
+                }
+
+                // Mini sparkline trend chart
+                if (history != null && history.Count >= 2)
+                {
+                    int sparkX = 12;
+                    int sparkY = card.Height - 28;
+                    int sparkW = card.Width - 24;
+                    int sparkH = 20;
+
+                    // Sparkline background
+                    using var sparkBg = new SolidBrush(Color.FromArgb(248, 250, 252));
+                    using var sparkBgPath = RoundedRect(new Rectangle(sparkX - 2, sparkY - 2, sparkW + 4, sparkH + 4), 4);
+                    g.FillPath(sparkBg, sparkBgPath);
+
+                    float maxVal = history.Max();
+                    float minVal = history.Min();
+                    float range = Math.Max(maxVal - minVal, 1f);
+
+                    var points = new PointF[history.Count];
+                    for (int i = 0; i < history.Count; i++)
+                    {
+                        float x = sparkX + (float)i / (history.Count - 1) * sparkW;
+                        float y2 = sparkY + sparkH - ((history[i] - minVal) / range * sparkH);
+                        points[i] = new PointF(x, y2);
+                    }
+
+                    // Filled area under sparkline
+                    if (points.Length >= 2)
+                    {
+                        var fillPoints = new List<PointF>(points);
+                        fillPoints.Add(new PointF(points[^1].X, sparkY + sparkH));
+                        fillPoints.Add(new PointF(points[0].X, sparkY + sparkH));
+                        using var fillBrush = new SolidBrush(Color.FromArgb(20, arcColor));
+                        g.FillPolygon(fillBrush, fillPoints.ToArray());
+                    }
+
+                    // Sparkline stroke
+                    using var sparkPen = new Pen(Color.FromArgb(160, arcColor), 1.5f);
+                    sparkPen.LineJoin = LineJoin.Round;
+                    g.DrawLines(sparkPen, points);
+
+                    // Dot on latest point
+                    var lastPt = points[^1];
+                    using var dotBrush = new SolidBrush(arcColor);
+                    g.FillEllipse(dotBrush, lastPt.X - 2.5f, lastPt.Y - 2.5f, 5, 5);
                 }
             };
             return card;
@@ -3673,13 +3751,17 @@ namespace PCPlus.Tray.Forms
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                using var shadowBrush = new SolidBrush(Color.FromArgb(8, 0, 0, 0));
-                using var shadowPath = RoundedRect(new Rectangle(1, 2, card.Width - 2, card.Height - 2), 10);
-                g.FillPath(shadowBrush, shadowPath);
+                // Multi-layer shadow for depth
+                for (int i = 3; i >= 1; i--)
+                {
+                    using var sBrush = new SolidBrush(Color.FromArgb(4 * i, 0, 0, 0));
+                    using var sPath = RoundedRect(new Rectangle(i, i + 1, card.Width - i * 2, card.Height - i * 2), 10);
+                    g.FillPath(sBrush, sPath);
+                }
                 using var bgBrush = new SolidBrush(CardBg);
                 using var bgPath = RoundedRect(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 10);
                 g.FillPath(bgBrush, bgPath);
-                using var pen = new Pen(CardBorder);
+                using var pen = new Pen(Color.FromArgb(210, 218, 228));
                 g.DrawPath(pen, bgPath);
             };
             return card;
