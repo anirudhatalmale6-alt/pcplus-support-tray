@@ -3271,58 +3271,134 @@ namespace PCPlus.Tray.Forms
             _contentArea.Controls.Add(remoteCard);
             y += 140 + gap;
 
-            // Phone contact card
-            var phoneCard = CreateCard(new Point(m + 12, y), new Size(contentW, 70));
-            phoneCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            // Quick Links row (4 cards: Phone, VPN, Website, Emergency)
+            int qlW = (contentW - gap * 3) / 4;
+
+            var phoneCard = CreateCard(new Point(m + 12, y), new Size(qlW, 90));
             phoneCard.Paint += (s, e) =>
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-                using var iconFont = new Font("Segoe UI", 18);
-                using var iconBrush = new SolidBrush(AccentTeal);
-                g.DrawString("☎", iconFont, iconBrush, 20, 16);
-
-                using var lblFont = new Font("Segoe UI", 9);
-                using var lblBrush = new SolidBrush(TextMuted);
-                g.DrawString("Call us anytime", lblFont, lblBrush, 56, 14);
-
-                using var phoneFont = new Font("Segoe UI", 14, FontStyle.Bold);
-                using var phoneBrush = new SolidBrush(TextDark);
-                g.DrawString("604-760-1662", phoneFont, phoneBrush, 54, 34);
+                using var iconBrush = new SolidBrush(Color.FromArgb(220, 245, 255));
+                g.FillEllipse(iconBrush, 12, 12, 36, 36);
+                using var iconFont = new Font("Segoe UI", 14);
+                using var iconClr = new SolidBrush(AccentTeal);
+                g.DrawString("☎", iconFont, iconClr, 18, 17);
+                using var lblFont = new Font("Segoe UI", 8f, FontStyle.Bold);
+                using var lblBrush = new SolidBrush(TextDark);
+                g.DrawString("604-760-1662", lblFont, lblBrush, 12, 55);
+                using var subFont = new Font("Segoe UI", 7.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                g.DrawString("236-500-2700", subFont, subBrush, 12, 72);
             };
             _contentArea.Controls.Add(phoneCard);
-            y += 70 + gap;
 
-            // Website links card
-            var linksCard = CreateCard(new Point(m + 12, y), new Size(contentW, 55));
-            linksCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            linksCard.Cursor = Cursors.Hand;
-            linksCard.Paint += (s, e) =>
+            var vpnCard = CreateCard(new Point(m + 12 + qlW + gap, y), new Size(qlW, 90));
+            vpnCard.Cursor = Cursors.Hand;
+            vpnCard.Paint += (s, e) =>
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
+                using var iconBg = new SolidBrush(Color.FromArgb(220, 252, 231));
+                g.FillEllipse(iconBg, 12, 12, 36, 36);
                 using var iconFont = new Font("Segoe UI", 14);
-                using var iconBrush = new SolidBrush(AccentBlue);
-                g.DrawString("↗", iconFont, iconBrush, 22, 14);
-
-                using var lblFont = new Font("Segoe UI", 10, FontStyle.Bold);
-                using var lblBrush = new SolidBrush(AccentBlue);
-                g.DrawString("Visit pcpluscomputing.com", lblFont, lblBrush, 52, 8);
-
-                using var subFont = new Font("Segoe UI", 8.5f);
+                using var iconClr = new SolidBrush(AccentGreen);
+                g.DrawString("🔒", iconFont, iconClr, 16, 17);
+                using var lblFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+                using var lblBrush = new SolidBrush(AccentGreen);
+                g.DrawString("VPN Portal", lblFont, lblBrush, 12, 55);
+                using var subFont = new Font("Segoe UI", 7.5f);
                 using var subBrush = new SolidBrush(TextMuted);
-                g.DrawString("Book appointments, browse services, and more", subFont, subBrush, 54, 30);
+                g.DrawString("Secure remote access", subFont, subBrush, 12, 72);
             };
-            linksCard.Click += (s, e) =>
+            vpnCard.Click += (s, e) =>
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                { FileName = "https://pcpluscomputing.com", UseShellExecute = true });
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = "https://vpn.pcpluscomputing.com", UseShellExecute = true }); } catch { }
             };
-            _contentArea.Controls.Add(linksCard);
+            _contentArea.Controls.Add(vpnCard);
+
+            var webCard = CreateCard(new Point(m + 12 + (qlW + gap) * 2, y), new Size(qlW, 90));
+            webCard.Cursor = Cursors.Hand;
+            webCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                using var iconBg = new SolidBrush(Color.FromArgb(220, 230, 255));
+                g.FillEllipse(iconBg, 12, 12, 36, 36);
+                using var iconFont = new Font("Segoe UI", 14);
+                using var iconClr = new SolidBrush(AccentBlue);
+                g.DrawString("↗", iconFont, iconClr, 18, 17);
+                using var lblFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+                using var lblBrush = new SolidBrush(AccentBlue);
+                g.DrawString("Website", lblFont, lblBrush, 12, 55);
+                using var subFont = new Font("Segoe UI", 7.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                g.DrawString("pcpluscomputing.com", subFont, subBrush, 12, 72);
+            };
+            webCard.Click += (s, e) =>
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = "https://pcpluscomputing.com", UseShellExecute = true }); } catch { }
+            };
+            _contentArea.Controls.Add(webCard);
+
+            var emergCard = CreateCard(new Point(m + 12 + (qlW + gap) * 3, y), new Size(qlW, 90));
+            emergCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                using var iconBg = new SolidBrush(Color.FromArgb(254, 226, 226));
+                g.FillEllipse(iconBg, 12, 12, 36, 36);
+                using var iconFont = new Font("Segoe UI", 14);
+                using var iconClr = new SolidBrush(AccentRed);
+                g.DrawString("⚠", iconFont, iconClr, 18, 17);
+                using var lblFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+                using var lblBrush = new SolidBrush(AccentRed);
+                g.DrawString("Emergency", lblFont, lblBrush, 12, 55);
+                using var subFont = new Font("Segoe UI", 7.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                g.DrawString("24/7 critical support", subFont, subBrush, 12, 72);
+            };
+            _contentArea.Controls.Add(emergCard);
+            y += 90 + gap;
+
+            // Service status bar
+            var statusCard = CreateCard(new Point(m + 12, y), new Size(contentW, 60));
+            statusCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                var services = new[] {
+                    ("Monitoring", AccentGreen), ("VPN", AccentGreen),
+                    ("Ticketing", AccentGreen), ("Backup", AccentGreen),
+                    ("Email", AccentGreen)
+                };
+                int sx = 14;
+                using var svcFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+                using var svcBrush = new SolidBrush(TextDark);
+                using var lbl = new Font("Segoe UI", 8f);
+                using var lblB = new SolidBrush(TextMuted);
+                g.DrawString("Service Status", lbl, lblB, sx, 6);
+                int dotY = 30;
+                foreach (var (name, color) in services)
+                {
+                    using var dot = new SolidBrush(color);
+                    g.FillEllipse(dot, sx, dotY + 3, 8, 8);
+                    g.DrawString(name, svcFont, svcBrush, sx + 12, dotY);
+                    sx += (int)g.MeasureString(name, svcFont).Width + 28;
+                }
+            };
+            _contentArea.Controls.Add(statusCard);
+            y += 60 + gap;
+
+            // Keep linksCard reference for the business hours section below
+            var linksCard = statusCard;
 
             // === BUSINESS HOURS + FAQ ===
             int col1W = (contentW - gap) / 2;
