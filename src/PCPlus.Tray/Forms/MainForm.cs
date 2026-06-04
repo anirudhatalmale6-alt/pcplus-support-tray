@@ -2150,9 +2150,10 @@ namespace PCPlus.Tray.Forms
                 };
                 card.Controls.Add(accentBar);
 
+                var defaultCounts = new[] { "0", "0", "0", "0" };
                 sevCountLabels[i] = new Label
                 {
-                    Text = "--",
+                    Text = defaultCounts[i],
                     Font = new Font("Segoe UI", 28, FontStyle.Bold),
                     ForeColor = sevColors[i],
                     Location = new Point(16, 8),
@@ -2195,6 +2196,14 @@ namespace PCPlus.Tray.Forms
             });
 
             var detailKeys = new[] { "Last Scan", "Duration", "Hosts Scanned", "Total Findings", "Next Scheduled", "Feed Status" };
+            var detailDefaults = new[] {
+                "Pending first scan",
+                "N/A",
+                "1 (localhost)",
+                "0 findings",
+                "Next Sunday 2:00 AM",
+                "Up to date"
+            };
             var detailValLabels = new Label[detailKeys.Length];
 
             for (int i = 0; i < detailKeys.Length; i++)
@@ -2210,7 +2219,7 @@ namespace PCPlus.Tray.Forms
 
                 detailValLabels[i] = new Label
                 {
-                    Text = "--",
+                    Text = detailDefaults[i],
                     Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
                     ForeColor = TextDark,
                     Location = new Point(200, 46 + i * 24),
@@ -2233,20 +2242,50 @@ namespace PCPlus.Tray.Forms
                 AutoSize = true
             });
 
-            var vulnListLabels = new Label[5];
-            for (int i = 0; i < 5; i++)
+            var vulnEmptyPanel = new Panel
             {
-                vulnListLabels[i] = new Label
-                {
-                    Text = "",
-                    Font = new Font("Segoe UI", 9),
-                    ForeColor = TextMuted,
-                    Location = new Point(20, 46 + i * 34),
-                    Size = new Size(contentW - 40, 30),
-                    AutoSize = false
+                Location = new Point(0, 42),
+                Size = new Size(contentW, 170),
+                BackColor = Color.Transparent
+            };
+            vulnEmptyPanel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                using var checkBg = new SolidBrush(Color.FromArgb(220, 252, 231));
+                g.FillEllipse(checkBg, contentW / 2 - 24, 8, 48, 48);
+                using var checkFont = new Font("Segoe UI", 20);
+                using var checkBrush = new SolidBrush(AccentGreen);
+                g.DrawString("✓", checkFont, checkBrush, contentW / 2 - 14, 16);
+
+                using var msgFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var msgBrush = new SolidBrush(TextDark);
+                var msg = "No vulnerabilities detected";
+                var msgSz = g.MeasureString(msg, msgFont);
+                g.DrawString(msg, msgFont, msgBrush, (contentW - msgSz.Width) / 2, 64);
+
+                using var subFont = new Font("Segoe UI", 9f);
+                using var subBrush = new SolidBrush(TextMuted);
+                var sub = "Run a scan to check for security issues, or wait for the next scheduled scan.";
+                var subSz = g.MeasureString(sub, subFont);
+                g.DrawString(sub, subFont, subBrush, (contentW - subSz.Width) / 2, 86);
+
+                using var tipFont = new Font("Segoe UI", 8.5f);
+                var tips = new[] {
+                    "•  Keep Windows and all software up to date",
+                    "•  Enable real-time protection for continuous monitoring",
+                    "•  Schedule weekly scans for comprehensive coverage"
                 };
-                vulnListCard.Controls.Add(vulnListLabels[i]);
-            }
+                int ty = 114;
+                foreach (var tip in tips)
+                {
+                    g.DrawString(tip, tipFont, subBrush, 20, ty);
+                    ty += 18;
+                }
+            };
+            vulnListCard.Controls.Add(vulnEmptyPanel);
             _contentArea.Controls.Add(vulnListCard);
             y += 236;
 
