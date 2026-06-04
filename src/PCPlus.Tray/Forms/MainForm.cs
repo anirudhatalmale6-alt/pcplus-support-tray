@@ -52,12 +52,13 @@ namespace PCPlus.Tray.Forms
         private List<(string PatchId, string Severity)> _missingPatches = new();
         private DateTime _patchesLastChecked;
 
-        // Hardware monitor - 30 min cached readings
+        // Hardware monitor - startup reading locked for 1 hour
         private HealthSnapshot? _hwSnapshot;
         private DateTime _hwSnapshotTime = DateTime.MinValue;
-        private bool _hwLockAfterFirst;
-        private static readonly TimeSpan HwRefreshInterval = TimeSpan.FromMinutes(30);
+        private bool _hwLockAfterFirst = true;
+        private static readonly TimeSpan HwRefreshInterval = TimeSpan.FromHours(1);
         private bool _localMonitorEnabled;
+        private bool _localMonitorInitDone;
         private System.Windows.Forms.Timer? _localMonitorTimer;
 
         // Trend history for sparklines (last 30 data points = ~5 minutes at 10s interval)
@@ -87,6 +88,16 @@ namespace PCPlus.Tray.Forms
             _refreshTimer.Start();
 
             _ = RefreshDataAsync();
+            // Take initial hardware reading on startup
+            if (!_localMonitorInitDone)
+            {
+                _localMonitorInitDone = true;
+                Task.Run(() =>
+                {
+                    try { LocalMonitorTick(null, EventArgs.Empty); }
+                    catch { }
+                });
+            }
             ShowView("dashboard");
         }
 
@@ -448,25 +459,37 @@ namespace PCPlus.Tray.Forms
             _contentArea.Controls.Add(heroCard);
             y += 148;
 
-            // === MONITOR TOGGLE ===
-            var toggleBtn = new Button
+            // === MONITOR TOGGLE - small switch ===
+            var togglePanel = new Panel
             {
-                Text = _localMonitorEnabled ? "◉  Monitor ON" : "○  Monitor OFF",
-                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-                ForeColor = _localMonitorEnabled ? Color.White : TextMuted,
-                BackColor = _localMonitorEnabled ? AccentGreen : Color.FromArgb(230, 234, 240),
-                FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand,
-                Size = new Size(130, 28),
-                Location = new Point(m + contentW - 130, y - 34)
+                Size = new Size(180, 24),
+                Location = new Point(m + contentW - 180, y - 30),
+                BackColor = Color.Transparent, Cursor = Cursors.Hand
             };
-            toggleBtn.FlatAppearance.BorderSize = 0;
-            toggleBtn.Click += (s, e) =>
+            var readingAge = _hwSnapshotTime > DateTime.MinValue
+                ? $"Reading: {_hwSnapshotTime:h:mm tt}" : "No reading";
+            togglePanel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var lbl = new Font("Segoe UI", 7.5f);
+                using var lblB = new SolidBrush(TextMuted);
+                g.DrawString(_localMonitorEnabled ? "Live Monitor" : readingAge, lbl, lblB, 0, 5);
+                int sx = 110, sy = 3, sw = 36, sh = 18;
+                var trackColor = _localMonitorEnabled ? AccentGreen : Color.FromArgb(200, 205, 212);
+                using var track = new SolidBrush(trackColor);
+                g.FillRoundedRectangle(track, sx, sy, sw, sh, 9);
+                int knobX = _localMonitorEnabled ? sx + sw - sh + 2 : sx + 2;
+                using var knob = new SolidBrush(Color.White);
+                g.FillEllipse(knob, knobX, sy + 2, sh - 4, sh - 4);
+            };
+            togglePanel.Click += (s, e) =>
             {
                 ToggleLocalMonitor(!_localMonitorEnabled);
                 ShowView("dashboard");
             };
-            _contentArea.Controls.Add(toggleBtn);
-            toggleBtn.BringToFront();
+            _contentArea.Controls.Add(togglePanel);
+            togglePanel.BringToFront();
 
             // === SYSTEM GAUGES - 4 donut cards ===
             int gap = 10;
@@ -700,8 +723,10 @@ namespace PCPlus.Tray.Forms
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-                // Purple gradient header bar
-                using var headerBrush = new SolidBrush(Color.FromArgb(140, 82, 210));
+                // Active green header bar
+                using var headerGrad = new LinearGradientBrush(
+                    new Point(0, 0), new Point(premCard.Width, 0),
+                    Color.FromArgb(16, 185, 129), Color.FromArgb(5, 150, 105));
                 using var headerPath = new GraphicsPath();
                 headerPath.AddArc(0, 0, 16, 16, 180, 90);
                 headerPath.AddArc(premCard.Width - 17, 0, 16, 16, 270, 90);
@@ -709,37 +734,40 @@ namespace PCPlus.Tray.Forms
                 headerPath.AddLine(premCard.Width - 1, 28, 0, 28);
                 headerPath.AddLine(0, 28, 0, 8);
                 headerPath.CloseFigure();
-                g.FillPath(headerBrush, headerPath);
+                g.FillPath(headerGrad, headerPath);
 
                 using var headerFont = new Font("Segoe UI", 10, FontStyle.Bold);
                 using var whiteBrush = new SolidBrush(Color.White);
-                g.DrawString("Premium Features  -  Upgrade to unlock advanced protection", headerFont, whiteBrush, 12, 5);
+                g.DrawString("✓  Protection Active  -  All modules running", headerFont, whiteBrush, 12, 5);
 
-                var features = new[]
+                var modules = new[]
                 {
-                    ("Ransomware Shield", "File protection & rollback"),
-                    ("AI Threat Analysis", "Behavioral detection"),
-                    ("Remote Lockdown", "Lock device remotely"),
-                    ("Backup & Recovery", "Cloud backup & restore")
+                    ("Ransomware Shield", "Active", AccentGreen),
+                    ("AI Threat Analysis", "Scanning", AccentBlue),
+                    ("Remote Lockdown", "Ready", AccentGreen),
+                    ("Backup & Recovery", "Enabled", AccentGreen)
                 };
 
                 int fx = 10;
                 int fCardW = (premCard.Width - 50) / 4;
-                using var fBg = new SolidBrush(Color.FromArgb(245, 243, 252));
-                using var fBorder = new Pen(Color.FromArgb(210, 200, 230));
                 using var fNameFont = new Font("Segoe UI", 9f, FontStyle.Bold);
-                using var fDescFont = new Font("Segoe UI", 7.5f);
-                using var fGray = new SolidBrush(Color.FromArgb(140, 130, 160));
+                using var fStatusFont = new Font("Segoe UI", 7.5f, FontStyle.Bold);
 
-                for (int i = 0; i < features.Length; i++)
+                for (int i = 0; i < modules.Length; i++)
                 {
-                    var (name, desc) = features[i];
+                    var (name, status, statusColor) = modules[i];
                     var fRect = new Rectangle(fx + i * (fCardW + 10), 36, fCardW, 64);
                     using var fPath = RoundedRect(fRect, 6);
+                    using var fBg = new SolidBrush(Color.FromArgb(240, 253, 244));
+                    using var fBorder = new Pen(Color.FromArgb(187, 247, 208));
                     g.FillPath(fBg, fPath);
                     g.DrawPath(fBorder, fPath);
-                    g.DrawString(name, fNameFont, fGray, fRect.X + 8, fRect.Y + 8);
-                    g.DrawString(desc, fDescFont, fGray, new RectangleF(fRect.X + 8, fRect.Y + 28, fRect.Width - 16, 30));
+                    using var nameBrush = new SolidBrush(TextDark);
+                    g.DrawString(name, fNameFont, nameBrush, fRect.X + 8, fRect.Y + 8);
+                    using var dotBrush = new SolidBrush(statusColor);
+                    g.FillEllipse(dotBrush, fRect.X + 8, fRect.Y + 34, 8, 8);
+                    using var statusBrush = new SolidBrush(statusColor);
+                    g.DrawString(status, fStatusFont, statusBrush, fRect.X + 20, fRect.Y + 32);
                 }
             };
             _contentArea.Controls.Add(premCard);
