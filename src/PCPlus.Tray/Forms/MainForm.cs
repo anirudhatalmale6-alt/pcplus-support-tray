@@ -406,8 +406,8 @@ namespace PCPlus.Tray.Forms
         private void BuildDashboardView()
         {
             int m = 16; // margin
-            int contentW = _contentArea.Width - m * 2;
-            if (contentW < 200) contentW = 700; // fallback if panel not laid out yet
+            int contentW = _contentArea.ClientSize.Width - m * 2 - _contentArea.Padding.Horizontal;
+            if (contentW < 400) contentW = Math.Max(700, _contentArea.Width - 80);
             int y = 10;
 
             // === HERO STATUS CARD - Premium security overview ===
@@ -1787,8 +1787,8 @@ namespace PCPlus.Tray.Forms
             _contentArea.Controls.Add(title);
 
             int m = 16;
-            int contentW = _contentArea.Width - m * 2 - 24;
-            if (contentW < 200) contentW = 660;
+            int contentW = _contentArea.ClientSize.Width - m * 2 - _contentArea.Padding.Horizontal;
+            if (contentW < 400) contentW = Math.Max(700, _contentArea.Width - 80);
             int y = 55;
 
             // Status card - shows current lockdown state
@@ -2101,7 +2101,7 @@ namespace PCPlus.Tray.Forms
         {
             int y = 0;
             int m = 16;
-            int contentW = _contentArea.Width - m * 2;
+            int contentW = _contentArea.ClientSize.Width - m * 2 - _contentArea.Padding.Horizontal;
 
             // Title
             var titleLabel = new Label
@@ -2650,7 +2650,7 @@ namespace PCPlus.Tray.Forms
         {
             int y = 0;
             int m = 16;
-            int contentW = _contentArea.Width - m * 2;
+            int contentW = _contentArea.ClientSize.Width - m * 2 - _contentArea.Padding.Horizontal;
 
             var titleLabel = new Label
             {
@@ -3177,8 +3177,8 @@ namespace PCPlus.Tray.Forms
             _contentArea.Controls.Add(title);
 
             int m = 16;
-            int contentW = _contentArea.Width - m * 2 - 24;
-            if (contentW < 200) contentW = 660;
+            int contentW = _contentArea.ClientSize.Width - m * 2 - _contentArea.Padding.Horizontal;
+            if (contentW < 400) contentW = Math.Max(700, _contentArea.Width - 80);
             int y = 55;
             int gap = 14;
 
@@ -3538,8 +3538,8 @@ namespace PCPlus.Tray.Forms
             var allItems = new List<(string category, string key, string value)>();
 
             int m = 16;
-            int contentW = _contentArea.Width - m * 2 - 24;
-            if (contentW < 200) contentW = 660;
+            int contentW = _contentArea.ClientSize.Width - m * 2 - _contentArea.Padding.Horizontal;
+            if (contentW < 400) contentW = Math.Max(700, _contentArea.Width - 80);
             int y = 55;
             int gap = 12;
 
