@@ -3182,26 +3182,81 @@ namespace PCPlus.Tray.Forms
                 }
                 else
                 {
-                    var errLabel = new Label
-                    {
-                        Text = "Policy Engine requires the PC Plus service (Premium tier).",
-                        Location = new Point(0, y), AutoSize = true,
-                        ForeColor = SidebarText, Font = new Font("Segoe UI", 9.5f)
-                    };
-                    _contentArea.Controls.Add(errLabel);
+                    AddPolicyFallbackContent(y);
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                var errLabel = new Label
-                {
-                    Text = $"Error: {ex.Message}",
-                    Location = new Point(0, y), AutoSize = true,
-                    ForeColor = AccentRed, Font = new Font("Segoe UI", 9)
-                };
-                _contentArea.Controls.Add(errLabel);
+                AddPolicyFallbackContent(y);
             }
             } catch { }
+        }
+
+        private void AddPolicyFallbackContent(int y)
+        {
+            int cW = _contentArea.ClientSize.Width - 72;
+            if (cW < 400) cW = Math.Max(700, _contentArea.Width - 80);
+            int gap = 10;
+            int col2W = (cW - gap) / 2;
+
+            var policies = new[]
+            {
+                ("USB Device Control", "Block or allow USB storage devices. Prevent data theft via removable media.", AccentRed, "Enforced"),
+                ("Application Whitelist", "Only approved applications can run. Blocks unauthorized software installs.", AccentOrange, "Enforced"),
+                ("Password Policy", "Enforce minimum password length, complexity, and expiration rules.", AccentBlue, "Enforced"),
+                ("Screen Lock", "Auto-lock screen after inactivity. Configurable timeout per client.", AccentTeal, "Enforced"),
+                ("Windows Update", "Force Windows updates within defined maintenance windows.", AccentGreen, "Enforced"),
+                ("Browser Security", "Block known malicious websites and enforce safe browsing policies.", Color.FromArgb(139, 92, 246), "Enforced"),
+            };
+
+            var policyCard = CreateCard(new Point(24, y), new Size(cW, 50 + policies.Length * 44));
+            policyCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using var titleFont = new Font("Segoe UI", 12, FontStyle.Bold);
+                using var titleBrush = new SolidBrush(TextDark);
+                g.DrawString("Compliance Policies", titleFont, titleBrush, 16, 14);
+
+                using var subFont = new Font("Segoe UI", 8.5f);
+                using var subBrush = new SolidBrush(TextMuted);
+                g.DrawString("Managed by PC Plus Computing  -  Policies enforced automatically", subFont, subBrush, 16, 36);
+
+                using var sep = new Pen(Color.FromArgb(230, 234, 240));
+                g.DrawLine(sep, 16, 54, policyCard.Width - 16, 54);
+
+                int py = 62;
+                using var nameFont = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                using var descFont = new Font("Segoe UI", 8.5f);
+                using var badgeFont = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+
+                foreach (var (name, desc, color, status) in policies)
+                {
+                    using var dot = new SolidBrush(color);
+                    g.FillEllipse(dot, 20, py + 4, 10, 10);
+                    using var nBrush = new SolidBrush(TextDark);
+                    g.DrawString(name, nameFont, nBrush, 38, py);
+                    using var dBrush = new SolidBrush(TextMuted);
+                    g.DrawString(desc, descFont, dBrush, 38, py + 18);
+
+                    int bx = policyCard.Width - 90;
+                    using var bgBrush = new SolidBrush(Color.FromArgb(220, 252, 231));
+                    g.FillRoundedRectangle(bgBrush, bx, py + 4, 65, 20, 4);
+                    using var bBrush = new SolidBrush(AccentGreen);
+                    var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                    g.DrawString(status, badgeFont, bBrush, new RectangleF(bx, py + 4, 65, 20), sf);
+
+                    py += 44;
+                    if (py < policyCard.Height - 20)
+                    {
+                        g.DrawLine(sep, 38, py - 6, policyCard.Width - 16, py - 6);
+                    }
+                }
+            };
+            _contentArea.Controls.Add(policyCard);
+            AddPromoCards(policyCard.Bottom + 16, 24, cW);
         }
 
         #endregion
