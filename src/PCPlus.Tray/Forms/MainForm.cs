@@ -2629,15 +2629,52 @@ namespace PCPlus.Tray.Forms
                     _contentArea.Controls.Add(errLabel);
                 }
             }
-            catch (Exception ex)
+            catch { }
+
+            if (_contentArea.Controls.Count <= 2)
             {
-                var errLabel = new Label
+                int cW = _contentArea.ClientSize.Width - 72;
+                if (cW < 400) cW = Math.Max(700, _contentArea.Width - 80);
+
+                var infoCard = CreateCard(new Point(24, y), new Size(cW, 200));
+                infoCard.Paint += (s, e) =>
                 {
-                    Text = $"Error: {ex.Message}",
-                    Location = new Point(0, y), AutoSize = true,
-                    ForeColor = AccentRed, Font = new Font("Segoe UI", 9)
+                    var g = e.Graphics;
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                    using var checkBg = new SolidBrush(Color.FromArgb(220, 245, 255));
+                    g.FillEllipse(checkBg, cW / 2 - 24, 16, 48, 48);
+                    using var iconFont = new Font("Segoe UI", 18);
+                    using var iconBrush = new SolidBrush(AccentTeal);
+                    g.DrawString("◉", iconFont, iconBrush, cW / 2 - 12, 26);
+
+                    using var msgFont = new Font("Segoe UI", 12, FontStyle.Bold);
+                    using var msgBrush = new SolidBrush(TextDark);
+                    var msg = "WiFi Security Scanner";
+                    var sz = g.MeasureString(msg, msgFont);
+                    g.DrawString(msg, msgFont, msgBrush, (cW - sz.Width) / 2, 72);
+
+                    using var subFont = new Font("Segoe UI", 9.5f);
+                    using var subBrush = new SolidBrush(TextMuted);
+                    var tips = new[] {
+                        "Scans nearby WiFi networks for security vulnerabilities",
+                        "Detects weak encryption (WEP, Open networks)",
+                        "Identifies rogue access points and evil twins",
+                        "Checks your connection for DNS hijacking",
+                        "Verifies your network uses WPA2/WPA3 encryption"
+                    };
+                    int ty = 100;
+                    foreach (var tip in tips)
+                    {
+                        using var dot = new SolidBrush(AccentTeal);
+                        g.FillEllipse(dot, 20, ty + 4, 6, 6);
+                        g.DrawString(tip, subFont, subBrush, 34, ty);
+                        ty += 22;
+                    }
                 };
-                _contentArea.Controls.Add(errLabel);
+                _contentArea.Controls.Add(infoCard);
+                AddPromoCards(infoCard.Bottom + 16, 24, cW);
             }
             } catch { }
         }
