@@ -3296,6 +3296,81 @@ namespace PCPlus.Tray.Forms
                 { FileName = "https://pcpluscomputing.com", UseShellExecute = true });
             };
             _contentArea.Controls.Add(linksCard);
+
+            // === BUSINESS HOURS + FAQ ===
+            int col1W = (contentW - gap) / 2;
+            int col2W = contentW - col1W - gap;
+            y = linksCard.Bottom + 12;
+
+            var hoursCard = CreateCard(new Point(m, y), new Size(col1W, 220));
+            hoursCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                using var titleFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var titleBrush = new SolidBrush(TextDark);
+                g.DrawString("Business Hours", titleFont, titleBrush, 14, 12);
+
+                using var rowFont = new Font("Segoe UI", 9f);
+                using var valFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+                using var rowBrush = new SolidBrush(TextDark);
+                using var mutBrush = new SolidBrush(TextMuted);
+                var hours = new[]
+                {
+                    ("Monday - Friday", "9:00 AM - 6:00 PM"),
+                    ("Saturday", "10:00 AM - 4:00 PM"),
+                    ("Sunday", "Closed"),
+                    ("Emergency", "24/7 Available")
+                };
+                int hy = 42;
+                foreach (var (day, time) in hours)
+                {
+                    g.DrawString(day, rowFont, rowBrush, 14, hy);
+                    g.DrawString(time, valFont, day == "Emergency" ? new SolidBrush(AccentGreen) : mutBrush, hoursCard.Width - 170, hy);
+                    hy += 28;
+                    if (day != "Emergency")
+                    {
+                        using var sep = new Pen(Color.FromArgb(235, 238, 244));
+                        g.DrawLine(sep, 14, hy - 6, hoursCard.Width - 14, hy - 6);
+                    }
+                }
+
+                using var noteFont = new Font("Segoe UI", 8f);
+                g.DrawString("Response time: typically within 30 minutes during\nbusiness hours for managed clients.", noteFont, mutBrush, 14, hy + 8);
+            };
+            _contentArea.Controls.Add(hoursCard);
+
+            var faqCard = CreateCard(new Point(m + col1W + gap, y), new Size(col2W, 220));
+            faqCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                using var titleFont = new Font("Segoe UI", 11, FontStyle.Bold);
+                using var titleBrush = new SolidBrush(TextDark);
+                g.DrawString("Quick Help", titleFont, titleBrush, 14, 12);
+
+                using var qFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+                using var aFont = new Font("Segoe UI", 8.5f);
+                using var qBrush = new SolidBrush(TextDark);
+                using var aBrush = new SolidBrush(TextMuted);
+                var faqs = new[]
+                {
+                    ("My computer is slow", "Click 'Fix My Computer' on the Dashboard"),
+                    ("I think I have a virus", "Run a Security Scan from the Dashboard"),
+                    ("I need remote help", "Click 'Remote Support' above - a tech will connect"),
+                    ("Internet not working", "Check WiFi Security page or call us directly"),
+                };
+                int fy = 40;
+                foreach (var (q, a) in faqs)
+                {
+                    using var dot = new SolidBrush(AccentBlue);
+                    g.FillEllipse(dot, 14, fy + 4, 6, 6);
+                    g.DrawString(q, qFont, qBrush, 26, fy);
+                    g.DrawString(a, aFont, aBrush, 26, fy + 18);
+                    fy += 44;
+                }
+            };
+            _contentArea.Controls.Add(faqCard);
         }
 
         private void BuildSystemView()
