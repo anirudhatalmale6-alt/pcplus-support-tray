@@ -2391,21 +2391,9 @@ namespace PCPlus.Tray.Forms
                                 detailValLabels[5].Text = "Up to date";
                                 detailValLabels[5].ForeColor = AccentGreen;
 
-                                // Top vulnerabilities
-                                for (int i = 0; i < 5 && i < stats.TopVulnerabilities.Count; i++)
-                                {
-                                    var v = stats.TopVulnerabilities[i];
-                                    var sevText = v.Severity >= 9 ? "CRIT" : v.Severity >= 7 ? "HIGH" : v.Severity >= 4 ? "MED" : "LOW";
-                                    var sevColor = v.Severity >= 9 ? AccentRed : v.Severity >= 7 ? AccentOrange : v.Severity >= 4 ? AccentBlue : AccentGreen;
-                                    vulnListLabels[i].Text = $"[{sevText} {v.Severity:F1}] {v.Name}  -  {v.Host}:{v.Port}" + (!string.IsNullOrEmpty(v.Cve) ? $"  ({v.Cve})" : "");
-                                    vulnListLabels[i].ForeColor = sevColor;
-                                }
-
-                                if (stats.TopVulnerabilities.Count == 0)
-                                {
-                                    vulnListLabels[0].Text = "No vulnerabilities found - network is clean";
-                                    vulnListLabels[0].ForeColor = AccentGreen;
-                                }
+                                // Top vulnerabilities updated via panel repaint
+                                if (stats.TopVulnerabilities.Count > 0)
+                                    vulnListCard?.Invalidate();
                             }
 
                             if (InvokeRequired) Invoke(UpdateLabels);
