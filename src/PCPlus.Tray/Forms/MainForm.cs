@@ -57,6 +57,8 @@ namespace PCPlus.Tray.Forms
         private DateTime _hwSnapshotTime = DateTime.MinValue;
         private bool _hwLockAfterFirst;
         private static readonly TimeSpan HwRefreshInterval = TimeSpan.FromMinutes(30);
+        private bool _localMonitorEnabled;
+        private System.Windows.Forms.Timer? _localMonitorTimer;
 
         // Trend history for sparklines (last 30 data points = ~5 minutes at 10s interval)
         private readonly List<float> _cpuHistory = new();
@@ -445,6 +447,26 @@ namespace PCPlus.Tray.Forms
             };
             _contentArea.Controls.Add(heroCard);
             y += 148;
+
+            // === MONITOR TOGGLE ===
+            var toggleBtn = new Button
+            {
+                Text = _localMonitorEnabled ? "◉  Monitor ON" : "○  Monitor OFF",
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                ForeColor = _localMonitorEnabled ? Color.White : TextMuted,
+                BackColor = _localMonitorEnabled ? AccentGreen : Color.FromArgb(230, 234, 240),
+                FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand,
+                Size = new Size(130, 28),
+                Location = new Point(m + contentW - 130, y - 34)
+            };
+            toggleBtn.FlatAppearance.BorderSize = 0;
+            toggleBtn.Click += (s, e) =>
+            {
+                ToggleLocalMonitor(!_localMonitorEnabled);
+                ShowView("dashboard");
+            };
+            _contentArea.Controls.Add(toggleBtn);
+            toggleBtn.BringToFront();
 
             // === SYSTEM GAUGES - 4 donut cards ===
             int gap = 10;
@@ -4185,10 +4207,67 @@ namespace PCPlus.Tray.Forms
 
         #endregion
 
+        private void ToggleLocalMonitor(bool enable)
+        {
+            _localMonitorEnabled = enable;
+            if (enable)
+            {
+                _localMonitorTimer ??= new System.Windows.Forms.Timer { Interval = 5000 };
+                _localMonitorTimer.Tick -= LocalMonitorTick;
+                _localMonitorTimer.Tick += LocalMonitorTick;
+                LocalMonitorTick(null, EventArgs.Empty);
+                _localMonitorTimer.Start();
+            }
+            else
+            {
+                _localMonitorTimer?.Stop();
+            }
+        }
+
+        private void LocalMonitorTick(object? sender, EventArgs e)
+        {
+            try
+            {
+                var snap = new PCPlus.Core.Models.HealthSnapshot { Timestamp = DateTime.Now };
+
+                using var cpuCounter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
+                cpuCounter.NextValue();
+                System.Threading.Thread.Sleep(200);
+                snap.CpuPercent = cpuCounter.NextValue();
+
+                var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
+                snap.RamTotalGB = ci.TotalPhysicalMemory / 1073741824f;
+                snap.RamUsedGB = (ci.TotalPhysicalMemory - ci.AvailablePhysicalMemory) / 1073741824f;
+                snap.RamPercent = snap.RamUsedGB / snap.RamTotalGB * 100f;
+
+                foreach (var drive in System.IO.DriveInfo.GetDrives())
+                {
+                    if (!drive.IsReady || drive.DriveType != System.IO.DriveType.Fixed) continue;
+                    snap.Disks.Add(new PCPlus.Core.Models.DiskReading
+                    {
+                        Name = drive.Name, Label = drive.VolumeLabel,
+                        TotalGB = drive.TotalSize / 1073741824f,
+                        FreeGB = drive.AvailableFreeSpace / 1073741824f,
+                        UsedPercent = (1f - (float)drive.AvailableFreeSpace / drive.TotalSize) * 100f
+                    });
+                }
+
+                snap.ProcessCount = System.Diagnostics.Process.GetProcesses().Length;
+                snap.Uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
+
+                _health = snap;
+                _hwSnapshot = snap;
+                _hwSnapshotTime = DateTime.Now;
+            }
+            catch { }
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _refreshTimer.Stop();
             _refreshTimer.Dispose();
+            _localMonitorTimer?.Stop();
+            _localMonitorTimer?.Dispose();
             _localFallback.Dispose();
             base.OnFormClosing(e);
         }

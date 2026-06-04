@@ -9,7 +9,7 @@
     <ApplicationIcon>..\..\SupportTray\icon.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>5.10.0</Version>
+    <Version>5.13.0</Version>
     <Company>PC Plus Computing</Company>
     <Product>PC Plus Endpoint Protection</Product>
     <Description>PC Plus Endpoint Protection - System Tray UI</Description>
@@ -18,6 +18,8 @@
   <ItemGroup>
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
+    <PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
