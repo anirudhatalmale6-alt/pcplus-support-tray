@@ -24,7 +24,7 @@ namespace PCPlus.Tray.Forms
         private static readonly Color SidebarText = Color.FromArgb(160, 175, 200);
         private static readonly Color SidebarActive = Color.FromArgb(25, 32, 48);
         private static readonly Color SidebarHover = Color.FromArgb(22, 28, 40);
-        private static readonly Color ContentBg = Color.FromArgb(243, 245, 249);
+        private static readonly Color ContentBg = Color.FromArgb(230, 234, 242);
         private static readonly Color CardBg = Color.White;
         private static readonly Color CardBorder = Color.FromArgb(228, 232, 240);
         private static readonly Color TextDark = Color.FromArgb(20, 24, 36);
@@ -298,6 +298,44 @@ namespace PCPlus.Tray.Forms
                 case "support": BuildSupportView(); break;
                 case "system": BuildSystemView(); break;
             }
+            AddBrandFooter();
+        }
+
+        private void AddBrandFooter()
+        {
+            int footerY = 0;
+            foreach (Control c in _contentArea.Controls)
+            {
+                int bottom = c.Top + c.Height;
+                if (bottom > footerY) footerY = bottom;
+            }
+            footerY += 16;
+
+            var footer = new Panel
+            {
+                Location = new Point(24, footerY),
+                Size = new Size(_contentArea.Width - 72, 50),
+                BackColor = Color.Transparent,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            footer.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                using var line = new Pen(Color.FromArgb(200, 206, 216));
+                g.DrawLine(line, 0, 0, footer.Width, 0);
+                using var brandFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+                using var brandBrush = new SolidBrush(Color.FromArgb(10, 22, 40));
+                g.DrawString("PC Plus Computing Inc.", brandFont, brandBrush, 0, 12);
+                using var tagFont = new Font("Segoe UI", 7.5f);
+                using var tagBrush = new SolidBrush(Color.FromArgb(120, 130, 145));
+                g.DrawString("Your Security Is Our Priority", tagFont, tagBrush, 0, 30);
+                var verText = $"v{Application.ProductVersion}";
+                var verSize = g.MeasureString(verText, tagFont);
+                g.DrawString(verText, tagFont, tagBrush, footer.Width - verSize.Width, 12);
+                g.DrawString("pcpluscomputing.com  |  604-760-1662", tagFont, tagBrush, footer.Width - 230, 30);
+            };
+            _contentArea.Controls.Add(footer);
         }
 
         #endregion
