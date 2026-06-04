@@ -301,6 +301,51 @@ namespace PCPlus.Tray.Forms
             AddBrandFooter();
         }
 
+        private void AddPromoCards(int y, int m, int contentW)
+        {
+            int gap = 10;
+            int cardW = (contentW - gap * 2) / 3;
+
+            var promos = new[]
+            {
+                ("Managed IT Services", "Let us handle your technology so you can focus on your business. 24/7 monitoring, patching, and support.", AccentBlue, "pcpluscomputing.com"),
+                ("Cloud Backup Solutions", "Automatic daily backups with instant recovery. Your data is safe with enterprise-grade encryption.", AccentGreen, "Included with managed plans"),
+                ("Cybersecurity Training", "Protect your team from phishing and social engineering attacks. Monthly security awareness updates.", Color.FromArgb(139, 92, 246), "Ask about team training")
+            };
+
+            for (int i = 0; i < promos.Length; i++)
+            {
+                var (title, desc, color, cta) = promos[i];
+                var card = CreateCard(new Point(m + i * (cardW + gap), y), new Size(cardW, 140));
+                var capturedTitle = title;
+                var capturedDesc = desc;
+                var capturedColor = color;
+                var capturedCta = cta;
+                card.Paint += (s, e) =>
+                {
+                    var g = e.Graphics;
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                    using var topBar = new SolidBrush(capturedColor);
+                    g.FillRectangle(topBar, 1, 1, card.Width - 2, 4);
+
+                    using var tFont = new Font("Segoe UI", 10f, FontStyle.Bold);
+                    using var tBrush = new SolidBrush(TextDark);
+                    g.DrawString(capturedTitle, tFont, tBrush, 14, 16);
+
+                    using var dFont = new Font("Segoe UI", 8.5f);
+                    using var dBrush = new SolidBrush(TextMuted);
+                    g.DrawString(capturedDesc, dFont, dBrush, new RectangleF(14, 40, card.Width - 28, 60));
+
+                    using var cFont = new Font("Segoe UI", 8f, FontStyle.Bold);
+                    using var cBrush = new SolidBrush(capturedColor);
+                    g.DrawString(capturedCta, cFont, cBrush, 14, 110);
+                };
+                _contentArea.Controls.Add(card);
+            }
+        }
+
         private void AddBrandFooter()
         {
             int footerY = 0;
@@ -1589,6 +1634,7 @@ namespace PCPlus.Tray.Forms
                 _contentArea.Controls.Add(moduleCard);
                 y += 73;
             }
+            AddPromoCards(y + 8, 24, _contentArea.Width - 72);
         }
 
         #endregion
@@ -1622,6 +1668,7 @@ namespace PCPlus.Tray.Forms
                     g.DrawString("Your device is clean. Keep real-time protection enabled.", subFont, subBrush, 80, 60);
                 };
                 _contentArea.Controls.Add(emptyCard);
+                AddPromoCards(185, 24, _contentArea.Width - 72);
                 return;
             }
 
@@ -1920,6 +1967,8 @@ namespace PCPlus.Tray.Forms
                 }
             };
             _contentArea.Controls.Add(infoCard);
+            y = infoCard.Bottom + 16;
+            AddPromoCards(y, m + 12, contentW);
         }
 
         #endregion
