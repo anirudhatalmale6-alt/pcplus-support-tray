@@ -528,16 +528,24 @@ namespace PCPlus.Tray.Forms
                     g.DrawArc(ringPen, ringRect, -90, scorePct * 360f);
                 }
 
+                // White center circle behind text
+                int innerSize = ringSize - 20;
+                int innerX = ringX + 10;
+                int innerY = ringY + 10;
+                using var centerBrush = new SolidBrush(Color.White);
+                g.FillEllipse(centerBrush, innerX, innerY, innerSize, innerSize);
+
                 // Score text in center
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                using var scoreFont = new Font("Segoe UI", 24, FontStyle.Bold);
+                var scoreStr = hasData ? $"{score}" : "--";
+                using var scoreFont = new Font("Segoe UI", 20, FontStyle.Bold);
                 using var scoreBrush = new SolidBrush(hasData ? statusColor : TextMuted);
-                g.DrawString(hasData ? $"{score}" : "--", scoreFont, scoreBrush,
-                    new RectangleF(ringX, ringY - 4, ringSize, ringSize), sf);
+                g.DrawString(scoreStr, scoreFont, scoreBrush,
+                    new RectangleF(ringX, ringY - 2, ringSize, ringSize - 10), sf);
                 using var scoreLbl = new Font("Segoe UI", 7f);
                 using var lblBrush = new SolidBrush(TextMuted);
                 g.DrawString("SCORE", scoreLbl, lblBrush,
-                    new RectangleF(ringX, ringY + 30, ringSize, 30), sf);
+                    new RectangleF(ringX, ringY + 22, ringSize, 30), sf);
             };
             _contentArea.Controls.Add(heroCard);
             y += 148;
