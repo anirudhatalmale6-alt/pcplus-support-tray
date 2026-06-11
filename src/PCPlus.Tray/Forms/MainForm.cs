@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Management;
+using System.Text.Json;
 using System.Windows.Forms;
 using PCPlus.Core.IPC;
 using PCPlus.Core.Models;
@@ -3380,8 +3381,9 @@ namespace PCPlus.Tray.Forms
             };
             ticketCard.Click += (s, e) =>
             {
+                var ticketUrl = GetCompanyTicketUrl();
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                { FileName = "https://support.pcpluscomputing.com/#ticket/create", UseShellExecute = true });
+                { FileName = ticketUrl, UseShellExecute = true });
             };
             _contentArea.Controls.Add(ticketCard);
 
@@ -4678,6 +4680,35 @@ namespace PCPlus.Tray.Forms
             path.AddArc(x, y + h - r * 2, r * 2, r * 2, 90, 90);
             path.CloseFigure();
             g.FillPath(brush, path);
+        }
+
+        private static string GetCompanyTicketUrl()
+        {
+            try
+            {
+                var configPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "PCPlusEndpoint", "config.json");
+                if (File.Exists(configPath))
+                {
+                    var json = File.ReadAllText(configPath);
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("companyName", out var prop))
+                    {
+                        var name = prop.GetString();
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            var slug = name.Trim().ToLowerInvariant()
+                                .Replace(" ", "-").Replace("&", "and")
+                                .Replace("(", "").Replace(")", "")
+                                .Replace("'", "").Replace(",", "");
+                            return $"https://support.pcpluscomputing.com/submit.html?c={Uri.EscapeDataString(slug)}";
+                        }
+                    }
+                }
+            }
+            catch { }
+            return "https://support.pcpluscomputing.com/submit.html";
         }
     }
 }
