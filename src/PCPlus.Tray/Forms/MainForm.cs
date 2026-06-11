@@ -4684,6 +4684,9 @@ namespace PCPlus.Tray.Forms
 
         private static string GetCompanyTicketUrl()
         {
+            var baseUrl = "https://support.pcpluscomputing.com/submit.html";
+            var queryParams = new List<string>();
+
             try
             {
                 var configPath = Path.Combine(
@@ -4702,13 +4705,43 @@ namespace PCPlus.Tray.Forms
                                 .Replace(" ", "-").Replace("&", "and")
                                 .Replace("(", "").Replace(")", "")
                                 .Replace("'", "").Replace(",", "");
-                            return $"https://support.pcpluscomputing.com/submit.html?c={Uri.EscapeDataString(slug)}";
+                            queryParams.Add($"c={Uri.EscapeDataString(slug)}");
                         }
                     }
                 }
             }
             catch { }
-            return "https://support.pcpluscomputing.com/submit.html";
+
+            try
+            {
+                queryParams.Add($"pc={Uri.EscapeDataString(Environment.MachineName)}");
+                queryParams.Add($"os={Uri.EscapeDataString(Environment.OSVersion.ToString())}");
+                queryParams.Add($"cores={Environment.ProcessorCount}");
+
+                var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
+                var ramGb = ci.TotalPhysicalMemory / (1024.0 * 1024 * 1024);
+                queryParams.Add($"ram={ramGb:F1}GB");
+
+                var drive = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\");
+                var totalGb = drive.TotalSize / (1024.0 * 1024 * 1024);
+                var freeGb = drive.AvailableFreeSpace / (1024.0 * 1024 * 1024);
+                queryParams.Add($"disk={totalGb:F0}GB");
+                queryParams.Add($"diskfree={freeGb:F0}GB");
+
+                try
+                {
+                    using var searcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
+                    foreach (var obj in searcher.Get())
+                    {
+                        queryParams.Add($"cpu={Uri.EscapeDataString(obj["Name"]?.ToString()?.Trim() ?? "")}");
+                        break;
+                    }
+                }
+                catch { }
+            }
+            catch { }
+
+            return queryParams.Count > 0 ? $"{baseUrl}?{string.Join("&", queryParams)}" : baseUrl;
         }
     }
 }
