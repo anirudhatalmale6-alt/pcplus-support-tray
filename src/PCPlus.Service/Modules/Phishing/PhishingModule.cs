@@ -129,27 +129,8 @@ namespace PCPlus.Service.Modules.Phishing
             _urlReputation = new UrlReputationEngine();
             _urlReputation.Start(_context);
 
-            // Start DNS filter proxy - all DNS queries go through our filter
-            _dnsProxy = new DnsFilterProxy();
-            _dnsProxy.LoadBlocklist(_blockedDomains);
-            _dnsProxy.Start(_context, domain =>
-            {
-                // Check against our blocklist and advanced phishing feeds
-                if (_blockedDomains.Contains(domain)) return true;
-                if (_advancedPhishing?.IsRealtimeBlocked(domain) == true) return true;
-                return false;
-            },
-            onDnsQuery: (domain, wasBlocked, reason) =>
-            {
-                lock (_lock)
-                {
-                    _totalChecked++;
-                }
-                if (wasBlocked)
-                {
-                    RecordEvent("blocked", domain, reason);
-                }
-            });
+            // DNS filtering is handled at the firewall/network level - not per-machine
+            _context.Log(LogLevel.Info, Id, "DNS protection managed at firewall level. Local DNS proxy disabled.");
 
             // Start local API server for browser extension communication
             _localApi = new LocalApiServer();

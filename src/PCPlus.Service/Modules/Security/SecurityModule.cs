@@ -150,7 +150,7 @@ namespace PCPlus.Service.Modules.Security
                         );
                         foreach ($rule in $rules) { Add-MpPreference -AttackSurfaceReductionRules_Ids $rule -AttackSurfaceReductionRules_Actions Enabled }", "ASR Rules Enabled"),
                     "lsass_protect" => RunPowerShell("Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' -Name 'RunAsPPL' -Value 1 -Type DWord", "LSASS Protection (requires reboot)"),
-                    "dns_security" => RunPowerShell("Set-DnsClientServerAddress -InterfaceAlias (Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -First 1 -ExpandProperty Name) -ServerAddresses ('9.9.9.9','149.112.112.112')", "Secure DNS (Quad9)"),
+                    "dns_security" => (true, "DNS security is managed at the firewall level - no machine-level changes needed"),
                     "bitlocker" => (false, "BitLocker requires manual setup - run 'manage-bde -on C:' from admin command prompt or use Control Panel"),
                     "backup" => (false, "Backup configuration requires manual setup - enable File History in Windows Settings > Update & Security > Backup"),
                     "edr" => (false, "EDR deployment requires manual installation of your chosen EDR product"),
