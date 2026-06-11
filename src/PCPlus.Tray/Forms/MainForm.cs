@@ -88,18 +88,30 @@ namespace PCPlus.Tray.Forms
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
             _refreshTimer.Start();
 
-            _ = RefreshDataAsync();
-            // Take initial hardware reading on startup
+            // Take initial hardware reading BEFORE showing dashboard
             if (!_localMonitorInitDone)
             {
                 _localMonitorInitDone = true;
-                Task.Run(() =>
-                {
-                    try { LocalMonitorTick(null, EventArgs.Empty); }
-                    catch { }
-                });
+                try { LocalMonitorTick(null, EventArgs.Empty); }
+                catch { }
             }
+
+            // Generate a quick default score if none exists yet
+            if (_securityResult == null)
+            {
+                _securityResult = new SecurityScanResult
+                {
+                    TotalScore = 75,
+                    ScanTime = DateTime.Now,
+                    Categories = new List<SecurityCategory>
+                    {
+                        new() { Name = "Loading...", Score = 75, MaxScore = 100 }
+                    }
+                };
+            }
+
             ShowView("dashboard");
+            _ = RefreshDataAsync();
         }
 
         private void InitializeForm()
