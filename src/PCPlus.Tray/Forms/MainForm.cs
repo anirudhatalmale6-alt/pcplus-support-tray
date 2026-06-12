@@ -4675,21 +4675,6 @@ namespace PCPlus.Tray.Forms
             _localFallback.Dispose();
             base.OnFormClosing(e);
         }
-    }
-
-    /// <summary>Graphics extension for rounded rectangles.</summary>
-    internal static class GraphicsExtensions
-    {
-        public static void FillRoundedRectangle(this Graphics g, Brush brush, float x, float y, float w, float h, float r)
-        {
-            using var path = new System.Drawing.Drawing2D.GraphicsPath();
-            path.AddArc(x, y, r * 2, r * 2, 180, 90);
-            path.AddArc(x + w - r * 2, y, r * 2, r * 2, 270, 90);
-            path.AddArc(x + w - r * 2, y + h - r * 2, r * 2, r * 2, 0, 90);
-            path.AddArc(x, y + h - r * 2, r * 2, r * 2, 90, 90);
-            path.CloseFigure();
-            g.FillPath(brush, path);
-        }
 
         private static string GetCompanyTicketUrl()
         {
@@ -4751,6 +4736,21 @@ namespace PCPlus.Tray.Forms
             catch { }
 
             return queryParams.Count > 0 ? $"{baseUrl}?{string.Join("&", queryParams)}" : baseUrl;
+        }
+    }
+
+    /// <summary>Graphics extension for rounded rectangles.</summary>
+    internal static class GraphicsExtensions
+    {
+        public static void FillRoundedRectangle(this Graphics g, Brush brush, float x, float y, float w, float h, float r)
+        {
+            using var path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddArc(x, y, r * 2, r * 2, 180, 90);
+            path.AddArc(x + w - r * 2, y, r * 2, r * 2, 270, 90);
+            path.AddArc(x + w - r * 2, y + h - r * 2, r * 2, r * 2, 0, 90);
+            path.AddArc(x, y + h - r * 2, r * 2, r * 2, 90, 90);
+            path.CloseFigure();
+            g.FillPath(brush, path);
         }
     }
 }
