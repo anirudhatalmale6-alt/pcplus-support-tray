@@ -102,11 +102,8 @@ namespace PCPlus.Tray.Forms
                 _securityResult = new SecurityScanResult
                 {
                     TotalScore = 75,
-                    ScanTime = DateTime.Now,
-                    Categories = new List<SecurityCategory>
-                    {
-                        new() { Name = "Loading...", Score = 75, MaxScore = 100 }
-                    }
+                    Grade = "C",
+                    ScanTime = DateTime.Now
                 };
             }
 
