@@ -34,6 +34,7 @@ namespace SupportTray
         public bool ShowHealthAlerts { get; set; } = true;
         public bool LogHealthAlerts { get; set; } = true;
         public bool ShowHealthInTooltip { get; set; } = true;
+        public int NotificationCooldownMinutes { get; set; } = 30;
 
         private static readonly string ConfigDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),

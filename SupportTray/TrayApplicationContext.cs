@@ -77,7 +77,8 @@ namespace SupportTray
                 CpuAlertThreshold = _config.CpuAlertThreshold,
                 RamAlertThreshold = _config.RamAlertThreshold,
                 DiskAlertThreshold = _config.DiskAlertThreshold,
-                TempAlertThreshold = _config.TempAlertThreshold
+                TempAlertThreshold = _config.TempAlertThreshold,
+                AlertCooldownSeconds = _config.NotificationCooldownMinutes * 60
             };
 
             _alertManager = new AlertManager(_trayIcon)
@@ -332,6 +333,45 @@ namespace SupportTray
             var sysInfoItem = new ToolStripMenuItem("System Information");
             sysInfoItem.Click += (s, e) => ShowSystemInfo();
             menu.Items.Add(sysInfoItem);
+
+            // Notification Settings
+            var notifMenu = new ToolStripMenuItem("Notifications");
+
+            var notifToggle = new ToolStripMenuItem(_config.ShowHealthAlerts ? "Notifications: ON" : "Notifications: OFF");
+            notifToggle.Click += (s, e) =>
+            {
+                _config.ShowHealthAlerts = !_config.ShowHealthAlerts;
+                if (_alertManager != null)
+                    _alertManager.ShowBalloons = _config.ShowHealthAlerts;
+                ((ToolStripMenuItem)s!).Text = _config.ShowHealthAlerts ? "Notifications: ON" : "Notifications: OFF";
+                _config.Save();
+            };
+            notifMenu.DropDownItems.Add(notifToggle);
+
+            notifMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            var intervals = new[] { ("Every 15 minutes", 15), ("Every 30 minutes", 30), ("Every hour", 60), ("Every 2 hours", 120) };
+            foreach (var (label, mins) in intervals)
+            {
+                var item = new ToolStripMenuItem(label);
+                if (_config.NotificationCooldownMinutes == mins)
+                    item.Checked = true;
+                var capturedMins = mins;
+                item.Click += (s, e) =>
+                {
+                    _config.NotificationCooldownMinutes = capturedMins;
+                    if (_healthMonitor != null)
+                        _healthMonitor.AlertCooldownSeconds = capturedMins * 60;
+                    foreach (ToolStripItem di in notifMenu.DropDownItems)
+                        if (di is ToolStripMenuItem mi && mi != notifToggle)
+                            mi.Checked = false;
+                    ((ToolStripMenuItem)s!).Checked = true;
+                    _config.Save();
+                };
+                notifMenu.DropDownItems.Add(item);
+            }
+
+            menu.Items.Add(notifMenu);
 
             menu.Items.Add(new ToolStripSeparator());
 

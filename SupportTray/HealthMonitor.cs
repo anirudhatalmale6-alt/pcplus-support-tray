@@ -64,7 +64,7 @@ namespace SupportTray
 
         // Alert cooldown tracking (don't spam alerts)
         private readonly Dictionary<string, DateTime> _alertCooldowns = new();
-        private const int ALERT_COOLDOWN_SECONDS = 300; // 5 minutes between same alert
+        public int AlertCooldownSeconds { get; set; } = 1800; // 30 minutes between same alert
 
         public HealthMonitor()
         {
@@ -398,7 +398,7 @@ namespace SupportTray
             lock (_alertCooldowns)
             {
                 if (_alertCooldowns.TryGetValue(key, out var lastAlert) &&
-                    (DateTime.Now - lastAlert).TotalSeconds < ALERT_COOLDOWN_SECONDS)
+                    (DateTime.Now - lastAlert).TotalSeconds < AlertCooldownSeconds)
                     return;
 
                 _alertCooldowns[key] = DateTime.Now;
