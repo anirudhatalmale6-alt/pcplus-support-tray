@@ -55,6 +55,12 @@ namespace PCPlus.Core.IPC
             [IpcRequestType.GetMaintenanceStatus] = CommandPermission.ReadOnly,
             [IpcRequestType.GetDnsStats] = CommandPermission.ReadOnly,
             [IpcRequestType.GetVulnerabilityStats] = CommandPermission.ReadOnly,
+            [IpcRequestType.GetNetworkSecurityStatus] = CommandPermission.ReadOnly,
+            [IpcRequestType.GetLoginEvents] = CommandPermission.ReadOnly,
+            [IpcRequestType.GetBruteForceAlerts] = CommandPermission.ReadOnly,
+            [IpcRequestType.GetDiscoveredDevices] = CommandPermission.ReadOnly,
+            [IpcRequestType.GetPortScanAlerts] = CommandPermission.ReadOnly,
+            [IpcRequestType.GetNetworkReport] = CommandPermission.ReadOnly,
 
             // Operator - can trigger actions but nothing dangerous
             [IpcRequestType.RunSecurityScan] = CommandPermission.Operator,
@@ -143,6 +149,14 @@ namespace PCPlus.Core.IPC
 
         // Vulnerability
         GetVulnerabilityStats,
+
+        // Network Security
+        GetNetworkSecurityStatus,
+        GetLoginEvents,
+        GetBruteForceAlerts,
+        GetDiscoveredDevices,
+        GetPortScanAlerts,
+        GetNetworkReport,
 
         // Authentication
         Authenticate

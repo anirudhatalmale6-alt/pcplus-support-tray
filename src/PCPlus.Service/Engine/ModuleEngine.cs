@@ -238,6 +238,14 @@ namespace PCPlus.Service.Engine
                     IpcRequestType.GetVulnerabilityStats =>
                         await HandleGetVulnerabilityStats(request),
 
+                    IpcRequestType.GetNetworkSecurityStatus or
+                    IpcRequestType.GetLoginEvents or
+                    IpcRequestType.GetBruteForceAlerts or
+                    IpcRequestType.GetDiscoveredDevices or
+                    IpcRequestType.GetPortScanAlerts or
+                    IpcRequestType.GetNetworkReport =>
+                        await RouteToModuleAsync("network-security", request),
+
                     IpcRequestType.RunMaintenance or
                     IpcRequestType.GetMaintenanceStatus =>
                         await RouteToModuleAsync("maintenance", request),
