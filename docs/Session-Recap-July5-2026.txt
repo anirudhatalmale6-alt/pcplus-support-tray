@@ -1,0 +1,174 @@
+PC PLUS COMPUTING - SESSION RECAP
+===================================
+Date: July 5, 2026
+Engineer: Anirudha Talmale
+
+======================================================================
+WORK COMPLETED THIS SESSION
+======================================================================
+
+1. RDP PORT MANAGEMENT
+   - Unblocked RDP (port 3389) for Acme Glass and RLGF offices
+     Machines: AG-WS-01, AG-WS-02, AG-WS-13, AG-WS-18,
+               RLPGFR-AbbyWS03, RLPGFR-AbbyWS05
+   - Created Script 208 "PCPlus Unblock RDP Port" for on-demand RDP access
+   - Script 207 (Block RDP) and 208 (Unblock RDP) work as a pair
+
+2. WAZUH SIEM DEPLOYMENT (Major)
+   - Diagnosed why 69 of 70 Wazuh agents were disconnected
+     Root cause: Agents pointed to old IP 184.68.146.18 (unreachable)
+     Correct manager IP: 65.7.31.82 (port 1514 confirmed open)
+   - Created Script 209 "Check Wazuh Agent" for diagnostics
+   - Created Script 210 "Deploy Wazuh Agent" for install/fix
+   - Deployed Wazuh agent to ALL 70 online Windows machines
+     Result: 60 agents now ACTIVE (was 1 before)
+     69/70 deployments successful, 1 download timeout
+   - Wazuh 4.14.6 matched between manager and agents
+   - Dashboard accessible at wazuh.pcpluscomputing.com
+
+3. FIREWALLS DASHBOARD (New CMD Page)
+   - Built cmd.pcpluscomputing.com/firewalls.html
+   - Features: Firewall cards with status, CPU/Memory bars, uptime,
+     one-click Connect to OPNsense GUI, Logs link to Grafana
+   - 8 firewalls configured: PC Plus HQ (online) + 7 pending deployment
+     Pending: Shamina, Planet Group, Aman Rai, InderMan, C21, Astar, Amodi
+   - Add Firewall modal for adding new sites
+   - Config templates section (Bridge Mode + Transparent Bridge)
+   - Backend API at /api/firewalls with heartbeat endpoint for auto-registration
+   - Added to CMD sidebar navigation under INFRASTRUCTURE
+
+4. INFRASTRUCTURE AUDIT
+   - Full software inventory scan of Server 18
+   - Documented 72 running services + 14 Docker containers
+   - Identified services missing from Paul's inventory list
+
+======================================================================
+FIREWALL DEPLOYMENT PLAN (Agreed)
+======================================================================
+
+Hardware: QOTOM Q730G5 (Intel J4105, 5x 2.5G NIC)
+Specs: 8GB RAM, 120GB SSD (not SD card - reliability)
+Software: OPNsense
+
+Two deployment configurations:
+  Config A - Bridge Mode: Shaw modem in bridge mode >> OPNsense >> network
+  Config B - Transparent Bridge: Shaw stays as router/wifi >> OPNsense inline
+
+7 offices getting firewalls:
+  1. Shamina (Summer Grewal/Securiforce)
+  2. Planet Group Realty
+  3. Aman Rai CPA
+  4. InderMan Accounting
+  5. Century 21 (C21)
+  6. Astar Doors
+  7. Amarjeet Modi
+
+Paul will install OPNsense on hardware. Config XML files will be provided
+for upload through OPNsense GUI. Setup 1-2 firewalls per day when Paul is online.
+
+All firewalls will:
+  - VPN tunnel back to Server 18
+  - Send syslog to Loki for centralized logging
+  - Auto-register on CMD Firewalls dashboard
+  - Report health metrics (CPU, memory, uptime)
+
+======================================================================
+SCRIPTS CREATED THIS SESSION
+======================================================================
+
+Script 208: PCPlus Unblock RDP Port
+  - Removes RDP block rule, enables RDP service, verifies port listening
+
+Script 209: PCPlus Check Wazuh Agent
+  - Diagnostic: checks Wazuh service, config, manager address, connectivity
+
+Script 210: PCPlus Deploy Wazuh Agent
+  - Installs or fixes Wazuh agent on Windows endpoints
+  - Auto-detects: fresh install vs config fix vs already working
+  - Manager: 65.7.31.82
+
+======================================================================
+COMPLETE SERVER 18 SOFTWARE INVENTORY
+======================================================================
+
+CORE MSP PLATFORM:
+  - Tactical RMM (rmm.service + nats.service + nats-api.service)
+  - MeshCentral (meshcentral.service) - remote access
+  - PC Plus CMD Dashboard (command-center.service) - custom monitoring
+  - PC Plus Leads Portal (pcplus-leads.service) - lead management
+  - PC Plus Chat (pcplus-chat.service) - customer support chat
+  - PC Plus Email Marketing (pcplus-email.service) - email campaigns
+  - PC Plus Endpoint Dashboard (pcplus-dashboard.service)
+
+MONITORING AND ALERTING:
+  - Grafana (grafana-server.service) - dashboards, port 3002
+  - Prometheus (prometheus.service) - metrics collection
+  - Prometheus Node Exporter (prometheus-node-exporter.service)
+  - Zabbix Server (zabbix-server.service) - infrastructure monitoring
+  - Zabbix Agent (zabbix-agent.service) - local agent
+  - Uptime Kuma (Docker) - uptime monitoring
+  - Loki (loki.service) - log aggregation
+  - Promtail (promtail.service) - log shipping to Loki
+  - Syslog Receiver (syslog-receiver.service) - BSD syslog on UDP 1514
+  - Sentry Loki Shipper (sentry-loki-shipper.service) - Network Sentry data
+
+SECURITY:
+  - Wazuh Manager + Indexer + Dashboard (wazuh-manager/indexer/dashboard.service)
+    60 active agents, port 1514 (agent), 1515 (registration), 55000 (API)
+  - OpenVAS/Greenbone (Docker) - vulnerability scanner
+  - Fail2Ban (fail2ban.service) - brute force protection
+  - Vaultwarden (Docker) - password manager
+  - Authelia (Docker) - SSO/2FA for all web dashboards
+  - AdGuard Home (AdGuardHome.service) - DNS-level blocking
+
+CRM AND BUSINESS:
+  - EspoCRM + WebSocket + Daemon (Docker, MySQL 8.0 backend)
+  - Xibo CMS + XMR (Docker, MySQL 8.0 backend) - digital signage
+  - Zammad (zammad.service + web + websocket + worker) - ticketing
+  - Google Calendar Sync (gcal-sync.service)
+  - Ticket Proxy (ticket-proxy.service)
+
+INFRASTRUCTURE:
+  - Docker (docker.service) + Portainer (Docker)
+  - Nginx (nginx.service) - reverse proxy for all services
+  - PostgreSQL 15 (postgresql@15-main.service) - Zammad + RMM database
+  - Redis (redis-server.service) - caching
+  - Elasticsearch (elasticsearch.service) - search backend
+  - Filebeat (filebeat.service) - log forwarding
+  - PHP 8.2 FPM (php8.2-fpm.service)
+  - Celery + Celery Beat (celery.service + celerybeat.service) - RMM tasks
+  - Exim4 (exim4.service) - mail transfer agent
+  - OpenDKIM (opendkim.service) - email signing
+  - Tailscale (tailscaled.service) - mesh VPN
+  - SNMP (snmpd.service) - network monitoring protocol
+  - CUPS (cups.service) - print server
+  - Webmin (webmin.service) - web admin panel
+  - mdadm (mdmonitor.service) - RAID monitoring
+  - SMART Monitor (smartmontools.service) - disk health
+
+DOCKER CONTAINERS (14):
+  - espocrm, espocrm-daemon, espocrm-websocket, espocrm-db
+  - xibo-cms, xibo-db, xibo-xmr
+  - pcplus-whatsapp-bot
+  - authelia
+  - openvas
+  - vaultwarden
+  - portainer
+  - uptime-kuma
+
+======================================================================
+PENDING / NEXT STEPS
+======================================================================
+
+1. Canadian firewall rules fix (Paul's OPNsense at HQ)
+2. OPNsense config XML templates (A and B) for 7 offices
+3. On-site firewall setup 1-2 per day with Paul
+4. Wazuh agent deploy on offline machines when they come online
+5. Retry Wazuh on Office-PC (download timeout)
+6. Zabbix configuration review
+7. Grafana log dashboards for centralized view
+8. Auto-deploy policy for new RMM agents (Script 210 auto-run)
+
+======================================================================
+END OF SESSION RECAP
+======================================================================

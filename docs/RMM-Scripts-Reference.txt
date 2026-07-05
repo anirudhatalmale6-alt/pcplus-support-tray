@@ -1,0 +1,238 @@
+PC PLUS COMPUTING - RMM SCRIPTS REFERENCE
+==========================================
+Last Updated: July 5, 2026
+
+All scripts are deployed via Tactical RMM (api.pcpluscomputing.com)
+Shell: PowerShell | Run As: System (unless noted)
+
+======================================================================
+SCRIPT 185: Network Sentry Install
+----------------------------------------------------------------------
+Purpose: Install Network Sentry monitoring agent on Windows endpoint
+What it does:
+  - Installs Sysmon for detailed event logging
+  - Configures Windows Event forwarding
+  - Sets up scheduled task for periodic sentry checks
+  - Reports back to CMD dashboard
+When to use: New endpoint onboarding
+
+======================================================================
+SCRIPT 186-187-192: Sentry Status Check (v1/v2/v3)
+----------------------------------------------------------------------
+Purpose: Query sentry status from endpoint
+What it does:
+  - Checks Sysmon service status
+  - Reports event log statistics
+  - Returns security event summary
+When to use: Diagnostic - check if sentry is working on a machine
+
+======================================================================
+SCRIPT 188: PC PLUS SECURITY
+----------------------------------------------------------------------
+Purpose: Apply baseline security hardening
+What it does:
+  - Disables unnecessary services
+  - Applies Windows security policies
+  - Configures audit logging
+When to use: New endpoint security hardening
+
+======================================================================
+SCRIPT 189: Sysmon Install Fix
+----------------------------------------------------------------------
+Purpose: Repair broken Sysmon installations
+What it does:
+  - Stops and removes existing Sysmon
+  - Re-downloads and installs latest version
+  - Applies SwiftOnSecurity config
+When to use: When Sysmon is not running/generating events
+
+======================================================================
+SCRIPT 190: Block Attackers (Original)
+----------------------------------------------------------------------
+Purpose: Block known attacker IPs in Windows Firewall
+What it does:
+  - Creates inbound block rules for specified IPs
+  - Windows Firewall only
+When to use: Quick IP blocking (superseded by Script 205)
+
+======================================================================
+SCRIPT 191: Server Hardening
+----------------------------------------------------------------------
+Purpose: Advanced security hardening for Windows Servers
+What it does:
+  - Disables SMBv1
+  - Configures audit policies
+  - Hardens RDP settings (NLA, encryption)
+  - Disables unnecessary services
+When to use: Server deployment or security review
+
+======================================================================
+SCRIPT 193: Disable RDP
+----------------------------------------------------------------------
+Purpose: Completely disable Remote Desktop
+What it does:
+  - Stops Terminal Services
+  - Sets fDenyTSConnections = 1
+  - Disables RDP firewall rules
+When to use: Machines that should never accept RDP
+
+======================================================================
+SCRIPT 194: Investigate Machine
+----------------------------------------------------------------------
+Purpose: Deep investigation of a specific endpoint
+What it does:
+  - Lists running services, scheduled tasks, startup programs
+  - Checks mapped drives, saved credentials
+  - Reports network connections to servers
+  - Checks Defender threats
+  - Returns comprehensive JSON report
+When to use: Investigating suspicious activity on a machine
+
+======================================================================
+SCRIPT 196: Install Live Log Push
+----------------------------------------------------------------------
+Purpose: Set up periodic log push to Loki
+What it does:
+  - Creates scheduled task to push Windows event logs
+  - Pushes security events via HTTPS to Loki endpoint
+When to use: Enabling centralized logging on an endpoint
+
+======================================================================
+SCRIPT 197: Enable RDP (Restricted)
+----------------------------------------------------------------------
+Purpose: Enable RDP with security restrictions
+What it does:
+  - Enables Terminal Services
+  - Enforces Network Level Authentication (NLA)
+  - Sets encryption level to High
+  - Opens firewall for Domain/Private profiles only
+When to use: When RDP is needed but should be restricted
+
+======================================================================
+SCRIPT 199: Full Network Discovery
+----------------------------------------------------------------------
+Purpose: Discover all devices on the local network
+What it does:
+  - ARP scan of local subnet
+  - DNS resolution of discovered IPs
+  - Port scan of common services (22,80,443,3389,445)
+  - Returns network map data
+When to use: Network audit, finding unknown devices
+
+======================================================================
+SCRIPT 200: Quick Network Scan
+----------------------------------------------------------------------
+Purpose: Fast ping sweep of local subnet
+What it does:
+  - Pings all IPs in local subnet
+  - Reports responding hosts with hostnames
+When to use: Quick check of what's online on the network
+
+======================================================================
+SCRIPT 201: Cyber Protect Rules
+----------------------------------------------------------------------
+Purpose: Apply cybersecurity protection policies
+What it does:
+  - Configures Windows Firewall rules
+  - Blocks known malicious ports
+  - Enables advanced audit logging
+When to use: Compliance hardening
+
+======================================================================
+SCRIPT 203: PCPlus Investigate IP
+----------------------------------------------------------------------
+Purpose: Investigate a specific IP address from an endpoint
+What it does:
+  - Performs DNS lookup
+  - Checks if IP has been seen in event logs
+  - Tests connectivity
+  - Reports firewall rules matching the IP
+When to use: Investigating suspicious IP activity
+
+======================================================================
+SCRIPT 204: PCPlus Block Attackers v2
+----------------------------------------------------------------------
+Purpose: Block attacker IPs with enhanced logging
+What it does:
+  - Creates Windows Firewall block rules
+  - Logs blocking actions
+  - Verifies rules are active
+When to use: Blocking specific attacker IPs (superseded by Script 205)
+
+======================================================================
+SCRIPT 205: PCPlus Multi-Firewall Block
+----------------------------------------------------------------------
+Purpose: Block IPs across ALL firewall products installed
+What it does:
+  - Blocks in Windows Firewall
+  - Blocks in Avast Firewall (if installed)
+  - Blocks in BitDefender Firewall (if installed)
+  - Creates persistent rules across all products
+When to use: Blocking attackers on machines with multiple AV products
+
+======================================================================
+SCRIPT 206: PCPlus Deep Security Scan
+----------------------------------------------------------------------
+Purpose: Comprehensive security audit of an endpoint (252 lines)
+What it does:
+  - Scans all user accounts and permissions
+  - Checks failed/successful login attempts with IPs/countries
+  - USB device history
+  - File access audit trail
+  - Running processes with network connections
+  - Installed software inventory
+  - Firewall rule audit
+  - Scheduled task analysis
+  - Service vulnerability check
+  - Pushes full JSON report to CMD via HTTPS
+When to use: Deep security investigation, compliance audit
+Note: Output pushed to CMD heartbeat endpoint (too large for RMM stdout)
+
+======================================================================
+SCRIPT 207: PCPlus Block RDP Port
+----------------------------------------------------------------------
+Purpose: Block inbound port 3389 (RDP) in Windows Firewall
+What it does:
+  - Creates firewall rule "PCPlus - Block RDP Port 3389" blocking inbound TCP 3389
+  - Disables RDP service
+  - Disables built-in Remote Desktop firewall rules
+When to use: Blocking external RDP access on endpoints
+Note: Use Script 208 to reverse this
+
+======================================================================
+SCRIPT 208: PCPlus Unblock RDP Port
+----------------------------------------------------------------------
+Purpose: Remove RDP block and re-enable Remote Desktop
+What it does:
+  - Removes "PCPlus - Block RDP Port 3389" firewall rule
+  - Enables RDP in registry (fDenyTSConnections = 0)
+  - Enables Windows Remote Desktop firewall rules
+  - Starts and sets TermService to Automatic
+  - Verifies port 3389 is listening
+When to use: When an office needs RDP access (internal/VPN use)
+Note: Reverses Script 207
+
+======================================================================
+SCRIPT 209: PCPlus Check Wazuh Agent
+----------------------------------------------------------------------
+Purpose: Diagnostic check of Wazuh agent installation
+What it does:
+  - Checks WazuhSvc/OssecSvc service status
+  - Finds install path (x86 and x64)
+  - Reports configured manager address
+  - Reads agent state file (connected/pending/disconnected)
+  - Tests network connectivity to manager (10.50.1.10:1514)
+When to use: Troubleshooting Wazuh agent connectivity issues
+
+======================================================================
+SCRIPT 210: PCPlus Deploy Wazuh Agent
+----------------------------------------------------------------------
+Purpose: Install or fix Wazuh agent on any Windows endpoint
+What it does:
+  - If agent exists with correct config: verifies connection, restarts if needed
+  - If agent exists with wrong manager: updates config to 65.7.31.82, restarts
+  - If no agent: downloads Wazuh 4.14.6 MSI, installs silently with
+    WAZUH_MANAGER=65.7.31.82, starts service
+  - Verifies service is running after install
+When to use: New endpoint onboarding, fixing disconnected Wazuh agents
+Manager: 65.7.31.82 (Server 18)
