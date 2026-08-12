@@ -54,6 +54,10 @@ namespace PCPlus.Service.Modules.Ransomware
         // Cache of PIDs verified as safe system processes (cleared each cycle)
         private readonly HashSet<int> _safeProcessCache = new();
 
+        // Cache of PIDs allowed to churn files without feeding the rate signals. File events arrive
+        // on watcher threads, so this one has to be concurrent. Pruned alongside _safeProcessCache.
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> _trustedFileActors = new();
+
         /// <summary>Cached WMI process info to avoid per-process queries.</summary>
         private class CachedProcessInfo
         {
@@ -528,15 +532,17 @@ namespace PCPlus.Service.Modules.Ransomware
             var pid = TryGetFileOwnerProcess(e.FullPath);
             if (pid > 0)
             {
+                var procName = GetProcessName(pid);
+                if (IsTrustedFileActor(pid, procName)) return;
+
                 // Check if file entropy is high (possible encryption)
                 if (IsHighEntropy(e.FullPath))
                 {
-                    var procName = GetProcessName(pid);
                     _scoring.AddSignal(pid, procName, BehaviorSignal.HighEntropyWrite,
                         $"High entropy write to {Path.GetFileName(e.FullPath)}");
                 }
 
-                _scoring.RecordFileOperation(pid, GetProcessName(pid), e.FullPath, FileOpType.Modify);
+                _scoring.RecordFileOperation(pid, procName, e.FullPath, FileOpType.Modify);
             }
         }
 
@@ -571,7 +577,7 @@ namespace PCPlus.Service.Modules.Ransomware
                     processName: procName, processId: pid);
             }
 
-            if (pid > 0)
+            if (pid > 0 && !IsTrustedFileActor(pid, procName))
                 _scoring.RecordFileOperation(pid, procName, e.FullPath, FileOpType.Create);
         }
 
@@ -589,26 +595,29 @@ namespace PCPlus.Service.Modules.Ransomware
             var newExt = Path.GetExtension(e.FullPath);
             var oldExt = Path.GetExtension(e.OldFullPath);
 
-            // Score individual rename
+            // Score individual rename. A trusted signed app is still scored on the hard signal below
+            // (renamed INTO a known ransomware extension) - it just stops feeding the rate counters,
+            // which its own temp-file churn would otherwise trip.
             if (pid > 0)
             {
-                _scoring.AddSignal(pid, procName, BehaviorSignal.FileRename,
-                    $"{e.OldName} -> {e.Name}");
+                var trusted = IsTrustedFileActor(pid, procName);
+                var extChanged = !string.Equals(oldExt, newExt, StringComparison.OrdinalIgnoreCase);
 
-                // Extension change is more suspicious
-                if (!string.Equals(oldExt, newExt, StringComparison.OrdinalIgnoreCase))
+                if (!trusted)
                 {
-                    _scoring.RecordFileOperation(pid, procName, e.FullPath, FileOpType.ExtensionChange);
+                    _scoring.AddSignal(pid, procName, BehaviorSignal.FileRename,
+                        $"{e.OldName} -> {e.Name}");
 
-                    if (RansomwareExtensions.Contains(newExt) || (_threatIntel?.IsKnownExtension(newExt) ?? false))
-                    {
-                        _scoring.AddSignal(pid, procName, BehaviorSignal.RansomwareExtension,
-                            $"Renamed to ransomware extension: {e.Name}");
-                    }
+                    _scoring.RecordFileOperation(pid, procName, e.FullPath,
+                        extChanged ? FileOpType.ExtensionChange : FileOpType.Rename);
                 }
-                else
+
+                // Extension change is more suspicious - applies to every process, trusted or not
+                if (extChanged &&
+                    (RansomwareExtensions.Contains(newExt) || (_threatIntel?.IsKnownExtension(newExt) ?? false)))
                 {
-                    _scoring.RecordFileOperation(pid, procName, e.FullPath, FileOpType.Rename);
+                    _scoring.AddSignal(pid, procName, BehaviorSignal.RansomwareExtension,
+                        $"Renamed to ransomware extension: {e.Name}");
                 }
             }
 
@@ -684,6 +693,11 @@ namespace PCPlus.Service.Modules.Ransomware
                 var wmiCache = BuildProcessCache();
 
                 var processes = Process.GetProcesses();
+
+                // Snapshot the live PIDs before the loop below disposes each handle
+                var livePids = new HashSet<int>(processes.Length);
+                foreach (var p in processes) { try { livePids.Add(p.Id); } catch { } }
+
                 foreach (var proc in processes)
                 {
                     try
@@ -710,6 +724,10 @@ namespace PCPlus.Service.Modules.Ransomware
 
                 // Clear safe cache each cycle so new processes get checked
                 _safeProcessCache.Clear();
+
+                // Drop trust for PIDs that have exited, so a recycled PID is re-verified
+                foreach (var deadPid in _trustedFileActors.Keys.Where(p => !livePids.Contains(p)).ToList())
+                    _trustedFileActors.TryRemove(deadPid, out _);
             }
             catch { }
         }
@@ -1239,6 +1257,35 @@ namespace PCPlus.Service.Modules.Ransomware
                 "babuk", "avaddon", "ragnar_locker"
             };
             return known.Contains(name);
+        }
+
+        /// <summary>
+        /// True when a process is allowed to touch a lot of files without being scored on the rate
+        /// signals (multi-folder touch, entropy, rename rate). Everyday apps churn files across the
+        /// user profile as a matter of course - browser cache, Office autosave, OneDrive sync - and
+        /// a browser uploading a batch of documents can otherwise reach the containment threshold and
+        /// get killed mid-upload. The name alone is spoofable, so the binary must also be signed;
+        /// and honeypot, ransom note and ransomware-extension detection still apply to everything.
+        /// </summary>
+        private bool IsTrustedFileActor(int pid, string procName)
+        {
+            if (pid <= 0 || string.IsNullOrEmpty(procName)) return false;
+
+            return _trustedFileActors.GetOrAdd(pid, _ =>
+            {
+                if (!IsKnownSystemProcess(procName)) return false;
+                try
+                {
+                    using var proc = Process.GetProcessById(pid);
+                    var path = proc.MainModule?.FileName;
+                    return !string.IsNullOrEmpty(path) && IsProcessSigned(path);
+                }
+                catch
+                {
+                    // Can't read the image path (access denied, process gone) - don't grant trust
+                    return false;
+                }
+            });
         }
 
         private static bool IsKnownSystemProcess(string name)
