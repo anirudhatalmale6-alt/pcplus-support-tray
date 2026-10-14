@@ -22,7 +22,8 @@ param(
 # === CUSTOMIZE THESE ===
 $DashboardUrl    = "https://dashboard.pcpluscomputing.com"
 $CustomerName    = if ($CustomerNameArg) { $CustomerNameArg } else { "{{site.name}}" }
-$TrmmApiKey      = "WDHX6IPCKJ9BISAFVOUJFFXVKKN5HMZV"
+$TrmmApiKey      = ""                  # Optional. NEVER commit a key here - this repo is public.
+                                       # Pass a scoped, expiring key at run time if the site lookup is needed.
 $TrmmApiUrl      = "https://api.pcpluscomputing.com"
 $GitHubRepo      = "anirudhatalmale6-alt/pcplus-support-tray"
 $ReleaseVersion  = "v5.7.0"            # Pin to known working version (use "latest" for newest)
